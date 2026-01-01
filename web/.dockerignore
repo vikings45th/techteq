@@ -1,0 +1,40 @@
+# 依存関係
+node_modules
+npm-debug.log
+yarn-error.log
+
+# ビルド成果物
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# 開発環境
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode
+.idea
+.fleet
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# ドキュメント
+README.md
+*.md
+
+# テスト
+coverage
+.nyc_output
+
+# その他
+logs
+*.log
+
