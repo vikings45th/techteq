@@ -22,6 +22,12 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
+      # ③ サービスアカウントで認証（gcloud CLI用）
+      - name: Authenticate gcloud CLI
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" | gcloud auth activate-service-account --key-file=-
+          gcloud config set project firstdown-482704
+
       # ④ Docker 認証
       - name: Configure Docker authentication
         run: |
