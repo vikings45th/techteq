@@ -14,16 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # ② GCP SDK インストール
+      # ② GCP SDK インストールと認証
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
-
-      # ③ サービスアカウントで GCP 認証
-      - name: Authenticate to GCP
-        run: |
-          echo "${{ secrets.GCP_SA_KEY }}" > key.json
-          gcloud auth activate-service-account --key-file=key.json
-          gcloud config set project firstdown-482704
+        with:
+          project_id: firstdown-482704
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
 
       # ④ Docker 認証
       - name: Configure Docker authentication
