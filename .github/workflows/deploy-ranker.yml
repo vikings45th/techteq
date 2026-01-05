@@ -3,17 +3,18 @@ name: Deploy Ranker to Cloud Run
 on:
   push:
     branches:
-      - main
+      - main  # main ブランチに push されたときに自動実行
 
 jobs:
-<<<<<<< HEAD
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # ① コードをチェックアウト
+      - name: Checkout code
         uses: actions/checkout@v3
 
+      # ② GCP SDK 設定
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
         with:
@@ -21,53 +22,23 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+      # ③ Docker 認証
+      - name: Configure Docker authentication
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
+      # ④ Docker イメージをビルド
       - name: Build Docker image
-        run: |
-          docker build -t asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:latest ./ml/ranker
+        run: docker build -t asia-northeast1-docker.pkg.dev/firstdown-482704/firstdown-repo/ranker:latest ml/ranker
 
+      # ⑤ Artifact Registry に push
       - name: Push Docker image
-        run: |
-          docker push asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:latest
+        run: docker push asia-northeast1-docker.pkg.dev/firstdown-482704/firstdown-repo/ranker:latest
 
+      # ⑥ Cloud Run にデプロイ
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ranker \
-            --image asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:latest \
+            --image asia-northeast1-docker.pkg.dev/firstdown-482704/firstdown-repo/ranker:latest \
             --region asia-northeast1 \
             --platform managed \
             --allow-unauthenticated
-=======
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v3
-      with:
-        project_id: firstdown-482704
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        export_default_credentials: true
-
-    - name: Configure Docker authentication
-      run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev
-
-    - name: Build Docker image
-      run: docker build -t asia-northeast1-docker.pkg.dev/firstdown-482704/firstdown-repo/ranker:latest ml/ranker
-
-    - name: Push Docker image
-      run: docker push asia-northeast1-docker.pkg.dev/firstdown-482704/firstdown-repo/ranker:latest
-
-    - name: Deploy to Cloud Run
-      run: |
-        gcloud run deploy ranker \
-          --image asia-northeast1-docker.pkg.dev/firstdown-482704/firstdown-repo/ranker:latest \
-          --region asia-northeast1 \
-          --platform managed \
-          --allow-unauthenticated
->>>>>>> origin/main
