@@ -1,18 +1,17 @@
-# ベースイメージを Python 3.11 に変更
 FROM python:3.11-slim
 
-# 作業ディレクトリ
 WORKDIR /app
 
-# 依存関係をコピー
-COPY requirements.txt .
-
 # pip を最新にアップグレードしてから依存関係をインストール
-RUN pip install --upgrade pip
+COPY requirements.txt .
+RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションコードをコピー
 COPY app.py .
 
-# デフォルトコマンド
+# ポート指定
+EXPOSE 8080
+
+# コンテナ起動コマンド
 CMD ["python", "app.py"]
