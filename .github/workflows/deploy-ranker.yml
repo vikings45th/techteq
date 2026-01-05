@@ -3,18 +3,18 @@ name: Deploy Ranker to Cloud Run
 on:
   push:
     branches:
-      - main  # dev→main マージで自動実行
+      - main  # dev→main マージ時に自動実行
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # コードをチェックアウト
+      # 1. コードをチェックアウト
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # GCP SDK 設定と認証
+      # 2. GCP SDK 設定と認証
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
         with:
@@ -22,23 +22,27 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
-      # 認証確認
+      # 3. 認証確認
       - name: Verify gcloud authentication
         run: gcloud auth list
 
-      # Docker 認証
-      - name: Configure Docker
+      # 4. Docker 認証
+      - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
 
-      # Docker イメージをビルド
+      # 5. Docker イメージをビルド
       - name: Build Docker image
-        run: docker build -t asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:${GITHUB_SHA} ml/ranker
+        run: |
+          docker build \
+            -t asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:${GITHUB_SHA} \
+            ml/ranker
 
-      # Docker イメージを push
+      # 6. Docker push
       - name: Push Docker image
-        run: docker push asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:${GITHUB_SHA}
+        run: |
+          docker push asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:${GITHUB_SHA}
 
-      # Cloud Run にデプロイ
+      # 7. Cloud Run デプロイ
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ranker \
