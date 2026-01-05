@@ -1,4 +1,5 @@
 steps:
+<<<<<<< HEAD
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -12,3 +13,4 @@ steps:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
