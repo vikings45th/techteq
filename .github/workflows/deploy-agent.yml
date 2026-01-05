@@ -3,18 +3,18 @@ name: Deploy Agent to Cloud Run
 on:
   push:
     branches:
-      - main  # main ブランチに push されたときに自動実行
+      - main  # dev→main マージで自動実行
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # ① コードをチェックアウト
+      # コードをチェックアウト
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # ② GCP SDK インストールと認証
+      # GCP SDK 設定と認証
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
         with:
@@ -22,23 +22,27 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
-      # ③ Docker 認証
-      - name: Configure Docker authentication
+      # 認証確認
+      - name: Verify gcloud authentication
+        run: gcloud auth list
+
+      # Docker 認証
+      - name: Configure Docker
         run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
 
-      # ⑤ Docker イメージをビルド
+      # Docker イメージをビルド
       - name: Build Docker image
-        run: docker build -t asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:latest ml/agent
+        run: docker build -t asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA} ml/agent
 
-      # ⑥ Artifact Registry に push
+      # Docker イメージを push
       - name: Push Docker image
-        run: docker push asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:latest
+        run: docker push asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA}
 
-      # ⑦ Cloud Run にデプロイ
+      # Cloud Run にデプロイ
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy agent \
-            --image asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:latest \
+            --image asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA} \
             --region asia-northeast1 \
             --platform managed \
             --allow-unauthenticated
