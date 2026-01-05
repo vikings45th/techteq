@@ -1,31 +1,14 @@
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    dir: 'ml'
-    args:
-      - build
-      - -t
-      - asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloudrun-repo/agent:$COMMIT_SHA
-      - .
-
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - push
-      - asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloudrun-repo/agent:$COMMIT_SHA
-
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
-      - run
-      - deploy
-      - agent
-      - --image
-      - asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloudrun-repo/agent:$COMMIT_SHA
-      - --region
-      - asia-northeast1
-      - --platform
-      - managed
-      - --no-allow-unauthenticated
+      [
+        "run", "deploy", "agent",
+        "--source", "ml",
+        "--region", "asia-northeast1",
+        "--project", "firstdown-482704",
+        "--allow-unauthenticated"
+      ]
 
-images:
-  - asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloudrun-repo/agent:$COMMIT_SHA
-
+options:
+  logging: CLOUD_LOGGING_ONLY
