@@ -1,9 +1,12 @@
 name: Deploy Agent to Cloud Run
 
 on:
-  pull_request:
+  push:
     branches:
       - main
+    paths:
+      - "ml/agent/**"
+      - ".github/workflows/deploy-agent.yml"
 
 jobs:
   deploy:
@@ -11,17 +14,17 @@ jobs:
 
     steps:
       # ① Checkout
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      # ② GCP 認証（ここが最重要）
+      # ② GCP 認証（公式・正解ルート）
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # ③ gcloud CLI セットアップ
-      - name: Set up gcloud
+      # ③ gcloud セットアップ
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: firstdown-482704
@@ -31,24 +34,23 @@ jobs:
         run: |
           gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
 
-      # ⑤ Docker build
+      # ⑤ Build
       - name: Build Docker image
         run: |
           docker build \
-            -t asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${{ github.sha }} \
+            -t asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA} \
             ./ml/agent
 
-      # ⑥ Docker push
+      # ⑥ Push
       - name: Push Docker image
         run: |
-          docker push \
-            asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${{ github.sha }}
+          docker push asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA}
 
-      # ⑦ Cloud Run deploy
+      # ⑦ Deploy
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy agent \
-            --image asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${{ github.sha }} \
+            --image asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA} \
             --region asia-northeast1 \
             --platform managed \
             --allow-unauthenticated
