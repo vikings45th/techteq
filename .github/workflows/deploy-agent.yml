@@ -3,7 +3,7 @@ name: Deploy Agent to Cloud Run
 on:
   pull_request:
     branches:
-      - main  # dev → main で PR マージされたときに実行
+      - main  # dev → main マージ時に実行
 
 jobs:
   deploy:
@@ -14,29 +14,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # ② GCP SDK 設定と認証
-      - name: Set up Cloud SDK
+      # ② GCP SDK 設定とサービスアカウント認証
+      - name: Set up Cloud SDK and authenticate
         uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: firstdown-482704
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
-      # ③ Docker 認証
-      - name: Configure Docker
-        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+      # ③ 明示的にサービスアカウントをアクティブ化（Docker 用）
+      - name: Activate service account for Docker
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" > /tmp/sa-key.json
+          gcloud auth activate-service-account --key-file=/tmp/sa-key.json
 
-      # ④ Docker イメージをビルド
+      # ④ Docker 認証
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+
+      # ⑤ Docker イメージをビルド
       - name: Build Docker image
         run: |
           docker build -t asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:$GITHUB_SHA ./ml/agent
 
-      # ⑤ Artifact Registry に push
-      - name: Push Docker image
+      # ⑥ Artifact Registry に push
+      - name: Push Docker image to Artifact Registry
         run: |
           docker push asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:$GITHUB_SHA
 
-      # ⑥ Cloud Run にデプロイ
+      # ⑦ Cloud Run にデプロイ
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy agent \
