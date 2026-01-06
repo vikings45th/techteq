@@ -1,0 +1,7 @@
+﻿{
+  "request_id": "local-test-001",
+  "routes": [
+    { "route_id": "r1", "features": {} },
+    { "route_id": "r2", "features": {} }
+  ]
+}

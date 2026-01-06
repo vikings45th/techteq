@@ -11,7 +11,7 @@ from app.schemas import (
     ToolName,
 )
 from app.settings import settings
-from app.services import ranker_client, bq_writer, fallback
+from app.services import ranker_client, bq_writer, fallback, maps_routes_client, places_client, vertex_llm
 from app.services.feature_calc import Candidate, calc_features
 
 app = FastAPI(title="firstdown Agent API", version="1.0.0")
@@ -63,24 +63,37 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         "ip_hash": None,
     }])
 
-    # 2) Candidate generation (MVP: stub)
-    # TODO: integrate Maps/Routes + relaxation step logic
-    # For now, create 3 dummy candidates
-    candidates: List[Dict[str, Any]] = [
-        {"route_id": "r1", "theme": req.theme},
-        {"route_id": "r2", "theme": req.theme},
-        {"route_id": "r3", "theme": "refresh" if req.theme != "refresh" else "nature"},
-    ]
+    # 2) Candidate generation via Routes API (fallback to dummy if API disabled)
+    tools_used: List[ToolName] = []
+    candidates: List[Dict[str, Any]] = []
     relaxation_step = 0
+    try:
+        candidates = await maps_routes_client.compute_route_candidates(
+            request_id=req.request_id,
+            start_lat=float(req.start_location.lat),
+            start_lng=float(req.start_location.lng),
+            distance_km=float(req.distance_km),
+            round_trip=bool(req.round_trip),
+        )
+        if candidates:
+            tools_used.append("maps_routes")
+    except Exception:
+        candidates = []
 
-    # 3) Feature extraction (MVP: stub numeric values)
+    if not candidates:
+        # fallback dummy candidates to keep flow alive
+        candidates = [
+            {"route_id": "r1", "polyline": "xxxx", "distance_km": float(req.distance_km), "duration_min": 32.0},
+        ]
+
+    # 3) Feature extraction
     rep_routes_payload = []
     for i, c in enumerate(candidates[:5], start=1):
         cand = Candidate(
             route_id=c["route_id"],
-            polyline="xxxx",
-            distance_km=float(req.distance_km) * (1.0 + 0.02 * i),
-            duration_min=30.0 + i,
+            polyline=c.get("polyline", "xxxx"),
+            distance_km=float(c.get("distance_km", req.distance_km)),
+            duration_min=float(c.get("duration_min") or 30.0 + i),
             loop_closure_m=20.0,
             bbox_area=0.5,
             path_length_ratio=1.3,
@@ -97,7 +110,7 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         rep_routes_payload.append({"route_id": cand.route_id, "features": feats})
 
     # 4) Call ranker
-    tools_used: List[ToolName] = ["ranker"]
+    tools_used.append("ranker")
     fallback_used = False
     fallback_reason = None
 
@@ -115,9 +128,33 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     if chosen is None:
         raise HTTPException(status_code=422, detail="No viable route found")
 
-    # 6) Summary (MVP: template; later LLM)
+    # 6) Summary and POIs
+    spots = []
+    try:
+        spots = await places_client.search_spots(
+            lat=float(req.start_location.lat),
+            lng=float(req.start_location.lng),
+        )
+        if spots:
+            tools_used.append("places")
+    except Exception:
+        spots = []
+
     summary = "【簡易提案】条件に合わせた散歩ルートです"
     summary_type = "template"
+    try:
+        vertex_summary = await vertex_llm.generate_summary(
+            theme=req.theme,
+            distance_km=float(chosen.get("distance_km", req.distance_km)),
+            duration_min=float(chosen.get("duration_min") or 30.0),
+            spots=spots,
+        )
+        if vertex_summary:
+            summary = vertex_summary
+            summary_type = "vertex_llm"
+            tools_used.append("vertex_llm")
+    except Exception:
+        pass
 
     total_latency_ms = int((time.time() - t0) * 1000)
 
@@ -146,11 +183,11 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     return GenerateRouteResponse(
         request_id=req.request_id,
         route={
-            "polyline": "xxxx",
-            "distance_km": float(req.distance_km),
-            "duration_min": 32,
+            "polyline": chosen.get("polyline", "xxxx"),
+            "distance_km": float(chosen.get("distance_km", req.distance_km)),
+            "duration_min": int(chosen.get("duration_min") or 32),
             "summary": summary,
-            "spots": [],
+            "spots": spots,
         },
         meta=meta,
     )
