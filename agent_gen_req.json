@@ -1,0 +1,8 @@
+﻿{
+  "request_id": "local-test-002",
+  "theme": "refresh",
+  "distance_km": 2.0,
+  "start_location": { "lat": 35.681236, "lng": 139.767125 },
+  "round_trip": true,
+  "debug": true
+}

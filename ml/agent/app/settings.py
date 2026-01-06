@@ -9,6 +9,19 @@ class Settings(BaseSettings):
     REQUEST_TIMEOUT_SEC: float = 10.0
     RANKER_TIMEOUT_SEC: float = 3.0
 
+    # Google Maps Platform
+    MAPS_API_KEY: str = ""
+    MAPS_ROUTES_BASE: str = "https://routes.googleapis.com/directions/v2:computeRoutes"
+    MAPS_PLACES_BASE: str = "https://places.googleapis.com/v1/places:searchNearby"
+
+    # Vertex AI
+    VERTEX_PROJECT: str = ""
+    VERTEX_LOCATION: str = "us-central1"
+    VERTEX_TEXT_MODEL: str = "text-bison"
+    VERTEX_TEMPERATURE: float = 0.3
+    VERTEX_TOP_P: float = 0.95
+    VERTEX_TOP_K: int = 40
+
     # BigQuery
     BQ_DATASET: str = "firstdown_mvp"
     BQ_TABLE_REQUEST: str = "route_request"
