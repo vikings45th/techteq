@@ -11,46 +11,41 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # ① Checkout
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # ② GCP 認証
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # ③ gcloud セットアップ
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: firstdown-482704
 
-      # ④ Docker 認証
       - name: Configure Docker
-        run: |
-          gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
 
-      # ⑤ Build
       - name: Build Docker image
         run: |
           docker build \
             -t asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:${GITHUB_SHA} \
             ./ml/ranker
 
-      # ⑥ Push
       - name: Push Docker image
         run: |
           docker push asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:${GITHUB_SHA}
 
-      # ⑦ Deploy
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ranker \
             --image asia-northeast1-docker.pkg.dev/firstdown-482704/ranker-repo/ranker:${GITHUB_SHA} \
             --region asia-northeast1 \
             --platform managed \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --timeout=3 \
+            --memory=512Mi \
+            --cpu=1 \
+            --concurrency=10

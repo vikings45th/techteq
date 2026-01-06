@@ -53,4 +53,11 @@ jobs:
             --image asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA} \
             --region asia-northeast1 \
             --platform managed \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --timeout=300 \
+            --memory=1Gi \
+            --cpu=1 \
+            --concurrency=10 \
+            --set-env-vars=RANKER_URL=https://ranker-203786374782.asia-northeast1.run.app,RANKER_TIMEOUT_SEC=3,BQ_DATASET=firstdown_mvp,FEATURES_VERSION=mvp_v1 \
+            --service-account=agent-runtime-sa@firstdown-482704.iam.gserviceaccount.com
+
