@@ -46,11 +46,12 @@ async def compute_route_candidates(
 
     # Create 3 headings to diversify candidates
     headings = [0, 120, -120]
-    dests = [
-        _offset_latlng(start_lat, start_lng, max(distance_km, 0.5), h)
-        for h in headings
-    ]
 
+    # For round trips, use the computed points as a *turnaround waypoint*.
+    # If distance_km is the target *loop distance*, the turnaround is roughly half.
+    waypoint_distance_km = max((distance_km / 2.0) if round_trip else distance_km, 0.5)
+    dests = [_offset_latlng(start_lat, start_lng, waypoint_distance_km, h) for h in headings]
+    
     headers = {
         "X-Goog-Api-Key": api_key,
         # Limit fields to reduce payload size
@@ -62,15 +63,19 @@ async def compute_route_candidates(
         for idx, dest in enumerate(dests, start=1):
             body = {
                 "origin": {"location": {"latLng": {"latitude": start_lat, "longitude": start_lng}}},
-                "destination": {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}},
                 "travelMode": "WALK",
                 "routingPreference": "NEUTRAL",
                 "computeAlternativeRoutes": False,
                 "routeModifiers": {"avoidTolls": True, "avoidHighways": True, "avoidFerries": True},
             }
             if round_trip:
-                # Encourage a loop by using the start point as an intermediate
-                body["intermediates"] = [{"location": {"latLng": {"latitude": start_lat, "longitude": start_lng}}}]
+                # Loop route: start -> (turnaround waypoint) -> start
+                body["destination"] = {"location": {"latLng": {"latitude": start_lat, "longitude": start_lng}}}
+                body["intermediates"] = [
+                    {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}}
+                ]
+            else:
+                body["destination"] = {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}}
             resp = await client.post(settings.MAPS_ROUTES_BASE, json=body, headers=headers)
             if resp.status_code != 200:
                 continue

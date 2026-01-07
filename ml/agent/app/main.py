@@ -11,7 +11,7 @@ from app.schemas import (
     ToolName,
 )
 from app.settings import settings
-from app.services import ranker_client, bq_writer, fallback, maps_routes_client, places_client, vertex_llm
+from app.services import ranker_client, bq_writer, fallback, maps_routes_client, places_client, vertex_llm, polyline
 from app.services.feature_calc import Candidate, calc_features
 
 app = FastAPI(title="firstdown Agent API", version="1.0.0")
@@ -85,6 +85,10 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         candidates = [
             {"route_id": "r1", "polyline": "xxxx", "distance_km": float(req.distance_km), "duration_min": 32.0},
         ]
+        
+    # Ensure downstream logic can use theme-based heuristics consistently
+    for c in candidates:
+        c.setdefault("theme", req.theme)
 
     # 3) Feature extraction
     rep_routes_payload = []
@@ -129,12 +133,41 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         raise HTTPException(status_code=422, detail="No viable route found")
 
     # 6) Summary and POIs
-    spots = []
+    spots: List[Dict[str, Any]] = []
     try:
-        spots = await places_client.search_spots(
-            lat=float(req.start_location.lat),
-            lng=float(req.start_location.lng),
-        )
+        encoded = (chosen.get("polyline") or "").strip()
+        sample_latlngs: List[tuple[float, float]] = []
+
+        if encoded and encoded != "xxxx":
+            pts = polyline.decode_polyline(encoded)
+            sample_latlngs = polyline.sample_points(pts, [0.25, 0.5, 0.75])
+
+        # Fallback to start point if decode failed or dummy
+        encoded = (chosen.get("polyline") or "").strip()
+        sample_latlngs: List[tuple[float, float]] = []
+
+        if encoded and encoded != "xxxx":
+            pts = polyline.decode_polyline(encoded)
+            sample_latlngs = polyline.sample_points(pts, [0.25, 0.5, 0.75])
+
+        # Fallback to start point if decode failed or dummy
+        if not sample_latlngs:
+            sample_latlngs = [(float(req.start_location.lat), float(req.start_location.lng))]
+
+        merged: List[Dict[str, Any]] = []
+        seen_names = set()
+        for (lat, lng) in sample_latlngs:
+            found = await places_client.search_spots(lat=float(lat), lng=float(lng), radius_m=800, max_results=3)
+            for p in found:
+                name = p.get("name")
+                if not name or name in seen_names:
+                    continue
+                seen_names.add(name)
+                merged.append(p)
+            if len(merged) >= 5:
+                break
+
+        spots = merged[:5]
         if spots:
             tools_used.append("places")
     except Exception:

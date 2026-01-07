@@ -16,8 +16,8 @@ class Settings(BaseSettings):
 
     # Vertex AI
     VERTEX_PROJECT: str = ""
-    VERTEX_LOCATION: str = "us-central1"
-    VERTEX_TEXT_MODEL: str = "text-bison"
+    VERTEX_LOCATION: str = "asia-northeast1"
+    VERTEX_TEXT_MODEL: str = "gemini-2.5-flash"
     VERTEX_TEMPERATURE: float = 0.3
     VERTEX_TOP_P: float = 0.95
     VERTEX_TOP_K: int = 40
