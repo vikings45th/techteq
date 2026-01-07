@@ -77,8 +77,8 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         )
         if candidates:
             tools_used.append("maps_routes")
-    except Exception:
-        candidates = []
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"maps_routes failed: {repr(e)}")
 
     if not candidates:
         # fallback dummy candidates to keep flow alive
