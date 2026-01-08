@@ -1,7 +1,5 @@
 <template>
-	<div>
-		<div>header</div>
+	<UContainer>
 		<slot />
-		<div>footer</div>
-	</div>
+	</UContainer>
 </template>
