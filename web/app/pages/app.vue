@@ -128,7 +128,7 @@
       <p>{{ distance }}km、{{ Math.round(distance/0.06) }}分、{{ distance*1000 }}歩</p>
     </div>
     <USlider v-model="distance" :min="0" :max="10" :step="0.5" :default-value="5" class="mb-4"/>
-    <UButton label="ルートを生成" @click="callApi"/>
+    <UButton color="secondary" label="ルートを生成" @click="callApi"/>
   </div>
   <UModal v-model:open="open">
     <template #content>
