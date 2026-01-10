@@ -141,7 +141,7 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         if encoded and encoded != "xxxx":
             pts = polyline.decode_polyline(encoded)
             sample_latlngs = polyline.sample_points(pts, [0.25, 0.5, 0.75])
-#memo
+
         # Fallback to start point if decode failed or dummy
         encoded = (chosen.get("polyline") or "").strip()
         sample_latlngs: List[tuple[float, float]] = []
