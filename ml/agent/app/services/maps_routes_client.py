@@ -77,9 +77,19 @@ async def compute_route_candidates(
             else:
                 body["destination"] = {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}}
             resp = await client.post(settings.MAPS_ROUTES_BASE, json=body, headers=headers)
+            
+            # --- 【修正箇所】エラー詳細をログ出力 ---
             if resp.status_code != 200:
+                # APIキーの間違い、クォータ制限、パラメータミスなどの原因がここで分かります
+                print(f"[Routes API Error] RequestID={request_id} Status={resp.status_code} Body={resp.text}")
                 continue
-            data = resp.json()
+            # -------------------------------------
+
+            try:
+                data = resp.json()
+            except Exception as e:
+                print(f"[Routes API Error] JSON Parse Failed. RequestID={request_id} Error={e}")
+                continue
             routes = data.get("routes", [])
             if not routes:
                 continue

@@ -13,6 +13,7 @@ from app.schemas import (
 from app.settings import settings
 from app.services import ranker_client, bq_writer, fallback, maps_routes_client, places_client, vertex_llm, polyline
 from app.services.feature_calc import Candidate, calc_features
+import polyline as polyline_lib
 
 app = FastAPI(title="firstdown Agent API", version="1.0.0")
 
@@ -63,27 +64,52 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         "ip_hash": None,
     }])
 
-    # 2) Candidate generation via Routes API (fallback to dummy if API disabled)
+# 0111_kang fixes 2) Candidate generation via Routes API (fallback to dummy if API disabled)
     tools_used: List[ToolName] = []
     candidates: List[Dict[str, Any]] = []
     relaxation_step = 0
+    
+    # --- API呼び出し ---
     try:
         candidates = await maps_routes_client.compute_route_candidates(
             request_id=req.request_id,
             start_lat=float(req.start_location.lat),
             start_lng=float(req.start_location.lng),
             distance_km=float(req.distance_km),
-            round_trip=bool(req.round_trip),
+            round_trip=bool(req.round_trip), # タスク1: Round Tripはここで渡せばOK
         )
         if candidates:
             tools_used.append("maps_routes")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"maps_routes failed: {repr(e)}")
+        # エラーログだけ出して続行（Fallbackへ進むため raise はしない）
+        print(f"maps_routes failed: {repr(e)}")
 
+    # --- タスク2: 鉄壁のFallback処理 ---
     if not candidates:
-        # fallback dummy candidates to keep flow alive
+        # 確実に描画できるPolylineを作成する (スタート地点からわずかに動いた2点の線)
+        start_lat = float(req.start_location.lat)
+        start_lng = float(req.start_location.lng)
+        
+        fallback_points = [
+            (start_lat, start_lng),
+            (start_lat + 0.0001, start_lng + 0.0001) # 2点ないと線にならない地図エンジンのための対策
+        ]
+        
+        try:
+            # importした polyline_lib を使用
+            safe_polyline = polyline_lib.encode(fallback_points)
+        except Exception:
+            safe_polyline = ""
+
+        # ダミー候補の作成
         candidates = [
-            {"route_id": "r1", "polyline": "xxxx", "distance_km": float(req.distance_km), "duration_min": 32.0},
+            {
+                "route_id": "fallback_dummy",
+                "polyline": safe_polyline, # xxxx を廃止し、安全な値を設定
+                "distance_km": float(req.distance_km),
+                "duration_min": 32.0,
+                "theme": req.theme
+            },
         ]
         
     # Ensure downstream logic can use theme-based heuristics consistently
