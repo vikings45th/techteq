@@ -173,7 +173,7 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     except Exception:
         spots = []
 
-    summary = "【簡易提案】条件に合わせた散歩ルートです"
+    summary = "【簡易提案!】条件に合わせた散歩ルートです"
     summary_type = "template"
     try:
         vertex_summary = await vertex_llm.generate_summary(
