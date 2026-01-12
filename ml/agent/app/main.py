@@ -49,7 +49,7 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     ]
     retry_policy = {"distance_relaxation": ["±10%", "±20%", "±30%"]}
 
-    # 1) store request (best-effort)
+    # 1) store request
     bq_writer.insert_rows(settings.BQ_TABLE_REQUEST, [{
         "event_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "request_id": req.request_id,
@@ -64,7 +64,10 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         "ip_hash": None,
     }])
 
-# 0111_kang fixes 2) Candidate generation via Routes API (fallback to dummy if API disabled)
+    # 【修正】エラー理由を蓄積するリストを定義
+    fallback_reasons: List[str] = []
+
+    # 2) Candidate generation
     tools_used: List[ToolName] = []
     candidates: List[Dict[str, Any]] = []
     relaxation_step = 0
@@ -76,43 +79,40 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             start_lat=float(req.start_location.lat),
             start_lng=float(req.start_location.lng),
             distance_km=float(req.distance_km),
-            round_trip=bool(req.round_trip), # タスク1: Round Tripはここで渡せばOK
+            round_trip=bool(req.round_trip), 
         )
         if candidates:
             tools_used.append("maps_routes")
     except Exception as e:
-        # エラーログだけ出して続行（Fallbackへ進むため raise はしない）
         print(f"maps_routes failed: {repr(e)}")
 
-    # --- タスク2: 鉄壁のFallback処理 ---
+    # --- Fallback処理 ---
     if not candidates:
-        # 確実に描画できるPolylineを作成する (スタート地点からわずかに動いた2点の線)
+        # 【修正】Maps失敗として記録
+        fallback_reasons.append("maps_routes_failed")
+
         start_lat = float(req.start_location.lat)
         start_lng = float(req.start_location.lng)
         
         fallback_points = [
             (start_lat, start_lng),
-            (start_lat + 0.0001, start_lng + 0.0001) # 2点ないと線にならない地図エンジンのための対策
+            (start_lat + 0.0001, start_lng + 0.0001)
         ]
-        
         try:
-            # importした polyline_lib を使用
             safe_polyline = polyline_lib.encode(fallback_points)
         except Exception:
             safe_polyline = ""
 
-        # ダミー候補の作成
         candidates = [
             {
                 "route_id": "fallback_dummy",
-                "polyline": safe_polyline, # xxxx を廃止し、安全な値を設定
+                "polyline": safe_polyline,
                 "distance_km": float(req.distance_km),
                 "duration_min": 32.0,
-                "theme": req.theme
+                "theme": req.theme,
             },
         ]
         
-    # Ensure downstream logic can use theme-based heuristics consistently
     for c in candidates:
         c.setdefault("theme", req.theme)
 
@@ -140,18 +140,21 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         rep_routes_payload.append({"route_id": cand.route_id, "features": feats})
 
     # 4) Call ranker
-    tools_used.append("ranker")
-    fallback_used = False
-    fallback_reason = None
-
     try:
         scores_list, failed_ids = await ranker_client.rank_routes(req.request_id, rep_routes_payload)
         score_map = {x["route_id"]: float(x["score"]) for x in scores_list if "route_id" in x and "score" in x}
+        
+        if score_map:
+            tools_used.append("ranker")
+        else:
+            # スコアが空だった場合も失敗とみなすならここに追加
+            # fallback_reasons.append("ranker_failed") 
+            pass
+            
     except Exception:
         score_map = {}
-        failed_ids = [x["route_id"] for x in rep_routes_payload]
-        fallback_used = True
-        fallback_reason = "ranker_timeout"
+        # 【修正】Ranker失敗として記録
+        fallback_reasons.append("ranker_failed")
 
     # 5) Choose best
     chosen = fallback.choose_best_route(candidates, score_map, req.theme)
@@ -168,15 +171,6 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             pts = polyline.decode_polyline(encoded)
             sample_latlngs = polyline.sample_points(pts, [0.25, 0.5, 0.75])
 
-        # Fallback to start point if decode failed or dummy
-        encoded = (chosen.get("polyline") or "").strip()
-        sample_latlngs: List[tuple[float, float]] = []
-
-        if encoded and encoded != "xxxx":
-            pts = polyline.decode_polyline(encoded)
-            sample_latlngs = polyline.sample_points(pts, [0.25, 0.5, 0.75])
-
-        # Fallback to start point if decode failed or dummy
         if not sample_latlngs:
             sample_latlngs = [(float(req.start_location.lat), float(req.start_location.lng))]
 
@@ -212,29 +206,38 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             summary = vertex_summary
             summary_type = "vertex_llm"
             tools_used.append("vertex_llm")
+        else:
+            # Vertexからの応答が空だった場合
+            fallback_reasons.append("vertex_llm_failed")
     except Exception:
-        pass
+        # 【修正】LLM呼び出し例外発生時
+        fallback_reasons.append("vertex_llm_failed")
 
     total_latency_ms = int((time.time() - t0) * 1000)
 
-    # 7) store proposal (best-effort)
+    # 【修正】最終的なFallback状態の集計
+    is_fallback_used = len(fallback_reasons) > 0
+    # リストをカンマ区切り文字列に変換（例: "maps_routes_failed,vertex_llm_failed"）
+    fallback_reason_str = ",".join(fallback_reasons) if fallback_reasons else None
+
+    # 7) store proposal
     bq_writer.insert_rows(settings.BQ_TABLE_PROPOSAL, [{
         "event_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "request_id": req.request_id,
         "chosen_route_id": chosen["route_id"],
-        "fallback_used": bool(fallback_used),
-        "fallback_reason": fallback_reason,
+        "fallback_used": is_fallback_used,       # 【修正】
+        "fallback_reason": fallback_reason_str,  # 【修正】
         "tools_used": tools_used,
         "summary_type": summary_type,
         "total_latency_ms": total_latency_ms,
     }])
 
     meta = {
-        "fallback_used": fallback_used,
+        "fallback_used": is_fallback_used, # 【修正】
         "tools_used": tools_used,
     }
-    if fallback_reason:
-        meta["fallback_reason"] = fallback_reason
+    if fallback_reason_str:
+        meta["fallback_reason"] = fallback_reason_str # 【修正】
     if req.debug:
         meta["plan"] = plan_steps
         meta["retry_policy"] = retry_policy
