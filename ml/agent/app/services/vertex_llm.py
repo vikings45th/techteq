@@ -44,9 +44,13 @@ async def generate_summary(
         },
     }
 
+
     print(f"[Vertex Gemini Call] model={model} project={project} location={location}")
 
+
     async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT_SEC) as client:
+        print(f"[Vertex LLM Call] model={settings.VERTEX_TEXT_MODEL} project={settings.VERTEX_PROJECT} location={settings.VERTEX_LOCATION}")
+        
         resp = await client.post(endpoint, headers=headers, json=body)
 
     if resp.status_code != 200:
@@ -75,3 +79,4 @@ async def generate_summary(
 
     print(f"[Vertex Gemini Empty] unexpected candidates format: {candidates[:1]}")
     return None
+
