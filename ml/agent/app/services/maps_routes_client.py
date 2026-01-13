@@ -64,7 +64,7 @@ async def compute_route_candidates(
             body = {
                 "origin": {"location": {"latLng": {"latitude": start_lat, "longitude": start_lng}}},
                 "travelMode": "WALK",
-                "routingPreference": "NEUTRAL",
+                # "routingPreference": "NEUTRAL",
                 "computeAlternativeRoutes": False,
                 "routeModifiers": {"avoidTolls": True, "avoidHighways": True, "avoidFerries": True},
             }
