@@ -4,7 +4,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 
 from app.settings import settings
-
+import time
 
 async def generate_summary(
     *,
@@ -37,19 +37,28 @@ async def generate_summary(
 
     print(f"[Vertex Gemini SDK Call] model={model_name}")
 
-    model = GenerativeModel(model_name)
-    resp = model.generate_content(
-        prompt,
-        generation_config={
-            "temperature": settings.VERTEX_TEMPERATURE,
-            "max_output_tokens": 64,
-        },
-    )
+    t0 = time.time()
+    try:
+        model = GenerativeModel(model_name)
+        resp = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": settings.VERTEX_TEMPERATURE,
+                "max_output_tokens": 64,
+            },
+        )
+    except Exception as e:
+        dt = int((time.time() - t0) * 1000)
+        print(f"[Vertex Gemini SDK Error] elapsed_ms={dt} err={repr(e)}")
+        return None
 
+    dt = int((time.time() - t0) * 1000)
     text = getattr(resp, "text", None)
+    print(f"[Vertex Gemini SDK Done] elapsed_ms={dt} has_text={isinstance(text, str)} text_len={len(text) if isinstance(text,str) else 0}")
+
     if isinstance(text, str) and text.strip():
-        print(f"[Vertex Gemini SDK Result] len={len(text)}")
         return text.strip()
 
-    print("[Vertex Gemini SDK Empty]")
+    # 念のため raw を少しだけ
+    print(f"[Vertex Gemini SDK Empty] resp_type={type(resp)} resp={str(resp)[:300]}")
     return None
