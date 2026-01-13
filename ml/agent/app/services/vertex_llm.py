@@ -20,6 +20,7 @@ async def generate_summary(
     distance_km: float,
     duration_min: float,
     spots: Optional[list] = None,
+    text: Optional[str] = None,
 ) -> Optional[str]:
     project = settings.VERTEX_PROJECT
     location = settings.VERTEX_LOCATION
@@ -40,6 +41,7 @@ async def generate_summary(
     )
 
     token = _get_auth_token()
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
