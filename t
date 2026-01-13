@@ -1,0 +1,30 @@
+[1mdiff --git a/ml/agent/app/main.py b/ml/agent/app/main.py[m
+[1mindex 24858d0..9aee83b 100644[m
+[1m--- a/ml/agent/app/main.py[m
+[1m+++ b/ml/agent/app/main.py[m
+[36m@@ -151,10 +151,11 @@[m [masync def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:[m
+             # fallback_reasons.append("ranker_failed") [m
+             pass[m
+             [m
+[31m-    except Exception:[m
+[32m+[m[32m    except Exception as e:[m
+         score_map = {}[m
+         # 【修正】Ranker失敗として記録[m
+         fallback_reasons.append("ranker_failed")[m
+[32m+[m[32m        print(f"[Ranker Error] request_id={req.request_id} err={repr(e)}")[m
+ [m
+     # 5) Choose best[m
+     chosen = fallback.choose_best_route(candidates, score_map, req.theme)[m
+[1mdiff --git a/ml/agent/app/services/ranker_client.py b/ml/agent/app/services/ranker_client.py[m
+[1mindex b9bc129..6dc946e 100644[m
+[1m--- a/ml/agent/app/services/ranker_client.py[m
+[1m+++ b/ml/agent/app/services/ranker_client.py[m
+[36m@@ -22,6 +22,8 @@[m [masync def rank_routes([m
+     if r.status_code == 200:[m
+         data = r.json()[m
+         return data.get("scores", []), data.get("failed_route_ids", [])[m
+[32m+[m[32m    if r.status_code != 200:[m
+[32m+[m[32m        print(f"[Ranker HTTP] status={r.status_code} body={r.text}")[m
+     if r.status_code == 422:[m
+         # Ranker could not score any route[m
+         return [], [x.get("route_id") for x in routes if "route_id" in x][m

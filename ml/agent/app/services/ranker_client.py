@@ -22,6 +22,8 @@ async def rank_routes(
     if r.status_code == 200:
         data = r.json()
         return data.get("scores", []), data.get("failed_route_ids", [])
+    if r.status_code != 200:
+        print(f"[Ranker HTTP] status={r.status_code} body={r.text}")
     if r.status_code == 422:
         # Ranker could not score any route
         return [], [x.get("route_id") for x in routes if "route_id" in x]

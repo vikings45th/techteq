@@ -151,10 +151,11 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             # fallback_reasons.append("ranker_failed") 
             pass
             
-    except Exception:
+    except Exception as e:
         score_map = {}
         # 【修正】Ranker失敗として記録
         fallback_reasons.append("ranker_failed")
+        print(f"[Ranker Error] request_id={req.request_id} err={repr(e)}")
 
     # 5) Choose best
     chosen = fallback.choose_best_route(candidates, score_map, req.theme)
