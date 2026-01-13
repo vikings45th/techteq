@@ -210,9 +210,10 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         else:
             # Vertexからの応答が空だった場合
             fallback_reasons.append("vertex_llm_failed")
-    except Exception:
+    except Exception as e:
         # 【修正】LLM呼び出し例外発生時
         fallback_reasons.append("vertex_llm_failed")
+        print(f"[Vertex LLM Error] request_id={req.request_id} err={repr(e)}")
 
     total_latency_ms = int((time.time() - t0) * 1000)
 
