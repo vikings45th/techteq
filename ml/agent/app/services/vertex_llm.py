@@ -57,9 +57,13 @@ async def generate_summary(
             "maxOutputTokens": 128,
         },
     }
-
+    
     async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT_SEC) as client:
+        print(f"[Vertex LLM Call] model={settings.VERTEX_TEXT_MODEL} project={settings.VERTEX_PROJECT} location={settings.VERTEX_LOCATION}")
+        
         resp = await client.post(endpoint, headers=headers, json=body)
+        
+        print(f"[Vertex LLM Result] len={len(text) if text else 0}")
         if resp.status_code != 200:
             return None
         data = resp.json()
@@ -70,3 +74,4 @@ async def generate_summary(
         if isinstance(text, str):
             return text.strip()
         return None
+    
