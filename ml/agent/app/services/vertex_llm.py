@@ -70,6 +70,11 @@ async def generate_summary(
 
     data = resp.json()
     candidates = data.get("candidates") or []
+    print(f"[Vertex Gemini Debug] candidates_len={len(candidates)}")
+    
+    if candidates:
+        print(f"[Vertex Gemini Debug] cand0={str(candidates[0])[:800]}")
+
     if not candidates:
         print("[Vertex Gemini Empty] candidates is empty")
         return None
@@ -77,15 +82,22 @@ async def generate_summary(
     for cand in candidates:
         content = cand.get("content") or {}
         parts = content.get("parts") or []
+
         texts = []
         for p in parts:
             t = p.get("text")
             if isinstance(t, str) and t.strip():
                 texts.append(t.strip())
+
+        # ここまでで取れたら返す
         out = "\n".join(texts).strip()
         if out:
-            print(f"[Vertex Gemini Result] len={len(out)}")
             return out
+
+        # 取れない場合の追加情報ログ
+        finish = cand.get("finishReason")
+        print(f"[Vertex Gemini Debug] finishReason={finish} parts_keys={[list(p.keys()) for p in parts]}")
+
 
     print("[Vertex Gemini Empty] no text in candidates")
 
