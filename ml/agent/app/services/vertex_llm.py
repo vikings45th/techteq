@@ -20,7 +20,6 @@ async def generate_summary(
     distance_km: float,
     duration_min: float,
     spots: Optional[list] = None,
-    text: Optional[str] = None,
 ) -> Optional[str]:
     project = settings.VERTEX_PROJECT
     location = settings.VERTEX_LOCATION
@@ -35,17 +34,14 @@ async def generate_summary(
             spots_text = f" 見どころ: {spot_names}。"
 
     prompt = (
-        f"以下の散歩ルートの紹介文を日本語で一文で作成してください。"
+        "以下の散歩ルートの紹介文を日本語で一文で作成してください。"
         f" テーマ: {theme}。目安距離: {distance_km:.1f}km。所要時間: {duration_min:.0f}分。"
         f"{spots_text} 丁寧で簡潔に。"
     )
 
     token = _get_auth_token()
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     endpoint = (
         f"https://{location}-aiplatform.googleapis.com/v1/"
@@ -53,9 +49,8 @@ async def generate_summary(
     )
 
     body: Dict[str, Any] = {
-        "contents": [
-            {"role": "user", "parts": [{"text": prompt}]}
-        ],
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+
         "generationConfig": {
             "temperature": settings.VERTEX_TEMPERATURE,
             "topP": settings.VERTEX_TOP_P,
@@ -79,17 +74,19 @@ async def generate_summary(
         print("[Vertex Gemini Empty] candidates is empty")
         return None
 
-    content = candidates[0].get("content") or {}
-    parts = content.get("parts") or []
-    if not parts:
-        print("[Vertex Gemini Empty] parts is empty")
-        return None
+    for cand in candidates:
+        content = cand.get("content") or {}
+        parts = content.get("parts") or []
+        texts = []
+        for p in parts:
+            t = p.get("text")
+            if isinstance(t, str) and t.strip():
+                texts.append(t.strip())
+        out = "\n".join(texts).strip()
+        if out:
+            print(f"[Vertex Gemini Result] len={len(out)}")
+            return out
 
-    text = parts[0].get("text")
-    if isinstance(text, str) and text.strip():
-        out = text.strip()
-        print(f"[Vertex Gemini Result] len={len(out)}")
-        return out
+    print("[Vertex Gemini Empty] no text in candidates")
 
-    print(f"[Vertex Gemini Empty] unexpected candidate format: {candidates[0]}")
     return None
