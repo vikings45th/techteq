@@ -61,13 +61,21 @@ async def compute_route_candidates(
     async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT_SEC) as client:
         results: List[Dict[str, Any]] = []
         for idx, dest in enumerate(dests, start=1):
+            travel_mode = "WALK"
             body = {
                 "origin": {"location": {"latLng": {"latitude": start_lat, "longitude": start_lng}}},
-                "travelMode": "WALK",
-                # "routingPreference": "NEUTRAL",
+                "travelMode": travel_mode,
                 "computeAlternativeRoutes": False,
-                "routeModifiers": {"avoidTolls": True, "avoidHighways": True, "avoidFerries": True},
+                # WALKでは routeModifiers を送らない
             }
+
+            if travel_mode in ("DRIVE", "TWO_WHEELER"):
+                body["routeModifiers"] = {
+                    "avoidTolls": True,
+                    "avoidHighways": True,
+                    "avoidFerries": True,
+                }
+
             if round_trip:
                 # Loop route: start -> (turnaround waypoint) -> start
                 body["destination"] = {"location": {"latLng": {"latitude": start_lat, "longitude": start_lng}}}
@@ -83,6 +91,9 @@ async def compute_route_candidates(
                 # APIキーの間違い、クォータ制限、パラメータミスなどの原因がここで分かります
                 print(f"[Routes API Error] RequestID={request_id} Status={resp.status_code} Body={resp.text}")
                 continue
+            if resp.status_code == 400:
+                print(f"[Routes API Error] ... Body={resp.text}")
+                return []   # その場で打ち切り
             # -------------------------------------
 
             try:
