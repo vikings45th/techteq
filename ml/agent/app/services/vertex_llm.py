@@ -21,6 +21,7 @@ async def generate_summary(
     distance_km: float,
     duration_min: float,
     spots: Optional[list] = None,
+    text: Optional[str] = None,
 ) -> Optional[str]:
     """
     Generate a short natural sentence using Vertex text model.
@@ -47,7 +48,10 @@ async def generate_summary(
     )
 
     token = _get_auth_token(endpoint)
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
     body: Dict[str, Any] = {
         "instances": [{"prompt": prompt}],
         "parameters": {
@@ -63,15 +67,21 @@ async def generate_summary(
         
         resp = await client.post(endpoint, headers=headers, json=body)
         
-        print(f"[Vertex LLM Result] len={len(text) if text else 0}")
         if resp.status_code != 200:
+            print(f"[Vertex LLM HTTP] status={resp.status_code} body={resp.text}")
             return None
         data = resp.json()
         predictions = data.get("predictions") or []
         if not predictions:
+            print("[Vertex LLM Empty] predictions is empty")
             return None
+        
         text = predictions[0].get("content") or predictions[0].get("output")
         if isinstance(text, str):
-            return text.strip()
+            text = text.strip()
+            print(f"[Vertex LLM Result] len={len(text)}")
+            return text
+        
+        print(f"[Vertex LLM Empty] unexpected prediction format: {predictions[0]}")
         return None
     
