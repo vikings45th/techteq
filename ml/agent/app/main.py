@@ -211,6 +211,7 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             # Vertexからの応答が空だった場合
             fallback_reasons.append("vertex_llm_failed")
             print(f"[Vertex LLM Empty] request_id={req.request_id} (returned empty)")
+
     except Exception as e:
         # 【修正】LLM呼び出し例外発生時
         fallback_reasons.append("vertex_llm_failed")
