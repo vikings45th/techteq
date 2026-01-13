@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
-
 import google.auth
 import google.auth.transport.requests
 import httpx
@@ -41,6 +40,7 @@ async def generate_summary(
     )
 
     token = _get_auth_token()
+
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     endpoint = (
@@ -50,6 +50,7 @@ async def generate_summary(
 
     body: Dict[str, Any] = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+
         "generationConfig": {
             "temperature": settings.VERTEX_TEMPERATURE,
             "topP": settings.VERTEX_TOP_P,
@@ -87,4 +88,5 @@ async def generate_summary(
             return out
 
     print("[Vertex Gemini Empty] no text in candidates")
+
     return None
