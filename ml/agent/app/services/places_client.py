@@ -121,9 +121,10 @@ async def search_spots(
             resp = await client.post(settings.MAPS_PLACES_BASE, json=body, headers=headers)
             if resp.status_code != 200:
                 logger.warning(
-                    "[Places API] HTTP error: status=%d response=%s",
+                    "[Places API] HTTP error: status=%d response=%s body=%s",
                     resp.status_code,
-                    resp.text[:200],
+                    resp.text[:500],
+                    str(body)[:500],
                 )
                 return []
             data = resp.json()
