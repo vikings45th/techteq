@@ -147,6 +147,13 @@ async def generate_summary(
     duration_min: float,
     spots: Optional[list] = None,
 ) -> Optional[str]:
+    """
+    1文の散歩ルート紹介文を生成（Google Gen AI SDK / Vertex AI）。
+
+    重要:
+    - SDK は同期なので asyncio.to_thread() で呼び出す
+    - 失敗/空ならフォールバック文を返してUXを安定化
+    """
     model_name = settings.VERTEX_TEXT_MODEL
     if not model_name:
         return None
@@ -162,6 +169,13 @@ async def generate_summary(
     # 1回目
     prompt = _build_prompt(theme, distance_km, duration_min, spots, strict=False)
     cfg = _build_config(temperature=temperature, max_output_tokens=max_out)
+
+    top_p = float(getattr(settings, "VERTEX_TOP_P", 0.95))
+    top_k = int(getattr(settings, "VERTEX_TOP_K", 40))
+    logger.info(
+        "[GenAI SDK Call] model=%s temp=%.2f max_out=%d top_p=%.2f top_k=%d",
+        model_name, temperature, max_out, top_p, top_k
+    )
 
     t0 = time.time()
     try:
