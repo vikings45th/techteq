@@ -9,6 +9,7 @@ from app.schemas import (
     FeedbackRequest,
     FeedbackResponse,
     ToolName,
+    Spot,
 )
 from app.settings import settings
 from app.services import ranker_client, bq_writer, fallback, maps_routes_client, places_client, vertex_llm, polyline
@@ -188,10 +189,16 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             if len(merged) >= 5:
                 break
 
-        spots = merged[:5]
+        spots_raw = merged[:5]
+        # DictをSpotオブジェクトに変換
+        spots = [Spot(name=p.get("name", ""), type=p.get("type", "unknown")) for p in spots_raw if p.get("name")]
         if spots:
             tools_used.append("places")
-    except Exception:
+            print(f"[Places] request_id={req.request_id} found {len(spots)} spots: {[s.name for s in spots]}")
+        else:
+            print(f"[Places] request_id={req.request_id} no spots found")
+    except Exception as e:
+        print(f"[Places Error] request_id={req.request_id} err={repr(e)}")
         spots = []
 
     summary = "【簡易提案!】条件に合わせた散歩ルートです"
