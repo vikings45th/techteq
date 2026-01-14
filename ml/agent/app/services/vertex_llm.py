@@ -105,7 +105,6 @@ async def generate_summary(
     1文の散歩ルート紹介文を生成（Google Gen AI SDK / Vertex AI）。
 
     重要:
-    - thinking_budget=0 で thinking を無効化し、短文生成での「MAX_TOKENSなのに本文ゼロ」を回避
     - SDK は同期なので asyncio.to_thread() で呼び出す
     - 失敗/空ならフォールバック文を返してUXを安定化
     """
@@ -147,8 +146,7 @@ async def generate_summary(
         max_output_tokens=max_output_tokens,
         top_p=top_p,
         top_k=top_k,
-        # ★今回のキモ：短文生成なので thinking を切る
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
+        # thinking_config は thinking_budget パラメータをサポートしていないため削除
     )
 
     logger.info(
