@@ -127,7 +127,7 @@ def _build_config(*, temperature: float, max_output_tokens: int) -> types.Genera
         max_output_tokens=max_output_tokens,
         top_p=top_p,
         top_k=top_k,
-        thinking_config=types.ThinkingConfig(thinking_budget=0),  # thinking OFF
+        # thinking_config は thinking_budget パラメータをサポートしていないため削除
     )
 
 
