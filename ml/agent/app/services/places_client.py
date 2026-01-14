@@ -36,7 +36,7 @@ async def search_spots(
                 "radius": float(radius_m),
             }
         },
-        "pageSize": max_results,
+        "maxResultCount": min(max_results, 20),  # maxResultCountは1-20の範囲
     }
 
     try:
