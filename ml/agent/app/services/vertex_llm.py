@@ -80,20 +80,18 @@ def _debug_dump(resp: Any) -> str:
 
 
 def _fallback_summary(theme: str, distance_km: float, duration_min: float, spots: Optional[list]) -> str:
-    theme_natural = _theme_to_natural(theme)
-    spots_text = ""
-    if spots:
-        names = []
-        for s in spots:
-            if isinstance(s, dict):
-                name = s.get("name")
-            else:
-                name = getattr(s, "name", None)
-            if name:
-                names.append(str(name))
-        if names:
-            spots_text = f"（見どころ: {', '.join(names)}）"
-    return f"{theme_natural}を楽しみながら約{distance_km:.1f}kmを{duration_min:.0f}分で歩ける、気軽な散歩コースです{spots_text}。"
+    """
+    テーマごとの簡潔な紹介文を返すフォールバック関数。
+    """
+    # テーマごとの簡潔な紹介文（定型文ではなく、自然な表現）
+    theme_summaries = {
+        "think": f"信号が少なく一定のリズムで歩ける約{distance_km:.1f}kmのルート。頭の中を整理するのに最適です。",
+        "exercise": f"坂道や階段を多く含む約{distance_km:.1f}kmのルート。心拍数を上げてしっかり汗をかきましょう。",
+        "refresh": f"賑やかな通りを歩く約{distance_km:.1f}kmのルート。エネルギーをチャージして気分転換できます。",
+        "nature": f"緑豊かな公園をゆっくり抜ける約{distance_km:.1f}kmのルート。都会の喧騒から離れてリフレッシュできます。",
+    }
+    
+    return theme_summaries.get(theme, f"約{distance_km:.1f}kmを{duration_min:.0f}分で歩ける散歩コースです。")
 
 
 def _theme_to_natural(theme: str) -> str:
@@ -108,41 +106,34 @@ def _theme_to_natural(theme: str) -> str:
 
 
 def _build_prompt(theme: str, distance_km: float, duration_min: float, spots: Optional[list], *, strict: bool) -> str:
-    # テーマを自然な日本語に変換
-    theme_natural = _theme_to_natural(theme)
+    """
+    テーマごとの雰囲気を伝えるプロンプトを生成。
+    """
+    # テーマごとの雰囲気・特徴の説明
+    theme_descriptions = {
+        "think": "思考や頭の整理に適した、信号が少なく一定のリズムで歩けるルート（例：川沿いの一本道など）。",
+        "exercise": "運動やエクササイズに適した、坂道や階段を多く含む心拍数を上げるルート。",
+        "refresh": "気分転換やリフレッシュに適した、賑やかな通りやお店が並ぶルート。",
+        "nature": "自然や緑を楽しむ、都会の喧騒から離れた公園や緑豊かなルート。",
+    }
     
-    spots_text = ""
-    if spots:
-        # SpotオブジェクトまたはDictの両方に対応
-        names = []
-        for s in spots:
-            if isinstance(s, dict):
-                name = s.get("name")
-            else:
-                name = getattr(s, "name", None)
-            if name:
-                names.append(str(name))
-        if names:
-            # spotsの情報をより明確にプロンプトに含める
-            spots_text = f" ルート上には{', '.join(names)}などの見どころがあります。紹介文には必ずこれらの見どころを含めてください。"
+    theme_desc = theme_descriptions.get(theme, f"約{distance_km:.1f}kmを{duration_min:.0f}分で歩ける散歩コース。")
 
     if strict:
-        # リトライ時：短く・強制
+        # リトライ時：簡潔に
         return (
-            "次の情報から、日本語で1文だけ（60文字前後）紹介文を作成してください。"
-            "余計な説明は不要。必ず句点「。」で終える。"
-            f" 気分・目的: {theme_natural}。距離: 約{distance_km:.1f}km。"
-            f" 所要時間: 約{duration_min:.0f}分。"
-            f"{spots_text}"
+            f"散歩ルートの紹介文を日本語で1文だけ（60文字前後）作成してください。"
+            f"テーマの雰囲気を反映しつつ、自然で読みやすい文章にしてください。必ず句点「。」で終える。"
+            f" テーマ: {theme_desc}"
+            f" 距離: 約{distance_km:.1f}km。所要時間: 約{duration_min:.0f}分。"
         )
 
-    # 通常時：より自然な文脈で
+    # 通常時：自然な文章で
     return (
-        "以下の散歩ルートの紹介文を日本語で1文だけ作成してください。"
-        "（40〜70文字程度、丁寧で簡潔、句点「。」で終える）"
-        f" 気分・目的: {theme_natural}を楽しみながら。"
+        f"散歩ルートの紹介文を日本語で1文だけ（40〜70文字程度）作成してください。"
+        f"テーマの雰囲気や特徴を自然に反映し、読みやすく簡潔な文章にしてください。必ず句点「。」で終える。"
+        f" テーマ: {theme_desc}"
         f" 距離: 約{distance_km:.1f}km。所要時間: 約{duration_min:.0f}分。"
-        f"{spots_text}"
     )
 
 
