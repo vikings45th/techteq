@@ -30,6 +30,7 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
             "library",  # 図書館
             "museum",  # 博物館
             "cafe",  # カフェ
+            "place_of_worship",  # 宗教施設（寺院・神社を含む）
             "art_gallery",  # 美術館
         ],
         "refresh": [
