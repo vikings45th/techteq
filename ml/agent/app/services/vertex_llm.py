@@ -196,7 +196,7 @@ async def generate_summary(
             retry_prompt = _build_prompt(theme, distance_km, duration_min, spots, strict=True)
             retry_cfg = _build_config(
                 temperature=min(temperature, 0.2),   # ブレ抑制
-                max_output_tokens=max(max_out, 512), # 上限増
+                max_output_tokens=max(max_out, 1024), # 上限増（ログで561トークン必要だったため）
             )
             resp2 = await _call_genai(client, model_name, retry_prompt, retry_cfg)
             text2 = _extract_text(resp2)
