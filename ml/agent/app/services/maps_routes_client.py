@@ -86,15 +86,13 @@ async def compute_route_candidates(
                 body["destination"] = {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}}
             resp = await client.post(settings.MAPS_ROUTES_BASE, json=body, headers=headers)
             
-            # --- 【修正箇所】エラー詳細をログ出力 ---
+            # 200以外のstatus / response bodyを必ずログ出力
             if resp.status_code != 200:
-                # APIキーの間違い、クォータ制限、パラメータミスなどの原因がここで分かります
-                print(f"[Routes API Error] RequestID={request_id} Status={resp.status_code} Body={resp.text}")
+                print(f"[Routes API Error] request_id={request_id} status={resp.status_code} body={resp.text[:500]}")
+                # 400エラーの場合はその場で打ち切り
+                if resp.status_code == 400:
+                    return []
                 continue
-            if resp.status_code == 400:
-                print(f"[Routes API Error] ... Body={resp.text}")
-                return []   # その場で打ち切り
-            # -------------------------------------
 
             try:
                 data = resp.json()
