@@ -12,6 +12,8 @@ from app.schemas import (
     ToolName,
     Spot,
     LatLng,
+    RouteQuality,
+    FallbackDetail,
 )
 from app.settings import settings
 from app.services import ranker_client, bq_writer, fallback, maps_routes_client, places_client, vertex_llm, polyline
@@ -208,7 +210,14 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             if len(merged) >= max_spots:
                 break
             
-            found = await places_client.search_spots(lat=float(lat), lng=float(lng), radius_m=800, max_results=3)
+            # themeに応じた場所タイプで検索（「それっぽい」体験に寄せる）
+            found = await places_client.search_spots(
+                lat=float(lat),
+                lng=float(lng),
+                theme=req.theme,
+                radius_m=800,
+                max_results=3,
+            )
             for p in found:
                 # 上限に達したら終了
                 if len(merged) >= max_spots:
@@ -237,7 +246,6 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
                 
                 if not is_duplicate:
                     merged.append(p)
-
         # 上限件数まで取得（既にmax_spots以下になっているはずだが、念のため）
         spots_raw = merged[:max_spots]
         # DictをSpotオブジェクトに変換
@@ -281,6 +289,59 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     # リストをカンマ区切り文字列に変換（例: "maps_routes_failed,vertex_llm_failed"）
     fallback_reason_str = ",".join(fallback_reasons) if fallback_reasons else None
 
+    # フォールバック理由の詳細説明（UI表示用）
+    fallback_detail_map = {
+        "maps_routes_failed": FallbackDetail(
+            reason="maps_routes_failed",
+            description="ルート生成サービスが利用できませんでした",
+            impact="簡易ルートが生成されました。距離は目標に合わせていますが、実際の道順とは異なる場合があります。",
+        ),
+        "ranker_failed": FallbackDetail(
+            reason="ranker_failed",
+            description="ルート評価サービスが利用できませんでした",
+            impact="ルートの最適化が行われていません。距離や時間は目標に近いですが、最適なルートではない可能性があります。",
+        ),
+        "vertex_llm_failed": FallbackDetail(
+            reason="vertex_llm_failed",
+            description="ルート紹介文の生成に失敗しました",
+            impact="テンプレートベースの紹介文が使用されています。ルート自体は正常に生成されています。",
+        ),
+    }
+    fallback_details = [
+        fallback_detail_map[reason]
+        for reason in fallback_reasons
+        if reason in fallback_detail_map
+    ]
+
+    # 距離整合性の計算（簡易版）
+    target_distance_km = float(req.distance_km)
+    actual_distance_km = float(chosen.get("distance_km", target_distance_km))
+    distance_error_km = abs(actual_distance_km - target_distance_km)
+    
+    # 距離整合性スコア（0.0-1.0、誤差が小さいほど高い）
+    # 誤差が10%以内なら1.0、50%以上なら0.0、その間は線形補間
+    distance_error_ratio = distance_error_km / target_distance_km if target_distance_km > 0 else 1.0
+    if distance_error_ratio <= 0.1:
+        distance_match = 1.0
+    elif distance_error_ratio >= 0.5:
+        distance_match = 0.0
+    else:
+        # 0.1-0.5の間を線形補間: 0.1→1.0, 0.5→0.0
+        distance_match = 1.0 - ((distance_error_ratio - 0.1) / 0.4)
+    
+    # フォールバックルートかどうかの判定
+    is_fallback_route = chosen.get("route_id") == "fallback_dummy" or is_fallback_used
+    
+    # 品質スコアの計算（簡易版）
+    # フォールバック: 0.3、距離整合性が良い: +0.4、ツールが使われている: +0.3
+    quality_score = 0.0
+    if not is_fallback_route:
+        quality_score += 0.3  # 通常ルートのベーススコア
+    quality_score += distance_match * 0.4  # 距離整合性
+    if len(tools_used) >= 3:  # 主要ツール（maps_routes, ranker, places）が使われている
+        quality_score += 0.3
+    quality_score = min(1.0, max(0.0, quality_score))  # 0.0-1.0にクリップ
+
     # 7) store proposal
     bq_writer.insert_rows(settings.BQ_TABLE_PROPOSAL, [{
         "event_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -293,10 +354,20 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         "total_latency_ms": total_latency_ms,
     }])
 
+    # ルート品質情報の構築
+    route_quality = RouteQuality(
+        is_fallback=is_fallback_route,
+        distance_match=distance_match,
+        distance_error_km=distance_error_km,
+        quality_score=quality_score,
+    )
+
     meta = {
         "fallback_used": is_fallback_used, # 【修正】
         "tools_used": tools_used,
         "fallback_reason": fallback_reason_str,  # 【修正】maps_routes_failed / ranker_failed / vertex_llm_failed を明示
+        "fallback_details": fallback_details,  # 【追加】UI表示用の詳細情報
+        "route_quality": route_quality,
     }
     if req.debug:
         meta["plan"] = plan_steps
