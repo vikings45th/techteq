@@ -30,18 +30,15 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
             "library",  # 図書館
             "museum",  # 博物館
             "cafe",  # カフェ
-            "temple",  # 寺院
-            "shrine",  # 神社
+            "place_of_worship",  # 宗教施設（寺院・神社を含む）
             "art_gallery",  # 美術館
         ],
         "refresh": [
             "park",  # 公園（気分転換に適した場所）
             "cafe",  # カフェ
             "restaurant",  # レストラン
-            "viewpoint",  # 展望台
-            "scenic_overlook",  # 景色の良い場所
+            "tourist_attraction",  # 観光スポット（展望台など）
             "beach",  # ビーチ
-            "waterfall",  # 滝
         ],
         "nature": [
             "park",  # 公園
