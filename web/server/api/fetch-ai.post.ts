@@ -47,19 +47,6 @@ export default defineEventHandler(async (event) => {
     spots : ["水面に映る夕日","長く続く遊歩道","静かな橋の下"]
   }
   
-    /*
-    return GenerateRouteResponse(
-      request_id=req.request_id,
-      route={
-          "polyline": chosen.get("polyline", "xxxx"),
-          "distance_km": float(chosen.get("distance_km", req.distance_km)),
-          "duration_min": int(chosen.get("duration_min") or 32),
-          "summary": summary,
-          "spots": spots,
-      },
-      meta=meta,
-    )
-    */
 
   return {
     statusCode: 200,
