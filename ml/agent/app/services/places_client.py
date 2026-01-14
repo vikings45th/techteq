@@ -24,14 +24,25 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
             "hiking_area",  # ハイキングエリア
             "cycling_park",  # サイクリングパーク
             "stadium",  # スタジアム
+            "sports_club",  # スポーツクラブ
+            "sports_activity_location",  # スポーツ活動場所
+            "swimming_pool",  # プール
+            "athletic_field",  # 運動場
+            "playground",  # 遊び場
+            "arena",  # アリーナ
         ],
         "think": [
             "park",  # 公園（静かな思考に適した場所）
             "library",  # 図書館
             "museum",  # 博物館
             "cafe",  # カフェ
-            "place_of_worship",  # 宗教施設（寺院・神社を含む）
             "art_gallery",  # 美術館
+            "book_store",  # 書店
+            "university",  # 大学
+            "school",  # 学校
+            "auditorium",  # 講堂
+            "cultural_center",  # 文化センター
+            "performing_arts_theater",  # 劇場
         ],
         "refresh": [
             "park",  # 公園（気分転換に適した場所）
@@ -39,16 +50,24 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
             "restaurant",  # レストラン
             "tourist_attraction",  # 観光スポット（展望台など）
             "beach",  # ビーチ
+            "botanical_garden",  # 植物園
+            "garden",  # 庭園
+            "plaza",  # 広場
+            "observation_deck",  # 展望台
+            "amusement_park",  # 遊園地
+            "water_park",  # ウォーターパーク
         ],
         "nature": [
             "park",  # 公園
             "national_park",  # 国立公園
             "state_park",  # 州立公園
             "hiking_area",  # ハイキングエリア
-            "nature_reserve",  # 自然保護区
             "botanical_garden",  # 植物園
-            "forest",  # 森
-            "lake",  # 湖
+            "beach",  # ビーチ
+            "garden",  # 庭園
+            "wildlife_park",  # 野生動物公園
+            "wildlife_refuge",  # 野生動物保護区
+            "zoo",  # 動物園
         ],
     }
     return theme_to_types.get(theme, ["park"])  # デフォルトは公園
