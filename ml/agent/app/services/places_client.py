@@ -148,6 +148,10 @@ async def search_spots(
                 if resp_fallback.status_code == 200:
                     data_fallback = resp_fallback.json()
                     places_fallback = data_fallback.get("places", [])
+                    logger.info(
+                        "[Places API] Fallback search returned %d places",
+                        len(places_fallback),
+                    )
                     for p in places_fallback[:max_results]:
                         name = p.get("displayName", {}).get("text")
                         place_id = p.get("id")
@@ -155,6 +159,12 @@ async def search_spots(
                         primary = types[0] if types else "unknown"
                         if name:
                             out.append({"name": name, "type": primary, "place_id": place_id})
+                else:
+                    logger.warning(
+                        "[Places API] Fallback search HTTP error: status=%d response=%s",
+                        resp_fallback.status_code,
+                        resp_fallback.text[:200],
+                    )
             
             logger.info(
                 "[Places API] Found %d places near (%.6f, %.6f) theme=%s",
