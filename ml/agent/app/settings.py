@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # Ranker internal URL (Cloud Run internal ingress service URL)
     RANKER_URL: str = "http://ranker:8080"
     REQUEST_TIMEOUT_SEC: float = 10.0
-    RANKER_TIMEOUT_SEC: float = 3.0
+    RANKER_TIMEOUT_SEC: float = 10.0
 
     # Google Maps Platform
     MAPS_API_KEY: str = ""
