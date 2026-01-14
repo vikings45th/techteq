@@ -123,7 +123,8 @@ def _build_prompt(theme: str, distance_km: float, duration_min: float, spots: Op
             if name:
                 names.append(str(name))
         if names:
-            spots_text = f" ルート上には{', '.join(names)}などの見どころがあります。"
+            # spotsの情報をより明確にプロンプトに含める
+            spots_text = f" ルート上には{', '.join(names)}などの見どころがあります。紹介文には必ずこれらの見どころを含めてください。"
 
     if strict:
         # リトライ時：短く・強制

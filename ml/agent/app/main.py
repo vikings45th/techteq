@@ -259,7 +259,10 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         logger.error("[Places Error] request_id=%s err=%r", req.request_id, e)
         spots = []
 
-    summary = "【簡易提案!】条件に合わせた散歩ルートです"
+    # フォールバック用のテンプレートsummary（spots情報を含む）
+    spots_names = [s.name for s in spots] if spots else []
+    spots_text = f"（見どころ: {', '.join(spots_names)}）" if spots_names else ""
+    summary = f"【簡易提案!】条件に合わせた散歩ルートです{spots_text}"
     summary_type = "template"
     try:
         vertex_summary = await vertex_llm.generate_summary(
