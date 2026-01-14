@@ -26,7 +26,7 @@ class Spot(BaseModel):
 
 
 class RouteOut(BaseModel):
-    polyline: str
+    polyline: List[LatLng]
     distance_km: float
     duration_min: int
     summary: str

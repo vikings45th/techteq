@@ -9,6 +9,7 @@ from app.schemas import (
     FeedbackRequest,
     FeedbackResponse,
     ToolName,
+    LatLng,
 )
 from app.settings import settings
 from app.services import ranker_client, bq_writer, fallback, maps_routes_client, places_client, vertex_llm, polyline
@@ -246,10 +247,21 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         meta["plan"] = plan_steps
         meta["retry_policy"] = retry_policy
 
+    # ポリラインをデコードしてLatLngのリストに変換
+    decoded_polyline: List[LatLng] = []
+    try:
+        encoded = (chosen.get("polyline") or "").strip()
+        if encoded and encoded != "xxxx":
+            pts = polyline.decode_polyline(encoded)
+            decoded_polyline = [LatLng(lat=lat, lng=lng) for lat, lng in pts]
+    except Exception as e:
+        print(f"[Polyline Decode Error] request_id={req.request_id} err={repr(e)}")
+        # エラー時は空リストを返す
+
     return GenerateRouteResponse(
         request_id=req.request_id,
         route={
-            "polyline": chosen.get("polyline", "xxxx"),
+            "polyline": decoded_polyline,
             "distance_km": float(chosen.get("distance_km", req.distance_km)),
             "duration_min": int(chosen.get("duration_min") or 32),
             "summary": summary,
