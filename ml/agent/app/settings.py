@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     VERTEX_LOCATION: str = "asia-northeast1"
     VERTEX_TEXT_MODEL: str = "gemini-2.5-flash"
     VERTEX_TEMPERATURE: float = 0.3
+    VERTEX_MAX_OUTPUT_TOKENS: float = 256
     VERTEX_TOP_P: float = 0.95
     VERTEX_TOP_K: int = 40
 
