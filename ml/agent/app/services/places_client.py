@@ -113,7 +113,7 @@ async def search_spots(
         included_types = _get_place_types_for_theme(theme)
         body["includedTypes"] = included_types
         use_theme_filter = True
-        logger.info(
+        logger.debug(
             "[Places API] Searching with theme=%s types=%s",
             theme,
             included_types,
