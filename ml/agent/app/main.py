@@ -10,6 +10,7 @@ from app.schemas import (
     FeedbackResponse,
     ToolName,
     Spot,
+    LatLng,
 )
 from app.settings import settings
 from app.services import ranker_client, bq_writer, fallback, maps_routes_client, places_client, vertex_llm, polyline
