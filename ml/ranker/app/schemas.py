@@ -3,21 +3,25 @@ from pydantic import BaseModel, Field
 
 
 class RankRoute(BaseModel):
-    route_id: str
-    features: Dict[str, Any] = Field(default_factory=dict)
+    """スコアリング対象のルート情報"""
+    route_id: str  # ルートID
+    features: Dict[str, Any] = Field(default_factory=dict)  # 機械学習用の特徴量辞書
 
 
 class RankRequest(BaseModel):
-    request_id: str
-    routes: List[RankRoute] = Field(min_length=1, max_length=5)
+    """ランキングリクエストのスキーマ"""
+    request_id: str  # リクエストID（ログ用）
+    routes: List[RankRoute] = Field(min_length=1, max_length=5)  # スコアリング対象のルートリスト（1〜5件）
 
 
 class ScoreItem(BaseModel):
-    route_id: str
-    score: float
-    breakdown: Optional[Dict[str, float]] = None  # スコア内訳（debug用）
+    """スコアリング結果の1件"""
+    route_id: str  # ルートID
+    score: float  # スコア（0.0-1.0、高いほど良い）
+    breakdown: Optional[Dict[str, float]] = None  # スコア内訳（デバッグ用、各要素の寄与度）
 
 
 class RankResponse(BaseModel):
-    scores: List[ScoreItem] = Field(default_factory=list)
-    failed_route_ids: List[str] = Field(default_factory=list)
+    """ランキングレスポンスのスキーマ"""
+    scores: List[ScoreItem] = Field(default_factory=list)  # スコアリング成功したルートのリスト
+    failed_route_ids: List[str] = Field(default_factory=list)  # スコアリングに失敗したルートIDのリスト

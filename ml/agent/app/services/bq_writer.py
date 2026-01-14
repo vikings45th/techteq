@@ -5,10 +5,16 @@ from google.cloud import bigquery
 from app.settings import settings
 
 
-_client: Optional[bigquery.Client] = None
+_client: Optional[bigquery.Client] = None  # BigQueryクライアントのシングルトン
 
 
 def _bq() -> bigquery.Client:
+    """
+    BigQueryクライアントを取得（シングルトンパターン）
+    
+    Returns:
+        BigQueryクライアントインスタンス
+    """
     global _client
     if _client is None:
         _client = bigquery.Client()
@@ -17,15 +23,21 @@ def _bq() -> bigquery.Client:
 
 def insert_rows(table: str, rows: Iterable[Dict[str, Any]]) -> None:
     """
-    Best-effort insert. Failures should not break user flow.
-    table: table name without dataset (e.g., "route_request")
+    BigQueryにデータを挿入する（ベストエフォート方式）
+    
+    失敗してもユーザーフローを中断しない。MVPではエラーを無視する。
+    
+    Args:
+        table: テーブル名（データセット名は除く、例: "route_request"）
+        rows: 挿入する行のイテレータ（辞書のリスト）
     """
     rows = list(rows)
     if not rows:
         return
+    # テーブルIDを構築: project.dataset.table
     table_id = f"{_bq().project}.{settings.BQ_DATASET}.{table}"
     errors = _bq().insert_rows_json(table_id, rows)
-    # Best-effort: ignore errors at MVP; log if you want
+    # ベストエフォート: MVPではエラーを無視（必要に応じてログ出力可能）
     if errors:
-        # You can emit structured logs here
+        # ここで構造化ログを出力可能
         pass

@@ -13,58 +13,85 @@ from app.settings import settings
 
 logger = logging.getLogger(__name__)
 
-_client: Optional[genai.Client] = None
+_client: Optional[genai.Client] = None  # Vertex AI GenAIクライアントのシングルトン
 
 
 def _get_client() -> Optional[genai.Client]:
+    """
+    Vertex AI GenAIクライアントを取得（シングルトンパターン）
+    
+    Returns:
+        GenAIクライアントインスタンス、またはNone（設定が不完全な場合）
+    """
     global _client
     if not settings.VERTEX_PROJECT or not settings.VERTEX_LOCATION:
         return None
     if _client is None:
         _client = genai.Client(
-            vertexai=True,
-            project=settings.VERTEX_PROJECT,
-            location=settings.VERTEX_LOCATION,
+            vertexai=True,  # Vertex AIを使用
+            project=settings.VERTEX_PROJECT,  # GCPプロジェクトID
+            location=settings.VERTEX_LOCATION,  # Vertex AIのリージョン
         )
     return _client
 
 
 def _extract_text(resp: Any) -> str:
+    """
+    GenAI APIレスポンスからテキストを抽出する
+    
+    Args:
+        resp: GenAI APIのレスポンスオブジェクト
+    
+    Returns:
+        抽出されたテキスト（空文字列の場合は空文字列を返す）
+    """
+    # 直接text属性がある場合
     text = getattr(resp, "text", None)
     if isinstance(text, str) and text.strip():
         return text.strip()
 
+    # candidatesからテキストを抽出
     candidates = getattr(resp, "candidates", None)
     if candidates:
-        c0 = candidates[0]
+        c0 = candidates[0]  # 最初の候補を取得
         content = getattr(c0, "content", None)
         parts = getattr(content, "parts", None) if content else None
         if parts:
             out = []
+            # 各パートからテキストを抽出
             for p in parts:
                 t = getattr(p, "text", None)
                 if isinstance(t, str):
                     out.append(t)
-            joined = "".join(out).strip()
+            joined = "".join(out).strip()  # 結合して空白を除去
             if joined:
                 return joined
 
-    return ""
+    return ""  # テキストが見つからない場合は空文字列
 
 
 def _safe_meta(resp: Any) -> Dict[str, Any]:
+    """
+    GenAI APIレスポンスからメタデータを安全に抽出する
+    
+    Args:
+        resp: GenAI APIのレスポンスオブジェクト
+    
+    Returns:
+        メタデータの辞書（usage_metadata, finish_reason, safety_ratings, has_partsを含む）
+    """
     meta: Dict[str, Any] = {}
-    meta["usage_metadata"] = getattr(resp, "usage_metadata", None)
+    meta["usage_metadata"] = getattr(resp, "usage_metadata", None)  # 使用量メタデータ（トークン数など）
 
     candidates = getattr(resp, "candidates", None)
     if candidates:
-        c0 = candidates[0]
-        meta["finish_reason"] = getattr(c0, "finish_reason", None)
-        meta["safety_ratings"] = getattr(c0, "safety_ratings", None)
+        c0 = candidates[0]  # 最初の候補
+        meta["finish_reason"] = getattr(c0, "finish_reason", None)  # 終了理由（MAX_TOKENSなど）
+        meta["safety_ratings"] = getattr(c0, "safety_ratings", None)  # 安全性評価
 
         content = getattr(c0, "content", None)
         parts = getattr(content, "parts", None) if content else None
-        meta["has_parts"] = bool(parts)
+        meta["has_parts"] = bool(parts)  # パーツ（テキスト）が存在するか
     else:
         meta["has_parts"] = False
 
@@ -72,16 +99,34 @@ def _safe_meta(resp: Any) -> Dict[str, Any]:
 
 
 def _debug_dump(resp: Any) -> str:
+    """
+    レスポンスオブジェクトをデバッグ用の文字列に変換する
+    
+    Args:
+        resp: GenAI APIのレスポンスオブジェクト
+    
+    Returns:
+        デバッグ用の文字列表現（最大800文字、変換できない場合は"<unprintable>"）
+    """
     try:
         s = str(resp)
-        return s[:800]
+        return s[:800]  # 最大800文字に制限
     except Exception:
-        return "<unprintable>"
+        return "<unprintable>"  # 変換できない場合
 
 
 def _fallback_summary(theme: str, distance_km: float, duration_min: float, spots: Optional[list]) -> str:
     """
-    テーマごとの簡潔な紹介文を返すフォールバック関数。
+    LLMが失敗した場合に使用する、テーマごとの簡潔な紹介文を返すフォールバック関数
+    
+    Args:
+        theme: テーマ（"think", "exercise", "refresh", "nature"）
+        distance_km: 距離（km）
+        duration_min: 所要時間（分）
+        spots: 見どころスポットのリスト（未使用）
+    
+    Returns:
+        テーマに応じた紹介文
     """
     # テーマごとの簡潔な紹介文（定型文ではなく、自然な表現）
     theme_summaries = {
@@ -95,7 +140,15 @@ def _fallback_summary(theme: str, distance_km: float, duration_min: float, spots
 
 
 def _theme_to_natural(theme: str) -> str:
-    """Convert theme code to natural Japanese description."""
+    """
+    テーマコードを自然な日本語の説明に変換する
+    
+    Args:
+        theme: テーマコード（"exercise", "think", "refresh", "nature"）
+    
+    Returns:
+        自然な日本語の説明、または元のテーマコード（マッピングがない場合）
+    """
     theme_map = {
         "exercise": "運動やエクササイズ",
         "think": "思考やリフレッシュ",
@@ -107,7 +160,19 @@ def _theme_to_natural(theme: str) -> str:
 
 def _build_prompt(theme: str, distance_km: float, duration_min: float, spots: Optional[list], *, strict: bool) -> str:
     """
-    テーマごとの雰囲気を伝えるプロンプトを生成。
+    LLMに送信するプロンプトを生成する
+    
+    テーマごとの雰囲気を伝えるプロンプトを作成し、LLMが自然な紹介文を生成できるようにする。
+    
+    Args:
+        theme: テーマ（"think", "exercise", "refresh", "nature"）
+        distance_km: 距離（km）
+        duration_min: 所要時間（分）
+        spots: 見どころスポットのリスト（未使用）
+        strict: Trueの場合、リトライ用の簡潔なプロンプトを生成
+    
+    Returns:
+        LLMに送信するプロンプト文字列
     """
     # テーマごとの雰囲気・特徴の説明
     theme_descriptions = {
@@ -120,7 +185,7 @@ def _build_prompt(theme: str, distance_km: float, duration_min: float, spots: Op
     theme_desc = theme_descriptions.get(theme, f"約{distance_km:.1f}kmを{duration_min:.0f}分で歩ける散歩コース。")
 
     if strict:
-        # リトライ時：簡潔に
+        # リトライ時：簡潔なプロンプト（MAX_TOKENSエラー対策）
         return (
             f"散歩ルートの紹介文を日本語で1文だけ（60文字前後）作成してください。"
             f"テーマの雰囲気を反映しつつ、自然で読みやすい文章にしてください。必ず句点「。」で終える。"
@@ -128,7 +193,7 @@ def _build_prompt(theme: str, distance_km: float, duration_min: float, spots: Op
             f" 距離: 約{distance_km:.1f}km。所要時間: 約{duration_min:.0f}分。"
         )
 
-    # 通常時：自然な文章で
+    # 通常時：自然な文章を生成するプロンプト
     return (
         f"散歩ルートの紹介文を日本語で1文だけ（40〜70文字程度）作成してください。"
         f"テーマの雰囲気や特徴を自然に反映し、読みやすく簡潔な文章にしてください。必ず句点「。」で終える。"
@@ -138,19 +203,43 @@ def _build_prompt(theme: str, distance_km: float, duration_min: float, spots: Op
 
 
 def _build_config(*, temperature: float, max_output_tokens: int) -> types.GenerateContentConfig:
-    top_p = float(getattr(settings, "VERTEX_TOP_P", 0.95))
-    top_k = int(getattr(settings, "VERTEX_TOP_K", 40))
+    """
+    GenAI APIの生成設定を構築する
+    
+    Args:
+        temperature: 温度パラメータ（0.0-1.0、低いほど一貫性が高い）
+        max_output_tokens: 最大出力トークン数
+    
+    Returns:
+        GenerateContentConfigオブジェクト
+    """
+    top_p = float(getattr(settings, "VERTEX_TOP_P", 0.95))  # Top-pサンプリングパラメータ
+    top_k = int(getattr(settings, "VERTEX_TOP_K", 40))  # Top-kサンプリングパラメータ
 
     return types.GenerateContentConfig(
-        temperature=temperature,
-        max_output_tokens=max_output_tokens,
-        top_p=top_p,
-        top_k=top_k,
+        temperature=temperature,  # 温度パラメータ
+        max_output_tokens=max_output_tokens,  # 最大出力トークン数
+        top_p=top_p,  # Top-pサンプリング
+        top_k=top_k,  # Top-kサンプリング
         # thinking_config は thinking_budget パラメータをサポートしていないため削除
     )
 
 
 async def _call_genai(client: genai.Client, model: str, prompt: str, cfg: types.GenerateContentConfig) -> Any:
+    """
+    GenAI APIを非同期で呼び出す
+    
+    SDKは同期関数のため、asyncio.to_thread()を使用して非同期実行する。
+    
+    Args:
+        client: GenAIクライアントインスタンス
+        model: モデル名
+        prompt: プロンプト文字列
+        cfg: 生成設定
+    
+    Returns:
+        GenAI APIのレスポンスオブジェクト
+    """
     return await asyncio.to_thread(
         client.models.generate_content,
         model=model,
@@ -167,11 +256,21 @@ async def generate_summary(
     spots: Optional[list] = None,
 ) -> Optional[str]:
     """
-    1文の散歩ルート紹介文を生成（Google Gen AI SDK / Vertex AI）。
+    1文の散歩ルート紹介文を生成（Google Gen AI SDK / Vertex AI）
 
     重要:
-    - SDK は同期なので asyncio.to_thread() で呼び出す
+    - SDK は同期関数のため asyncio.to_thread() で呼び出す
     - 失敗/空ならフォールバック文を返してUXを安定化
+    - MAX_TOKENSエラーの場合はリトライを試みる
+    
+    Args:
+        theme: テーマ（"think", "exercise", "refresh", "nature"）
+        distance_km: 距離（km）
+        duration_min: 所要時間（分）
+        spots: 見どころスポットのリスト（未使用）
+    
+    Returns:
+        生成された紹介文、またはNone（設定が不完全な場合）
     """
     model_name = settings.VERTEX_TEXT_MODEL
     if not model_name:
@@ -182,10 +281,10 @@ async def generate_summary(
         return None
 
     # 通常設定
-    temperature = float(getattr(settings, "VERTEX_TEMPERATURE", 0.3))
-    max_out = int(float(getattr(settings, "VERTEX_MAX_OUTPUT_TOKENS", 256)))
+    temperature = float(getattr(settings, "VERTEX_TEMPERATURE", 0.3))  # 温度パラメータ
+    max_out = int(float(getattr(settings, "VERTEX_MAX_OUTPUT_TOKENS", 256)))  # 最大出力トークン数
 
-    # 1回目
+    # 1回目のAPI呼び出し
     prompt = _build_prompt(theme, distance_km, duration_min, spots, strict=False)
     cfg = _build_config(temperature=temperature, max_output_tokens=max_out)
 
@@ -199,22 +298,23 @@ async def generate_summary(
     t0 = time.time()
     try:
         resp = await _call_genai(client, model_name, prompt, cfg)
-        text = _extract_text(resp)
-        meta = _safe_meta(resp)
+        text = _extract_text(resp)  # レスポンスからテキストを抽出
+        meta = _safe_meta(resp)  # メタデータを取得
 
         dt = int((time.time() - t0) * 1000)
         logger.info("[GenAI SDK Done] elapsed_ms=%s text_len=%s meta=%s", dt, len(text) if text else 0, meta)
 
         if text:
-            return text
+            return text  # テキストが取得できた場合は返す
 
         # 空で、かつ MAX_TOKENS のときだけリトライ
         if str(meta.get("finish_reason")) == "FinishReason.MAX_TOKENS" or meta.get("finish_reason") == "MAX_TOKENS":
             logger.warning("[GenAI SDK Empty/MAX_TOKENS] retrying once. meta=%s resp=%s", meta, _debug_dump(resp))
 
+            # リトライ: より簡潔なプロンプトと、より大きなトークン上限で再試行
             retry_prompt = _build_prompt(theme, distance_km, duration_min, spots, strict=True)
             retry_cfg = _build_config(
-                temperature=min(temperature, 0.2),   # ブレ抑制
+                temperature=min(temperature, 0.2),   # ブレ抑制（温度を下げる）
                 max_output_tokens=max(max_out, 1024), # 上限増（ログで561トークン必要だったため）
             )
             resp2 = await _call_genai(client, model_name, retry_prompt, retry_cfg)
@@ -225,14 +325,15 @@ async def generate_summary(
             logger.info("[GenAI SDK Retry Done] elapsed_ms=%s text_len=%s meta=%s", dt2, len(text2) if text2 else 0, meta2)
 
             if text2:
-                return text2
+                return text2  # リトライでテキストが取得できた場合は返す
 
             logger.warning("[GenAI SDK Retry Empty] meta=%s resp=%s", meta2, _debug_dump(resp2))
 
-        # それ以外の空はフォールバック
+        # それ以外の空はフォールバック（定型文を返す）
         return _fallback_summary(theme, distance_km, duration_min, spots)
 
     except Exception as e:
+        # 例外が発生した場合もフォールバックを返す
         dt = int((time.time() - t0) * 1000)
         logger.exception("[GenAI SDK Error] elapsed_ms=%s err=%r", dt, e)
         return _fallback_summary(theme, distance_km, duration_min, spots)

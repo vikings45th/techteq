@@ -65,22 +65,37 @@ async def _calculate_elevation_gain(encoded_polyline: str, api_key: str) -> floa
 
 
 def _offset_latlng(lat: float, lng: float, distance_km: float, heading_deg: float) -> Dict[str, float]:
-    """Roughly offset a point by distance_km toward heading_deg."""
-    earth_radius_km = 6371.0
-    heading_rad = math.radians(heading_deg)
-    delta = distance_km / earth_radius_km
+    """
+    指定された距離と方向に基づいて、緯度経度の点をオフセットする
+    
+    大円距離の計算を使用して、開始点から指定された距離と方向（方位角）に移動した点を計算する。
+    
+    Args:
+        lat: 開始点の緯度
+        lng: 開始点の経度
+        distance_km: 移動距離（km）
+        heading_deg: 方位角（度、0°が北、時計回り）
+    
+    Returns:
+        オフセットされた点の緯度経度 {"lat": float, "lng": float}
+    """
+    earth_radius_km = 6371.0  # 地球の半径（km）
+    heading_rad = math.radians(heading_deg)  # 方位角をラジアンに変換
+    delta = distance_km / earth_radius_km  # 角度差（ラジアン）
 
-    lat_rad = math.radians(lat)
-    lng_rad = math.radians(lng)
+    lat_rad = math.radians(lat)  # 緯度をラジアンに変換
+    lng_rad = math.radians(lng)  # 経度をラジアンに変換
 
+    # 新しい緯度を計算（球面三角法を使用）
     new_lat = math.asin(
         math.sin(lat_rad) * math.cos(delta) + math.cos(lat_rad) * math.sin(delta) * math.cos(heading_rad)
     )
+    # 新しい経度を計算
     new_lng = lng_rad + math.atan2(
         math.sin(heading_rad) * math.sin(delta) * math.cos(lat_rad),
         math.cos(delta) - math.sin(lat_rad) * math.sin(new_lat),
     )
-    return {"lat": math.degrees(new_lat), "lng": math.degrees(new_lng)}
+    return {"lat": math.degrees(new_lat), "lng": math.degrees(new_lng)}  # 度に変換して返す
 
 
 async def compute_route_candidates(
@@ -92,21 +107,37 @@ async def compute_route_candidates(
     round_trip: bool,
 ) -> List[Dict[str, Any]]:
     """
-    Call Routes API to build a few candidate routes.
-    Uses simple geometric offsets to propose destinations, then asks Routes API
-    for walking directions. Falls back to empty list if API key not set.
+    Routes APIを呼び出して複数のルート候補を生成する
+    
+    シンプルな幾何学的オフセットを使用して目的地を提案し、
+    Routes APIに歩行ルートを問い合わせる。
+    APIキーが設定されていない場合は空リストを返す。
+    
+    Args:
+        request_id: リクエストID（ログ用）
+        start_lat: 開始地点の緯度
+        start_lng: 開始地点の経度
+        distance_km: 目標距離（km）
+        round_trip: 往復ルートかどうか
+    
+    Returns:
+        ルート候補のリスト [{"route_id": str, "polyline": str, "distance_km": float, ...}, ...]
+    
+    Raises:
+        RuntimeError: MAPS_API_KEYが設定されていない場合
     """
     api_key = settings.MAPS_API_KEY
     if not api_key:
         raise RuntimeError("MAPS_API_KEY is not configured")
 
-    # Create 5 headings to diversify candidates (360°を5等分)
+    # 候補を多様化するために5つの方位角を作成（360°を5等分）
     # 0°, 72°, 144°, 216° (=-144°), 288° (=-72°) で均等に配置
     headings = [0, 72, 144, -144, -72]
 
-    # For round trips, use the computed points as a *turnaround waypoint*.
-    # If distance_km is the target *loop distance*, the turnaround is roughly half.
+    # 往復ルートの場合、計算された点を*折り返し地点*として使用
+    # distance_kmが目標の*ループ距離*の場合、折り返し地点は約半分の距離
     waypoint_distance_km = max((distance_km / 2.0) if round_trip else distance_km, 0.5)
+    # 各方位角に対して目的地を計算
     dests = [_offset_latlng(start_lat, start_lng, waypoint_distance_km, h) for h in headings]
     
     headers = {

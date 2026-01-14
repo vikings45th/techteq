@@ -124,10 +124,10 @@ async def search_spots(
     
     # themeが指定されている場合、includedTypesでフィルタリング
     # ただし、結果が空の場合はフォールバックとしてincludedTypesなしで検索
-    use_theme_filter = False
+    use_theme_filter = False  # テーマフィルタを使用したかどうかのフラグ
     if theme:
-        included_types = _get_place_types_for_theme(theme)
-        body["includedTypes"] = included_types
+        included_types = _get_place_types_for_theme(theme)  # テーマに応じた場所タイプを取得
+        body["includedTypes"] = included_types  # リクエストボディに場所タイプを追加
         use_theme_filter = True
         logger.debug(
             "[Places API] Searching with theme=%s types=%s",
@@ -147,14 +147,15 @@ async def search_spots(
                 )
                 return []
             data = resp.json()
-            places = data.get("places", [])
+            places = data.get("places", [])  # レスポンスから場所リストを取得
             out: List[Dict[str, Any]] = []
+            # 各場所から必要な情報を抽出
             for p in places[:max_results]:
-                name = p.get("displayName", {}).get("text")
+                name = p.get("displayName", {}).get("text")  # 表示名を取得
                 place_id = p.get("id")  # place_idを取得
-                types = p.get("types") or []
-                primary = types[0] if types else "unknown"
-                if name:
+                types = p.get("types") or []  # 場所タイプのリスト
+                primary = types[0] if types else "unknown"  # 最初のタイプを主要タイプとする
+                if name:  # 名前がある場合のみ追加
                     out.append({"name": name, "type": primary, "place_id": place_id})
             
             # themeフィルタを使用したが結果が空の場合、フォールバックとしてincludedTypesなしで再検索
