@@ -370,6 +370,8 @@ jsonPayload.request_id="your-request-id"
 - `route_proposal`: 提案ログ（選択されたルート、使用ツール、フォールバック情報など）
 - `route_feedback`: フィードバックログ（評価、リクエストIDなど）
 
+**SQL定義:** `ml/agent/bq/` に各種SQL（テーブル/ビュー定義）を配置
+
 学習用ビュー:
 
 - `training_view`: `route_candidate` と `route_feedback` を `request_id` + `route_id` でJOINした学習入力
@@ -423,6 +425,7 @@ ml/agent/
 │       ├── fallback.py            # フォールバック処理
 │       ├── polyline.py            # Polyline処理
 │       └── bq_writer.py           # BigQuery書き込み
+├── bq/                       # BigQuery用SQL定義
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md

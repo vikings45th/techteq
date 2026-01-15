@@ -82,6 +82,7 @@ firstdown/
 │   │   │       ├── ranker_client.py
 │   │   │       ├── vertex_llm.py
 │   │   │       └── ...
+│   │   ├── bq/               # BigQuery用SQL定義
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
 │   │   ├── README.md

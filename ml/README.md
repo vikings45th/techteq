@@ -66,6 +66,7 @@
                                 - リクエストログ
                                 - 提案ログ
                                 - フィードバックログ
+                                - SQL定義: `ml/agent/bq/`
 ```
 
 ### 処理フロー
@@ -216,6 +217,8 @@ jsonPayload.request_id="your-request-id"
 - `route_feedback`: フィードバックログ（評価、リクエストIDなど）
 
 **データセット:** `firstdown_mvp`（デフォルト）
+
+**SQL定義:** `ml/agent/bq/` に各種SQL（テーブル/ビュー定義）を配置
 
 ## デプロイ
 
