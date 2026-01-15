@@ -33,6 +33,7 @@ class Settings(BaseSettings):
 
     # 特徴量/バージョニング
     FEATURES_VERSION: str = "mvp_v1"  # 特徴量のバージョン（モデルの互換性管理用）
+    RANKER_VERSION: str = "rule_v1"  # Rankerのバージョン（モデル/ロジックの追跡用）
 
 
 settings = Settings()  # グローバル設定インスタンス

@@ -32,6 +32,7 @@ class Spot(BaseModel):
 
 class RouteOut(BaseModel):
     """生成されたルート情報"""
+    route_id: str  # ルートID（UUID）
     polyline: str  # エンコードされたpolyline文字列（地図表示用）
     distance_km: float  # 距離（km）
     duration_min: int  # 所要時間（分）
@@ -83,6 +84,7 @@ class GenerateRouteResponse(BaseModel):
 class FeedbackRequest(BaseModel):
     """フィードバックリクエストのスキーマ"""
     request_id: str  # リクエストID（フィードバック対象のルート生成リクエストID）
+    route_id: str  # ルートID（UUID）
     rating: conint(ge=1, le=5)  # 評価（1〜5の整数）
 
 

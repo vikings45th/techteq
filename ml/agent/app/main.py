@@ -1,6 +1,7 @@
 from __future__ import annotations
 import time
 import logging
+import uuid
 from typing import Dict, Any, List
 
 from fastapi import FastAPI, HTTPException
@@ -89,6 +90,7 @@ def post_feedback(req: FeedbackRequest) -> FeedbackResponse:
     bq_writer.insert_rows(settings.BQ_TABLE_FEEDBACK, [{
         "event_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "request_id": req.request_id,
+        "route_id": req.route_id,
         "rating": int(req.rating),
         "note": None,
     }])
@@ -183,16 +185,22 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
                 "distance_km": float(req.distance_km),
                 "duration_min": 32.0,
                 "theme": req.theme,
+                "is_fallback": True,
             },
         ]
         
+    # 候補ごとにUUIDを付与（リクエスト間で衝突しないように統一）
     for c in candidates:
+        c["route_id"] = str(uuid.uuid4())
+        c.setdefault("is_fallback", False)
         c.setdefault("theme", req.theme)
 
     # 3) Feature extraction
-    # 最大5個の候補をrankerに送信
+    # 候補全件の特徴量を算出し、上位5件のみrankerに送信
     rep_routes_payload = []
-    for i, c in enumerate(candidates[:5], start=1):
+    candidate_features: Dict[str, Dict[str, Any]] = {}
+    candidate_index_map: Dict[str, int] = {}
+    for i, c in enumerate(candidates, start=1):
         cand = Candidate(
             route_id=c["route_id"],
             polyline=c.get("polyline", "xxxx"),
@@ -213,7 +221,10 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             relaxation_step=relaxation_step,
             candidate_rank_in_theme=i,
         )
-        rep_routes_payload.append({"route_id": cand.route_id, "features": feats})
+        candidate_features[cand.route_id] = feats
+        candidate_index_map[cand.route_id] = i
+        if i <= 5:
+            rep_routes_payload.append({"route_id": cand.route_id, "features": feats})
 
     # 4) Call ranker
     try:
@@ -238,6 +249,14 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     chosen = fallback.choose_best_route(candidates, score_map, req.theme)
     if chosen is None:
         raise HTTPException(status_code=422, detail="No viable route found")
+
+    # UI提示順（score順）を算出
+    shown_rank_map: Dict[str, int] = {}
+    if score_map:
+        for rank, (route_id, _score) in enumerate(
+            sorted(score_map.items(), key=lambda x: x[1], reverse=True), start=1
+        ):
+            shown_rank_map[route_id] = rank
 
     # 6) Summary and POIs
     # polyline 25/50/75% 点から nearby 検索（decode + サンプル点抽出前提）
@@ -418,7 +437,7 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         distance_match = 1.0 - ((distance_error_ratio - 0.1) / 0.4)
     
     # フォールバックルートかどうかの判定
-    is_fallback_route = chosen.get("route_id") == "fallback_dummy" or is_fallback_used
+    is_fallback_route = bool(chosen.get("is_fallback")) or is_fallback_used
     
     # 品質スコアの計算（簡易版）
     # フォールバック: 0.3、距離整合性が良い: +0.4、ツールが使われている: +0.3
@@ -430,7 +449,50 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         quality_score += 0.3
     quality_score = min(1.0, max(0.0, quality_score))  # 0.0-1.0にクリップ
 
-    # 7) store proposal
+    # 7) store candidates (training data)
+    candidate_rows: List[Dict[str, Any]] = []
+    for c in candidates:
+        route_id = c.get("route_id")
+        feats = candidate_features.get(route_id, {})
+        candidate_rows.append({
+            "event_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "event_id": str(uuid.uuid4()),
+            "request_id": req.request_id,
+            "route_id": route_id,
+            "candidate_index": candidate_index_map.get(route_id),
+            "theme": req.theme,
+            "round_trip": bool(req.round_trip),
+            "fallback": bool(c.get("is_fallback")),
+            "chosen_flag": route_id == chosen.get("route_id"),
+            "shown_rank": shown_rank_map.get(route_id),
+            "features_version": settings.FEATURES_VERSION,
+            "ranker_version": settings.RANKER_VERSION,
+            # フラット化した特徴量
+            "distance_km": feats.get("distance_km"),
+            "duration_min": feats.get("duration_min"),
+            "loop_closure_m": feats.get("loop_closure_m"),
+            "bbox_area": feats.get("bbox_area"),
+            "path_length_ratio": feats.get("path_length_ratio"),
+            "turn_count": feats.get("turn_count"),
+            "turn_density": feats.get("turn_density"),
+            "theme_exercise": feats.get("theme_exercise"),
+            "theme_think": feats.get("theme_think"),
+            "theme_refresh": feats.get("theme_refresh"),
+            "theme_nature": feats.get("theme_nature"),
+            "round_trip_req": feats.get("round_trip_req"),
+            "round_trip_fit": feats.get("round_trip_fit"),
+            "distance_error_ratio": feats.get("distance_error_ratio"),
+            "relaxation_step": feats.get("relaxation_step"),
+            "candidate_rank_in_theme": feats.get("candidate_rank_in_theme"),
+            "has_stairs": feats.get("has_stairs"),
+            "elevation_gain_m": feats.get("elevation_gain_m"),
+            "elevation_density": feats.get("elevation_density"),
+            "poi_density": feats.get("poi_density"),
+            "park_poi_ratio": feats.get("park_poi_ratio"),
+        })
+    bq_writer.insert_rows(settings.BQ_TABLE_CANDIDATE, candidate_rows)
+
+    # 8) store proposal
     bq_writer.insert_rows(settings.BQ_TABLE_PROPOSAL, [{
         "event_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "request_id": req.request_id,
@@ -440,6 +502,8 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         "tools_used": tools_used,
         "summary_type": summary_type,
         "total_latency_ms": total_latency_ms,
+        "features_version": settings.FEATURES_VERSION,
+        "ranker_version": settings.RANKER_VERSION,
     }])
 
     # ルート品質情報の構築
@@ -490,6 +554,7 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     return GenerateRouteResponse(
         request_id=req.request_id,
         route={
+            "route_id": chosen.get("route_id"),
             "polyline": chosen.get("polyline", "xxxx"),
             "distance_km": float(chosen.get("distance_km", req.distance_km)),
             "duration_min": int(chosen.get("duration_min") or 32),
