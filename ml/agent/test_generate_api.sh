@@ -8,6 +8,7 @@
 #
 # 環境変数:
 #   AGENT_URL: APIのベースURL（デフォルト: http://localhost:8000）
+#   FEEDBACK_RATING: 固定評価（未指定ならランダム 1-5）
 #
 # 例:
 #   export AGENT_URL=https://agent-203786374782.asia-northeast1.run.app
@@ -17,6 +18,7 @@ set -euo pipefail
 
 # デフォルトのAPI URL
 AGENT_URL="${AGENT_URL:-http://localhost:8000}"
+FEEDBACK_RATING="${FEEDBACK_RATING:-}"
 
 # テーマのリスト
 THEMES=("exercise" "think" "refresh" "nature")
@@ -37,8 +39,10 @@ if ! command -v curl &> /dev/null; then
     exit 1
 fi
 
+HAS_JQ=true
 if ! command -v jq &> /dev/null; then
-    echo "⚠️  警告: jqがインストールされていません。JSONの整形ができません。" >&2
+    echo "⚠️  警告: jqがインストールされていません。JSONの整形・route_id抽出ができません。" >&2
+    HAS_JQ=false
     JQ_CMD="cat"
 else
     JQ_CMD="jq"
@@ -54,6 +58,11 @@ generate_random_location() {
 # ランダムな距離を生成（km）
 generate_random_distance() {
     awk "BEGIN { srand(); printf \"%.1f\", $DISTANCE_MIN + rand() * ($DISTANCE_MAX - $DISTANCE_MIN) }"
+}
+
+# ランダムな評価（1-5）を生成
+generate_random_rating() {
+    awk "BEGIN { srand(); printf \"%d\", 1 + int(rand() * 5) }"
 }
 
 # テーマをテスト
@@ -107,6 +116,43 @@ EOF
         echo "✅ 成功 (HTTP $status_code)"
         echo ""
         echo "$response_body" | $JQ_CMD
+        echo ""
+
+        # route_idを抽出してフィードバック送信
+        if [ "$HAS_JQ" = true ]; then
+            local route_id
+            route_id=$(echo "$response_body" | jq -r '.route.route_id // empty')
+            if [ -n "$route_id" ]; then
+                local rating="${FEEDBACK_RATING:-$(generate_random_rating)}"
+                echo "📝 フィードバック送信: route_id=$route_id rating=$rating"
+                local feedback_payload=$(cat <<EOF
+{
+  "request_id": "$request_id",
+  "route_id": "$route_id",
+  "rating": $rating
+}
+EOF
+)
+                local feedback_response
+                local feedback_status
+                feedback_response=$(curl -sS -w "\n%{http_code}" -X POST "$AGENT_URL/route/feedback" \
+                    -H "Content-Type: application/json" \
+                    -d "$feedback_payload")
+                feedback_status=$(echo "$feedback_response" | tail -n1)
+                feedback_body=$(echo "$feedback_response" | sed '$d')
+                if [ "$feedback_status" -eq 200 ]; then
+                    echo "✅ フィードバック成功 (HTTP $feedback_status)"
+                    echo "$feedback_body" | $JQ_CMD
+                else
+                    echo "❌ フィードバック失敗 (HTTP $feedback_status)"
+                    echo "$feedback_body"
+                fi
+            else
+                echo "⚠️  route_idが取得できませんでした。フィードバックをスキップします。"
+            fi
+        else
+            echo "⚠️  jqがないためroute_idを取得できず、フィードバックをスキップします。"
+        fi
     else
         echo "❌ エラー (HTTP $status_code)"
         echo "$response_body"

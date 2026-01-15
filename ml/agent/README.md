@@ -323,8 +323,16 @@ jsonPayload.request_id="your-request-id"
 以下のテーブルにログが保存されます：
 
 - `route_request`: リクエストログ（テーマ、距離、開始地点など）
+- `route_candidate`: 候補ログ（特徴量、順位、フォールバック情報など）
 - `route_proposal`: 提案ログ（選択されたルート、使用ツール、フォールバック情報など）
 - `route_feedback`: フィードバックログ（評価、リクエストIDなど）
+
+学習用ビュー:
+
+- `training_view`: `route_candidate` と `route_feedback` を `request_id` + `route_id` でJOINした学習入力
+  - ビュー定義: `ml/agent/bq/training_view.sql`
+  - 学習入力は `SELECT * FROM training_view`
+  - リーク対策として `chosen_flag` / `shown_rank` など結果依存列は除外
 
 **データセット:** `firstdown_mvp`（デフォルト）
 
