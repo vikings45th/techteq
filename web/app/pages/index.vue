@@ -1,5 +1,5 @@
 <script setup lang="ts">
-	const generateParams = ref("/app?mood=exercise&distance=5");
+	const generateParams = ref("/app?theme=exercise&distance=5");
 
 	const features = ref([
 		{
@@ -25,7 +25,7 @@
 	])
 
 	const handleSubmit = (m: string, d: number) => {
-		generateParams.value = "/app?mood="+m+"&distance="+d;
+		generateParams.value = "/app?theme="+m+"&distance="+d;
 	};
 
 </script>
