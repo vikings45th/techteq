@@ -115,6 +115,24 @@ def _debug_dump(resp: Any) -> str:
         return "<unprintable>"  # 変換できない場合
 
 
+def _spot_names(spots: Optional[list]) -> list[str]:
+    """
+    spotsから名前のリストを抽出する（dict/オブジェクト両対応）
+    """
+    if not spots:
+        return []
+    names: list[str] = []
+    for s in spots:
+        name = None
+        if isinstance(s, dict):
+            name = s.get("name")
+        else:
+            name = getattr(s, "name", None)
+        if isinstance(name, str) and name.strip():
+            names.append(name.strip())
+    return names
+
+
 def _fallback_summary(theme: str, distance_km: float, duration_min: float, spots: Optional[list]) -> str:
     """
     LLMが失敗した場合に使用する、テーマごとの簡潔な紹介文を返すフォールバック関数
@@ -137,6 +155,32 @@ def _fallback_summary(theme: str, distance_km: float, duration_min: float, spots
     }
     
     return theme_summaries.get(theme, f"約{distance_km:.1f}kmを{duration_min:.0f}分で歩ける散歩コースです。")
+
+
+def _fallback_title(theme: str, distance_km: float, duration_min: float, spots: Optional[list]) -> str:
+    """
+    LLMが使えない場合のタイトル生成（内容に沿った短いタイトル）
+    """
+    theme_titles = {
+        "think": "静けさの川沿い",
+        "exercise": "アップダウン燃焼",
+        "refresh": "街なかリフレッシュ",
+        "nature": "木漏れ日の森歩き",
+    }
+    base = theme_titles.get(theme, "散歩")
+    names = _spot_names(spots)
+    if len(names) >= 2:
+        return f"{names[0]}・{names[1]}を巡る{base}コース"
+    if len(names) == 1:
+        return f"{names[0]}から始まる{base}コース"
+    return f"{base}コース"
+
+
+def fallback_title(theme: str, distance_km: float, duration_min: float, spots: Optional[list]) -> str:
+    """
+    外部から利用するフォールバックタイトル生成
+    """
+    return _fallback_title(theme, distance_km, duration_min, spots)
 
 
 def _theme_to_natural(theme: str) -> str:
@@ -200,6 +244,51 @@ def _build_prompt(theme: str, distance_km: float, duration_min: float, spots: Op
         f" テーマ: {theme_desc}"
         f" 距離: 約{distance_km:.1f}km。所要時間: 約{duration_min:.0f}分。"
     )
+
+
+def _build_title_prompt(theme: str, distance_km: float, duration_min: float, spots: Optional[list], *, strict: bool) -> str:
+    """
+    LLMに送信するタイトル生成プロンプトを作成する
+    """
+    theme_descriptions = {
+        "think": "思考や頭の整理に向いた静かな散歩",
+        "exercise": "運動やエクササイズ向きの坂道・階段のある散歩",
+        "refresh": "気分転換に適した賑やかな街歩き",
+        "nature": "自然や緑を楽しむ落ち着いた散歩",
+    }
+    theme_desc = theme_descriptions.get(theme, "散歩コース")
+    names = _spot_names(spots)
+    spots_text = f" 見どころ: {', '.join(names[:4])}。" if names else ""
+    if strict:
+        return (
+            "散歩コースのタイトルを日本語で1つ作成してください。"
+            "12〜24文字程度。句点不要。汎用的すぎる表現は避ける。"
+            "記号は「・」「〜」のみ使用可。"
+            f" テーマ: {theme_desc}。距離: 約{distance_km:.1f}km。"
+            f" 所要時間: 約{duration_min:.0f}分。{spots_text}"
+        )
+    return (
+        "散歩コースのタイトルを日本語で1つ作成してください。"
+        "10〜26文字程度。句点不要。コース内容に沿った具体的な表現にする。"
+        "記号は「・」「〜」のみ使用可。"
+        f" テーマ: {theme_desc}。距離: 約{distance_km:.1f}km。"
+        f" 所要時間: 約{duration_min:.0f}分。{spots_text}"
+    )
+
+
+def _normalize_title(text: str) -> str:
+    """
+    LLM出力をタイトルとして整形する
+    """
+    if not text:
+        return ""
+    t = text.strip()
+    if "\n" in t:
+        t = t.splitlines()[0].strip()
+    # 先頭/末尾の引用符を除去
+    for q in ("「", "」", '"', "'"):
+        t = t.strip(q)
+    return t.strip()
 
 
 def _build_config(*, temperature: float, max_output_tokens: int) -> types.GenerateContentConfig:
@@ -337,3 +426,69 @@ async def generate_summary(
         dt = int((time.time() - t0) * 1000)
         logger.exception("[GenAI SDK Error] elapsed_ms=%s err=%r", dt, e)
         return _fallback_summary(theme, distance_km, duration_min, spots)
+
+
+async def generate_title(
+    *,
+    theme: str,
+    distance_km: float,
+    duration_min: float,
+    spots: Optional[list] = None,
+) -> Optional[str]:
+    """
+    散歩ルートのタイトルを生成（Google Gen AI SDK / Vertex AI）
+    """
+    model_name = settings.VERTEX_TEXT_MODEL
+    if not model_name:
+        return None
+
+    client = _get_client()
+    if client is None:
+        return None
+
+    temperature = float(getattr(settings, "VERTEX_TEMPERATURE", 0.3))
+    max_out = int(float(getattr(settings, "VERTEX_MAX_OUTPUT_TOKENS", 64)))
+
+    prompt = _build_title_prompt(theme, distance_km, duration_min, spots, strict=False)
+    cfg = _build_config(temperature=min(temperature + 0.1, 0.6), max_output_tokens=max_out)
+
+    t0 = time.time()
+    try:
+        resp = await _call_genai(client, model_name, prompt, cfg)
+        text = _extract_text(resp)
+        meta = _safe_meta(resp)
+
+        dt = int((time.time() - t0) * 1000)
+        logger.info("[GenAI SDK Title Done] elapsed_ms=%s text_len=%s meta=%s", dt, len(text) if text else 0, meta)
+
+        if text:
+            normalized = _normalize_title(text)
+            if normalized:
+                return normalized
+
+        if str(meta.get("finish_reason")) == "FinishReason.MAX_TOKENS" or meta.get("finish_reason") == "MAX_TOKENS":
+            logger.warning("[GenAI SDK Title Empty/MAX_TOKENS] retrying once. meta=%s resp=%s", meta, _debug_dump(resp))
+            retry_prompt = _build_title_prompt(theme, distance_km, duration_min, spots, strict=True)
+            retry_cfg = _build_config(
+                temperature=min(temperature, 0.2),
+                max_output_tokens=max(max_out, 128),
+            )
+            resp2 = await _call_genai(client, model_name, retry_prompt, retry_cfg)
+            text2 = _extract_text(resp2)
+            meta2 = _safe_meta(resp2)
+
+            dt2 = int((time.time() - t0) * 1000)
+            logger.info("[GenAI SDK Title Retry Done] elapsed_ms=%s text_len=%s meta=%s", dt2, len(text2) if text2 else 0, meta2)
+
+            normalized2 = _normalize_title(text2)
+            if normalized2:
+                return normalized2
+
+            logger.warning("[GenAI SDK Title Retry Empty] meta=%s resp=%s", meta2, _debug_dump(resp2))
+
+        return _fallback_title(theme, distance_km, duration_min, spots)
+
+    except Exception as e:
+        dt = int((time.time() - t0) * 1000)
+        logger.exception("[GenAI SDK Title Error] elapsed_ms=%s err=%r", dt, e)
+        return _fallback_title(theme, distance_km, duration_min, spots)

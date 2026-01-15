@@ -103,6 +103,8 @@ async def compute_route_candidates(
     request_id: str,
     start_lat: float,
     start_lng: float,
+    end_lat: float | None = None,
+    end_lng: float | None = None,
     distance_km: float,
     round_trip: bool,
 ) -> List[Dict[str, Any]]:
@@ -117,6 +119,8 @@ async def compute_route_candidates(
         request_id: リクエストID（ログ用）
         start_lat: 開始地点の緯度
         start_lng: 開始地点の経度
+        end_lat: 終了地点の緯度（片道ルート用）
+        end_lng: 終了地点の経度（片道ルート用）
         distance_km: 目標距離（km）
         round_trip: 往復ルートかどうか
     
@@ -134,11 +138,15 @@ async def compute_route_candidates(
     # 0°, 72°, 144°, 216° (=-144°), 288° (=-72°) で均等に配置
     headings = [0, 72, 144, -144, -72]
 
-    # 往復ルートの場合、計算された点を*折り返し地点*として使用
-    # distance_kmが目標の*ループ距離*の場合、折り返し地点は約半分の距離
-    waypoint_distance_km = max((distance_km / 2.0) if round_trip else distance_km, 0.5)
-    # 各方位角に対して目的地を計算
-    dests = [_offset_latlng(start_lat, start_lng, waypoint_distance_km, h) for h in headings]
+    # 片道かつ終了地点が指定されている場合は、その地点を目的地として使用
+    if not round_trip and end_lat is not None and end_lng is not None:
+        dests = [{"lat": float(end_lat), "lng": float(end_lng)}]
+    else:
+        # 往復ルートの場合、計算された点を*折り返し地点*として使用
+        # distance_kmが目標の*ループ距離*の場合、折り返し地点は約半分の距離
+        waypoint_distance_km = max((distance_km / 2.0) if round_trip else distance_km, 0.5)
+        # 各方位角に対して目的地を計算
+        dests = [_offset_latlng(start_lat, start_lng, waypoint_distance_km, h) for h in headings]
     
     headers = {
         "X-Goog-Api-Key": api_key,

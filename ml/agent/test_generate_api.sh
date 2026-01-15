@@ -19,6 +19,7 @@ set -euo pipefail
 # デフォルトのAPI URL
 AGENT_URL="${AGENT_URL:-http://localhost:8000}"
 FEEDBACK_RATING="${FEEDBACK_RATING:-}"
+ROUND_TRIPS=("true" "false")
 
 # テーマのリスト
 THEMES=("exercise" "think" "refresh" "nature")
@@ -65,9 +66,10 @@ generate_random_rating() {
     awk "BEGIN { srand(); printf \"%d\", 1 + int(rand() * 5) }"
 }
 
-# テーマをテスト
+# テーマと往復設定をテスト
 test_theme() {
-    local theme=$1
+    local round_trip=$1
+    local theme=$2
     local request_id="test-$(date +%s)-$RANDOM"
     
     # ランダムなパラメータを生成
@@ -75,14 +77,24 @@ test_theme() {
     local lat=$(echo "$location" | cut -d' ' -f1)
     local lng=$(echo "$location" | cut -d' ' -f2)
     local distance_km=$(generate_random_distance)
-    local round_trip=true  # 固定値
     local debug=false  # 固定値
+    local end_lat=""
+    local end_lng=""
+
+    if [ "$round_trip" = "false" ]; then
+        local end_location=$(generate_random_location)
+        end_lat=$(echo "$end_location" | cut -d' ' -f1)
+        end_lng=$(echo "$end_location" | cut -d' ' -f2)
+    fi
     
     echo "============================================================"
     echo "テーマ: $theme"
     echo "開始地点: ($lat, $lng)"
     echo "距離: ${distance_km}km"
     echo "往復ルート: $round_trip"
+    if [ "$round_trip" = "false" ]; then
+        echo "終了地点: ($end_lat, $end_lng)"
+    fi
     echo "リクエストID: $request_id"
     echo "============================================================"
     
@@ -101,6 +113,26 @@ test_theme() {
 }
 EOF
 )
+    if [ "$round_trip" = "false" ]; then
+        json_payload=$(cat <<EOF
+{
+  "request_id": "$request_id",
+  "theme": "$theme",
+  "distance_km": $distance_km,
+  "start_location": {
+    "lat": $lat,
+    "lng": $lng
+  },
+  "end_location": {
+    "lat": $end_lat,
+    "lng": $end_lng
+  },
+  "round_trip": $round_trip,
+  "debug": $debug
+}
+EOF
+)
+    fi
     
     # curlでAPIを呼び出し
     local response
@@ -173,14 +205,14 @@ if ! curl -sS -f "$AGENT_URL/health" > /dev/null; then
     exit 1
 fi
 
-# 各テーマでテスト
+# 各テーマで周回/片道をテスト
 for theme in "${THEMES[@]}"; do
-    test_theme "$theme"
-    
-    # リクエスト間隔を空ける（API負荷軽減）
-    if [ "$theme" != "${THEMES[-1]}" ]; then
+    for round_trip in "${ROUND_TRIPS[@]}"; do
+        test_theme "$round_trip" "$theme"
+
+        # リクエスト間隔を空ける（API負荷軽減）
         sleep 1
-    fi
+    done
 done
 
 echo "============================================================"
