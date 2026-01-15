@@ -100,6 +100,8 @@ def post_feedback(req: FeedbackRequest) -> FeedbackResponse:
 @app.post("/route/generate", response_model=GenerateRouteResponse)
 async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     t0 = time.time()
+    if not req.round_trip and req.end_location is None:
+        raise HTTPException(status_code=422, detail="end_location is required when round_trip is false")
     plan_steps = [
         "generate_candidates",
         "classify_by_theme",
@@ -140,6 +142,8 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             request_id=req.request_id,
             start_lat=float(req.start_location.lat),
             start_lng=float(req.start_location.lng),
+            end_lat=float(req.end_location.lat) if (req.end_location and not req.round_trip) else None,
+            end_lng=float(req.end_location.lng) if (req.end_location and not req.round_trip) else None,
             distance_km=float(req.distance_km),
             round_trip=bool(req.round_trip), 
         )
@@ -157,10 +161,16 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         start_lng = float(req.start_location.lng)
         
         # 必ずダミーpolylineを生成（空対策の保証）
-        fallback_points = [
-            (start_lat, start_lng),
-            (start_lat + 0.0001, start_lng + 0.0001)
-        ]
+        if not req.round_trip and req.end_location is not None:
+            fallback_points = [
+                (start_lat, start_lng),
+                (float(req.end_location.lat), float(req.end_location.lng)),
+            ]
+        else:
+            fallback_points = [
+                (start_lat, start_lng),
+                (start_lat + 0.0001, start_lng + 0.0001)
+            ]
         safe_polyline = ""
         try:
             safe_polyline = polyline_lib.encode(fallback_points)
@@ -261,17 +271,23 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     # 6) Summary and POIs
     # polyline 25/50/75% 点から nearby 検索（decode + サンプル点抽出前提）
     spots: List[Spot] = []
+    nav_waypoints: List[LatLng] = []
     try:
         encoded = (chosen.get("polyline") or "").strip()
         sample_latlngs: List[tuple[float, float]] = []
+        waypoint_points: List[tuple[float, float]] = []
 
         # polylineをデコードしてサンプル点（25/50/75%）を抽出
         if encoded and encoded != "xxxx":
             pts = polyline.decode_polyline(encoded)
             sample_latlngs = polyline.sample_points(pts, [0.25, 0.5, 0.75])
+            simplified = polyline.simplify_douglas_peucker(pts, epsilon_m=20.0)
+            waypoint_points = polyline.pick_waypoints(simplified, max_points=10)
 
         if not sample_latlngs:
             sample_latlngs = [(float(req.start_location.lat), float(req.start_location.lng))]
+        if not waypoint_points:
+            waypoint_points = sample_latlngs
 
         logger.info(
             "[Places] request_id=%s sample_latlngs=%d points: %s",
@@ -354,6 +370,7 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             for p in spots_raw
             if p.get("name")
         ]
+        nav_waypoints = [LatLng(lat=float(lat), lng=float(lng)) for (lat, lng) in waypoint_points]
         if spots:
             tools_used.append("places")
             logger.info("[Places] request_id=%s found %d spots: %s", req.request_id, len(spots), [s.name for s in spots])
@@ -368,6 +385,14 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     spots_text = f"（見どころ: {', '.join(spots_names)}）" if spots_names else ""
     summary = f"【簡易提案!】条件に合わせた散歩ルートです{spots_text}"
     summary_type = "template"
+
+    # フォールバック用のタイトル（内容に沿った短い表現）
+    title = vertex_llm.fallback_title(
+        theme=req.theme,
+        distance_km=float(chosen.get("distance_km", req.distance_km)),
+        duration_min=float(chosen.get("duration_min") or 30.0),
+        spots=spots,
+    )
     try:
         vertex_summary = await vertex_llm.generate_summary(
             theme=req.theme,
@@ -388,6 +413,20 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         # 【修正】LLM呼び出し例外発生時
         fallback_reasons.append("vertex_llm_failed")
         logger.error("[Vertex LLM Error] request_id=%s err=%r", req.request_id, e)
+
+    try:
+        vertex_title = await vertex_llm.generate_title(
+            theme=req.theme,
+            distance_km=float(chosen.get("distance_km", req.distance_km)),
+            duration_min=float(chosen.get("duration_min") or 30.0),
+            spots=spots,
+        )
+        if vertex_title:
+            title = vertex_title
+            if "vertex_llm" not in tools_used:
+                tools_used.append("vertex_llm")
+    except Exception as e:
+        logger.warning("[Vertex LLM Title Error] request_id=%s err=%r", req.request_id, e)
 
     total_latency_ms = int((time.time() - t0) * 1000)
 
@@ -558,7 +597,9 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             "polyline": chosen.get("polyline", "xxxx"),
             "distance_km": float(chosen.get("distance_km", req.distance_km)),
             "duration_min": int(chosen.get("duration_min") or 32),
+            "title": title,
             "summary": summary,
+            "nav_waypoints": nav_waypoints,
             "spots": spots,
         },
         meta=meta,

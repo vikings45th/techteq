@@ -20,6 +20,7 @@ class GenerateRouteRequest(BaseModel):
     theme: Theme  # テーマ（"exercise", "think", "refresh", "nature"）
     distance_km: confloat(gt=0)  # 目標距離（km、0より大きい値）
     start_location: LatLng  # 開始地点の緯度経度
+    end_location: Optional[LatLng] = None  # 終了地点の緯度経度（片道のみ）
     round_trip: bool  # 往復ルートかどうか
     debug: bool = False  # デバッグモード（追加情報を返すかどうか）
 
@@ -36,7 +37,9 @@ class RouteOut(BaseModel):
     polyline: str  # エンコードされたpolyline文字列（地図表示用）
     distance_km: float  # 距離（km）
     duration_min: int  # 所要時間（分）
+    title: str  # ルートのタイトル
     summary: str  # ルートの紹介文
+    nav_waypoints: List[LatLng] = []  # ナビ用の代表点
     spots: List[Spot] = []  # ルート上の見どころスポットのリスト
 
 

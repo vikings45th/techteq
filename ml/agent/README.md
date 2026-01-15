@@ -19,9 +19,11 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 ### 主な機能
 
 - **テーマ別ルート生成**: 4つのテーマ（exercise, think, refresh, nature）に対応
+- **片道/周回ルート**: `round_trip`で周回/片道を切り替え（片道は`end_location`必須）
 - **ルート最適化**: Ranker APIを使用したルート品質評価とランキング
 - **スポット検索**: ルート上の見どころスポットを自動検索（日本語対応）
-- **AI紹介文生成**: Vertex AIを使用した自然なルート説明
+- **AI紹介文・タイトル生成**: Vertex AIで紹介文とタイトルを生成
+- **ナビ用代表点**: polylineを簡略化して最大10点の`nav_waypoints`を返却
 - **フォールバック機能**: 外部API障害時も簡易ルートを提供
 
 ### 処理フロー
@@ -31,8 +33,9 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 3. **ルート評価**: Ranker APIでスコアリング
 4. **最適ルート選択**: スコアが最も高いルートを選択
 5. **スポット検索**: ルート上の25/50/75%地点からスポットを検索（日本語対応）
-6. **紹介文生成**: Vertex AIでルート紹介文を生成
-7. **レスポンス返却**: ルート情報、スポット、紹介文を返却
+6. **紹介文・タイトル生成**: Vertex AIで紹介文とタイトルを生成
+7. **nav_waypoints生成**: polyline簡略化 → 最大10点を抽出
+8. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
 
 ## 環境変数
 
@@ -58,9 +61,11 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 | `VERTEX_TOP_K` | `40` | Vertex AIのtop_kパラメータ |
 | `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
 | `BQ_TABLE_REQUEST` | `route_request` | BigQueryリクエストテーブル名 |
+| `BQ_TABLE_CANDIDATE` | `route_candidate` | BigQuery候補テーブル名 |
 | `BQ_TABLE_PROPOSAL` | `route_proposal` | BigQuery提案テーブル名 |
 | `BQ_TABLE_FEEDBACK` | `route_feedback` | BigQueryフィードバックテーブル名 |
 | `FEATURES_VERSION` | `mvp_v1` | 特徴量バージョン |
+| `RANKER_VERSION` | `rule_v1` | Rankerバージョン |
 
 ## API Key 管理
 
@@ -111,7 +116,11 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 
 ルート生成リクエスト
 
-**リクエスト例:**
+**注意:**
+- `round_trip: true` の場合は `end_location` を無視します
+- `round_trip: false` の場合は `end_location` が必須です
+
+**リクエスト例（周回）:**
 ```json
 {
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -126,15 +135,40 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 }
 ```
 
+**リクエスト例（片道）:**
+```json
+{
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "theme": "refresh",
+  "distance_km": 3.0,
+  "start_location": {
+    "lat": 35.6812,
+    "lng": 139.7671
+  },
+  "end_location": {
+    "lat": 35.6896,
+    "lng": 139.6917
+  },
+  "round_trip": false,
+  "debug": false
+}
+```
+
 **レスポンス例:**
 ```json
 {
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
   "route": {
+    "route_id": "e3b0c442-98fc-1c14-9afb-3c2e4f7a1d0b",
     "polyline": "encoded_polyline_string",
     "distance_km": 3.2,
     "duration_min": 45,
+    "title": "木陰を抜ける川沿いウォーク",
     "summary": "運動に適した散歩ルートです...",
+    "nav_waypoints": [
+      {"lat": 35.6812, "lng": 139.7671},
+      {"lat": 35.6840, "lng": 139.7702}
+    ],
     "spots": [
       {
         "name": "代々木公園",
@@ -158,10 +192,13 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 ```
 
 **レスポンスフィールド:**
+- `route.route_id`: ルートID（UUID）
 - `route.polyline`: エンコードされたpolyline文字列（地図表示用）
 - `route.distance_km`: 距離（km）
 - `route.duration_min`: 所要時間（分）
+- `route.title`: ルートのタイトル（日本語）
 - `route.summary`: ルートの紹介文（日本語）
+- `route.nav_waypoints`: ナビ用の代表点（最大10点）
 - `route.spots`: 見どころスポットのリスト（日本語）
   - `name`: スポット名（日本語）
   - `type`: スポットタイプ（日本語、例: "公園", "カフェ"）
@@ -184,6 +221,7 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 ```json
 {
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "route_id": "e3b0c442-98fc-1c14-9afb-3c2e4f7a1d0b",
   "rating": 5
 }
 ```
@@ -213,7 +251,7 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 
 - **Maps Routes API失敗**: 開始地点を中心としたダミーポリラインを生成
 - **Ranker API失敗**: 最初のルート候補を選択
-- **Vertex AI失敗**: テンプレートベースの紹介文を使用
+- **Vertex AI失敗**: テンプレートベースの紹介文・タイトルを使用
 
 フォールバック情報は`meta.fallback_used`と`meta.fallback_reason`に記録されます。
 
@@ -237,6 +275,7 @@ bash test_generate_api.sh
 - 4つのテーマ（exercise, think, refresh, nature）でテスト
 - ランダムな開始地点（東京周辺）と距離（1.0-5.0km）でリクエスト
 - `round_trip: true`, `debug: false` で固定
+- フィードバック評価は`FEEDBACK_RATING`未指定時に1〜5でランダム
 - 結果をJSON形式で出力（`jq`で整形）
 
 **前提条件:**
