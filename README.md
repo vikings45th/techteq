@@ -207,7 +207,11 @@ bash test_generate_api.sh
 
 ルート生成リクエスト
 
-**リクエスト例:**
+**注意:**
+- `round_trip: true` の場合は `end_location` を無視します（送信は可）
+- `round_trip: false` の場合は `end_location` が必須です
+
+**リクエスト例（周回）:**
 ```json
 {
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -217,7 +221,30 @@ bash test_generate_api.sh
     "lat": 35.6812,
     "lng": 139.7671
   },
+  "end_location": {
+    "lat": 35.6896,
+    "lng": 139.6917
+  },
   "round_trip": true,
+  "debug": false
+}
+```
+
+**リクエスト例（片道）:**
+```json
+{
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "theme": "refresh",
+  "distance_km": 3.0,
+  "start_location": {
+    "lat": 35.6812,
+    "lng": 139.7671
+  },
+  "end_location": {
+    "lat": 35.6896,
+    "lng": 139.6917
+  },
+  "round_trip": false,
   "debug": false
 }
 ```
@@ -227,10 +254,16 @@ bash test_generate_api.sh
 {
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
   "route": {
+    "route_id": "e3b0c442-98fc-1c14-9afb-3c2e4f7a1d0b",
     "polyline": "encoded_polyline_string",
     "distance_km": 3.2,
     "duration_min": 45,
+    "title": "木陰を抜ける川沿いウォーク",
     "summary": "運動に適した散歩ルートです...",
+    "nav_waypoints": [
+      {"lat": 35.6812, "lng": 139.7671},
+      {"lat": 35.6840, "lng": 139.7702}
+    ],
     "spots": [
       {
         "name": "代々木公園",
@@ -259,6 +292,7 @@ bash test_generate_api.sh
 ```json
 {
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "route_id": "e3b0c442-98fc-1c14-9afb-3c2e4f7a1d0b",
   "rating": 5
 }
 ```

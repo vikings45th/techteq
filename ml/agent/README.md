@@ -117,7 +117,7 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 ルート生成リクエスト
 
 **注意:**
-- `round_trip: true` の場合は `end_location` を無視します
+- `round_trip: true` の場合は `end_location` を無視します（送信は可）
 - `round_trip: false` の場合は `end_location` が必須です
 
 **リクエスト例（周回）:**
@@ -129,6 +129,10 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
   "start_location": {
     "lat": 35.6812,
     "lng": 139.7671
+  },
+  "end_location": {
+    "lat": 35.6896,
+    "lng": 139.6917
   },
   "round_trip": true,
   "debug": false

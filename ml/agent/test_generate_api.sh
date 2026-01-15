@@ -99,22 +99,8 @@ test_theme() {
     echo "============================================================"
     
     # JSONペイロードを作成
-    local json_payload=$(cat <<EOF
-{
-  "request_id": "$request_id",
-  "theme": "$theme",
-  "distance_km": $distance_km,
-  "start_location": {
-    "lat": $lat,
-    "lng": $lng
-  },
-  "round_trip": $round_trip,
-  "debug": $debug
-}
-EOF
-)
     if [ "$round_trip" = "false" ]; then
-        json_payload=$(cat <<EOF
+        local json_payload=$(cat <<EOF
 {
   "request_id": "$request_id",
   "theme": "$theme",
@@ -126,6 +112,21 @@ EOF
   "end_location": {
     "lat": $end_lat,
     "lng": $end_lng
+  },
+  "round_trip": $round_trip,
+  "debug": $debug
+}
+EOF
+)
+    else
+        local json_payload=$(cat <<EOF
+{
+  "request_id": "$request_id",
+  "theme": "$theme",
+  "distance_km": $distance_km,
+  "start_location": {
+    "lat": $lat,
+    "lng": $lng
   },
   "round_trip": $round_trip,
   "debug": $debug

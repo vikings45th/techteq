@@ -102,6 +102,8 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
     t0 = time.time()
     if not req.round_trip and req.end_location is None:
         raise HTTPException(status_code=422, detail="end_location is required when round_trip is false")
+    # round_trip=true の場合は end_location を無視する
+    effective_end_location = None if req.round_trip else req.end_location
     plan_steps = [
         "generate_candidates",
         "classify_by_theme",
@@ -142,8 +144,8 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
             request_id=req.request_id,
             start_lat=float(req.start_location.lat),
             start_lng=float(req.start_location.lng),
-            end_lat=float(req.end_location.lat) if (req.end_location and not req.round_trip) else None,
-            end_lng=float(req.end_location.lng) if (req.end_location and not req.round_trip) else None,
+            end_lat=float(effective_end_location.lat) if effective_end_location else None,
+            end_lng=float(effective_end_location.lng) if effective_end_location else None,
             distance_km=float(req.distance_km),
             round_trip=bool(req.round_trip), 
         )
@@ -161,10 +163,10 @@ async def generate(req: GenerateRouteRequest) -> GenerateRouteResponse:
         start_lng = float(req.start_location.lng)
         
         # 必ずダミーpolylineを生成（空対策の保証）
-        if not req.round_trip and req.end_location is not None:
+        if effective_end_location is not None:
             fallback_points = [
                 (start_lat, start_lng),
-                (float(req.end_location.lat), float(req.end_location.lng)),
+                (float(effective_end_location.lat), float(effective_end_location.lng)),
             ]
         else:
             fallback_points = [
