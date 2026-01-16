@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+import random
 from typing import Any, Dict, List, Optional, TypedDict
 
 import polyline as polyline_lib
@@ -523,7 +524,30 @@ async def fetch_places(state: AgentState) -> Dict[str, Any]:
                 if not is_duplicate:
                     merged.append(p)
 
-        places = merged[:max_spots]
+        if merged:
+            # できるだけ異なるタイプを選ぶ
+            unique_type_spots: List[Dict[str, Any]] = []
+            used_types = set()
+            for p in merged:
+                p_type = p.get("type") or "unknown"
+                if p_type in used_types:
+                    continue
+                unique_type_spots.append(p)
+                used_types.add(p_type)
+                if len(unique_type_spots) >= max_spots:
+                    break
+
+            if len(unique_type_spots) < max_spots:
+                for p in merged:
+                    if p in unique_type_spots:
+                        continue
+                    unique_type_spots.append(p)
+                    if len(unique_type_spots) >= max_spots:
+                        break
+
+            places = unique_type_spots[:max_spots]
+        else:
+            places = []
         if places:
             tools_used = _ensure_tool_used(tools_used, "places")
             status = "ok"
@@ -575,7 +599,12 @@ async def generate_description_vertex(state: AgentState) -> Dict[str, Any]:
 
     spots_names = [s.name for s in spots] if spots else []
     spots_text = f"（見どころ: {', '.join(spots_names)}）" if spots_names else ""
-    description = f"【簡易提案!】条件に合わせた散歩ルートです{spots_text}"
+    template_candidates = [
+        f"今すぐ歩き出したくなる散歩ルートです{spots_text}",
+        f"気分が弾む散歩に出かけたくなるルートです{spots_text}",
+        f"景色の変化を楽しめる、わくわくする散歩ルートです{spots_text}",
+    ]
+    description = random.choice(template_candidates)
     status = "pending"
     fallback_used = True
     summary_type = "template"
