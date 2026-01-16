@@ -98,6 +98,18 @@ def _offset_latlng(lat: float, lng: float, distance_km: float, heading_deg: floa
     return {"lat": math.degrees(new_lat), "lng": math.degrees(new_lng)}  # 度に変換して返す
 
 
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """2点間の距離（km）を簡易的に計算する"""
+    earth_radius_km = 6371.0
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    dlat = lat2_rad - lat1_rad
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return earth_radius_km * c
+
+
 async def compute_route_candidates(
     *,
     request_id: str,
@@ -139,8 +151,22 @@ async def compute_route_candidates(
     headings = [0, 72, 144, -144, -72]
 
     # 片道かつ終了地点が指定されている場合は、その地点を目的地として使用
-    if not round_trip and end_lat is not None and end_lng is not None:
-        dests = [{"lat": float(end_lat), "lng": float(end_lng)}]
+    end_lat_f = float(end_lat) if end_lat is not None else None
+    end_lng_f = float(end_lng) if end_lng is not None else None
+    if not round_trip and end_lat_f is not None and end_lng_f is not None:
+        direct_km = _haversine_km(start_lat, start_lng, end_lat_f, end_lng_f)
+        # ほぼ同一地点だとRoutes APIが失敗しやすいので補正
+        if direct_km < 0.05:
+            logger.warning(
+                "[Routes API] request_id=%s end_location too close (%.3fkm). fallback to offsets.",
+                request_id,
+                direct_km,
+            )
+            end_lat_f = None
+            end_lng_f = None
+
+    if not round_trip and end_lat_f is not None and end_lng_f is not None:
+        dests = [{"lat": end_lat_f, "lng": end_lng_f}]
     else:
         # 往復ルートの場合、計算された点を*折り返し地点*として使用
         # distance_kmが目標の*ループ距離*の場合、折り返し地点は約半分の距離
