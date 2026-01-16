@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import random
 from typing import Optional
 import logging
 
@@ -83,22 +84,42 @@ def _spot_names(spots: Optional[list]) -> list[str]:
 
 def _fallback_summary(theme: str, distance_km: float, duration_min: float, spots: Optional[list]) -> str:
     theme_summaries = {
-        "think": f"信号が少なく一定のリズムで歩ける約{distance_km:.1f}kmのルート。頭の中を整理するのに最適です。",
-        "exercise": f"坂道や階段を多く含む約{distance_km:.1f}kmのルート。心拍数を上げてしっかり汗をかきましょう。",
-        "refresh": f"賑やかな通りを歩く約{distance_km:.1f}kmのルート。エネルギーをチャージして気分転換できます。",
-        "nature": f"緑豊かな公園をゆっくり抜ける約{distance_km:.1f}kmのルート。都会の喧騒から離れてリフレッシュできます。",
+        "think": [
+            f"静かなリズムで歩ける約{distance_km:.1f}kmのルートで、頭がすっと整う心地よいひとときを楽しめます。",
+            f"約{distance_km:.1f}kmの落ち着いた道のりを歩きながら、思考が冴える爽やかな時間を味わえます。",
+            f"約{distance_km:.1f}kmの静かな散歩道で、ゆっくりと自分のペースに戻れる時間が広がります。",
+        ],
+        "exercise": [
+            f"アップダウンも楽しめる約{distance_km:.1f}kmのルートで、気分が高まる爽快ウォークに出かけましょう。",
+            f"約{distance_km:.1f}kmのアクティブな道のりで、体が目覚めるワクワク散歩が始まります。",
+            f"心拍が上がる約{distance_km:.1f}kmのルートで、汗と一緒に気分もリフレッシュしましょう。",
+        ],
+        "refresh": [
+            f"街の活気を感じながら歩ける約{distance_km:.1f}kmのルートで、気分が弾むリフレッシュを味わえます。",
+            f"約{distance_km:.1f}kmの街歩きで、景色の変化を楽しむ軽やかな気分転換に出かけられます。",
+            f"にぎわいを感じる約{distance_km:.1f}kmの道のりで、心がほどける散歩時間を楽しめます。",
+        ],
+        "nature": [
+            f"緑に包まれながら歩ける約{distance_km:.1f}kmのルートで、心がほどける自然時間を満喫できます。",
+            f"約{distance_km:.1f}kmの自然を感じる散歩道で、深呼吸したくなる景色が続きます。",
+            f"木漏れ日を感じる約{distance_km:.1f}kmのルートで、癒やしの散策が待っています。",
+        ],
     }
-    return theme_summaries.get(theme, f"約{distance_km:.1f}kmを{duration_min:.0f}分で歩ける散歩コースです。")
+    options = theme_summaries.get(
+        theme,
+        [f"約{distance_km:.1f}kmを{duration_min:.0f}分で歩ける、歩き出したくなる散歩コースです。"],
+    )
+    return random.choice(options)
 
 
 def _fallback_title(theme: str, distance_km: float, duration_min: float, spots: Optional[list]) -> str:
     theme_titles = {
-        "think": "静けさの川沿い",
-        "exercise": "アップダウン燃焼",
-        "refresh": "街なかリフレッシュ",
-        "nature": "木漏れ日の森歩き",
+        "think": ["静けさの川沿い", "ひと息つける小道", "思索の並木道"],
+        "exercise": ["アップダウン燃焼", "坂道チャージ", "アクティブ散歩"],
+        "refresh": ["街なかリフレッシュ", "きらめき街歩き", "気分転換の小径"],
+        "nature": ["木漏れ日の森歩き", "緑風のさんぽ道", "自然に浸る散策"],
     }
-    base = theme_titles.get(theme, "散歩")
+    base = random.choice(theme_titles.get(theme, ["散歩"]))
     return f"{base}コース"
 
 
