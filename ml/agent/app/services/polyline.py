@@ -159,6 +159,22 @@ def _point_segment_distance_m(
     return math.hypot(px - cx, py - cy)
 
 
+def distance_to_path_m(points: List[Tuple[float, float]], point: Tuple[float, float]) -> float:
+    """
+    点から経路（折れ線）までの最短距離（メートル）
+    """
+    if not points:
+        return float("inf")
+    if len(points) == 1:
+        return _haversine_m(points[0], point)
+    min_dist = float("inf")
+    for i in range(len(points) - 1):
+        d = _point_segment_distance_m(point, points[i], points[i + 1])
+        if d < min_dist:
+            min_dist = d
+    return min_dist
+
+
 def simplify_douglas_peucker(
     points: List[Tuple[float, float]],
     epsilon_m: float = 20.0,

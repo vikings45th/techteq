@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 import logging
+import random
 
 import httpx
 
@@ -73,6 +74,64 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
     return theme_to_types.get(theme, ["park"])  # デフォルトは公園
 
 
+def _get_hidden_keywords_for_theme(theme: str) -> List[str]:
+    theme_to_keywords: Dict[str, List[str]] = {
+        "exercise": ["穴場", "遊歩道", "静かな道"],
+        "think": ["静か", "落ち着く", "ひっそり"],
+        "refresh": ["穴場", "街歩き", "景色"],
+        "nature": ["緑", "木漏れ日", "自然"],
+    }
+    return theme_to_keywords.get(theme, ["穴場"])
+
+
+def _get_classic_place_types_for_theme(theme: str) -> List[str]:
+    theme_to_types: Dict[str, List[str]] = {
+        "exercise": ["park", "gym", "sports_complex", "athletic_field"],
+        "think": ["library", "museum", "cafe", "art_gallery"],
+        "refresh": ["tourist_attraction", "restaurant", "cafe", "observation_deck", "plaza"],
+        "nature": ["park", "national_park", "botanical_garden", "garden", "beach"],
+    }
+    return theme_to_types.get(theme, ["park"])
+
+
+def _is_outdoor_type(place_type: str) -> bool:
+    outdoor_types = {
+        "park",
+        "national_park",
+        "state_park",
+        "botanical_garden",
+        "garden",
+        "beach",
+        "hiking_area",
+        "cycling_park",
+        "plaza",
+        "playground",
+        "athletic_field",
+        "wildlife_park",
+        "wildlife_refuge",
+        "observation_deck",
+        "tourist_attraction",
+    }
+    return place_type in outdoor_types
+
+
+def _has_opening_hours(place: Dict[str, Any]) -> bool:
+    return bool(place.get("currentOpeningHours") or place.get("regularOpeningHours"))
+
+
+def pick_hidden_keyword(theme: Optional[str]) -> Optional[str]:
+    if not theme:
+        return None
+    options = _get_hidden_keywords_for_theme(theme)
+    return random.choice(options) if options else None
+
+
+def get_classic_place_types_for_theme(theme: Optional[str]) -> List[str]:
+    if not theme:
+        return []
+    return _get_classic_place_types_for_theme(theme)
+
+
 async def search_spots(
     *,
     lat: float,
@@ -80,9 +139,14 @@ async def search_spots(
     theme: Optional[str] = None,
     radius_m: int = 1500,
     max_results: int = 5,
+    included_types: Optional[List[str]] = None,
+    keyword: Optional[str] = None,
+    allow_unfiltered_fallback: bool = True,
+    allow_outdoor_no_hours: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Fetch nearby places filtered by theme. Returns a small list of {name, type, place_id}.
+    Optionally applies included types and a keyword for discovery-focused search.
     
     Args:
         lat: 緯度
@@ -90,6 +154,10 @@ async def search_spots(
         theme: テーマ（"exercise", "think", "refresh", "nature"）
         radius_m: 検索半径（メートル）
         max_results: 最大結果数
+        included_types: 明示的に指定する場所タイプ
+        keyword: 日本語キーワード（穴場検索用）
+        allow_unfiltered_fallback: テーマフィルタなし検索へのフォールバック可否
+        allow_outdoor_no_hours: 営業時間がなくても屋外なら許可
     
     Returns:
         場所のリスト（name, type, place_idを含む）
@@ -110,7 +178,7 @@ async def search_spots(
 
     headers = {
         "X-Goog-Api-Key": api_key,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.types",
+        "X-Goog-FieldMask": "places.id,places.displayName,places.types,places.location,places.currentOpeningHours,places.regularOpeningHours",
     }
     body = {
         "locationRestriction": {
@@ -126,7 +194,10 @@ async def search_spots(
     # themeが指定されている場合、includedTypesでフィルタリング
     # ただし、結果が空の場合はフォールバックとしてincludedTypesなしで検索
     use_theme_filter = False  # テーマフィルタを使用したかどうかのフラグ
-    if theme:
+    if included_types:
+        body["includedTypes"] = included_types  # 明示的に指定された場所タイプ
+        use_theme_filter = True
+    elif theme:
         included_types = _get_place_types_for_theme(theme)  # テーマに応じた場所タイプを取得
         body["includedTypes"] = included_types  # リクエストボディに場所タイプを追加
         use_theme_filter = True
@@ -135,18 +206,30 @@ async def search_spots(
             theme,
             included_types,
         )
+    if keyword:
+        body["keyword"] = keyword
 
     try:
         async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT_SEC) as client:
             resp = await client.post(settings.MAPS_PLACES_BASE, json=body, headers=headers)
             if resp.status_code != 200:
-                logger.warning(
-                    "[Places API] HTTP error: status=%d response=%s body=%s",
-                    resp.status_code,
-                    resp.text[:500],
-                    str(body)[:500],
-                )
-                return []
+                if resp.status_code == 400 and keyword:
+                    logger.info(
+                        "[Places API] Keyword rejected, retrying without keyword. keyword=%s",
+                        keyword,
+                    )
+                    body_retry = body.copy()
+                    body_retry.pop("keyword", None)
+                    resp = await client.post(settings.MAPS_PLACES_BASE, json=body_retry, headers=headers)
+                    body = body_retry
+                if resp.status_code != 200:
+                    logger.warning(
+                        "[Places API] HTTP error: status=%d response=%s body=%s",
+                        resp.status_code,
+                        resp.text[:500],
+                        str(body)[:500],
+                    )
+                    return []
             data = resp.json()
             places = data.get("places", [])  # レスポンスから場所リストを取得
             out: List[Dict[str, Any]] = []
@@ -156,11 +239,24 @@ async def search_spots(
                 place_id = p.get("id")  # place_idを取得
                 types = p.get("types") or []  # 場所タイプのリスト
                 primary = types[0] if types else "unknown"  # 最初のタイプを主要タイプとする
-                if name:  # 名前がある場合のみ追加
-                    out.append({"name": name, "type": primary, "place_id": place_id})
+                location = p.get("location") or {}
+                lat = location.get("latitude")
+                lng = location.get("longitude")
+                has_hours = _has_opening_hours(p)
+                allow_no_hours = allow_outdoor_no_hours and _is_outdoor_type(primary)
+                if name and lat is not None and lng is not None and (has_hours or allow_no_hours):
+                    out.append(
+                        {
+                            "name": name,
+                            "type": primary,
+                            "place_id": place_id,
+                            "lat": float(lat),
+                            "lng": float(lng),
+                        }
+                    )
             
             # themeフィルタを使用したが結果が空の場合、フォールバックとしてincludedTypesなしで再検索
-            if use_theme_filter and len(out) == 0:
+            if allow_unfiltered_fallback and use_theme_filter and len(out) == 0:
                 logger.info(
                     "[Places API] No results with theme filter, falling back to unfiltered search"
                 )
@@ -179,8 +275,21 @@ async def search_spots(
                         place_id = p.get("id")
                         types = p.get("types") or []
                         primary = types[0] if types else "unknown"
-                        if name:
-                            out.append({"name": name, "type": primary, "place_id": place_id})
+                        location = p.get("location") or {}
+                        lat = location.get("latitude")
+                        lng = location.get("longitude")
+                        has_hours = _has_opening_hours(p)
+                        allow_no_hours = allow_outdoor_no_hours and _is_outdoor_type(primary)
+                        if name and lat is not None and lng is not None and (has_hours or allow_no_hours):
+                            out.append(
+                                {
+                                    "name": name,
+                                    "type": primary,
+                                    "place_id": place_id,
+                                    "lat": float(lat),
+                                    "lng": float(lng),
+                                }
+                            )
                 else:
                     logger.warning(
                         "[Places API] Fallback search HTTP error: status=%d response=%s",

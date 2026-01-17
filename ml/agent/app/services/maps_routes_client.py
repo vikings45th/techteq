@@ -157,6 +157,7 @@ async def compute_route_candidates(
     # 片道かつ終了地点が指定されている場合は、その地点を目的地として使用
     end_lat_f = float(end_lat) if end_lat is not None else None
     end_lng_f = float(end_lng) if end_lng is not None else None
+    direct_km = None
     if not round_trip and end_lat_f is not None and end_lng_f is not None:
         direct_km = _haversine_km(start_lat, start_lng, end_lat_f, end_lng_f)
         # ほぼ同一地点だとRoutes APIが失敗しやすいので補正
@@ -170,7 +171,20 @@ async def compute_route_candidates(
             end_lng_f = None
 
     if not round_trip and end_lat_f is not None and end_lng_f is not None:
-        dests = [{"lat": end_lat_f, "lng": end_lng_f}]
+        if direct_km is not None and direct_km < distance_km:
+            detour_km = max((distance_km - direct_km) / 2.0, 0.5)
+            mid_lat = (start_lat + end_lat_f) / 2.0
+            mid_lng = (start_lng + end_lng_f) / 2.0
+            dests = [
+                {
+                    "lat": end_lat_f,
+                    "lng": end_lng_f,
+                    "waypoints": [_offset_latlng(mid_lat, mid_lng, detour_km, h)],
+                }
+                for h in headings
+            ]
+        else:
+            dests = [{"lat": end_lat_f, "lng": end_lng_f}]
     else:
         if round_trip:
             # 往復ルート: 3つの中間地点で曲がりを作る
@@ -231,6 +245,11 @@ async def compute_route_candidates(
                 ]
             else:
                 body["destination"] = {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}}
+                if isinstance(dest, dict) and dest.get("waypoints"):
+                    body["intermediates"] = [
+                        {"location": {"latLng": {"latitude": wp["lat"], "longitude": wp["lng"]}}}
+                        for wp in dest["waypoints"]
+                    ]
             
             # リクエストのログ出力（デバッグ用）
             if round_trip:
@@ -250,13 +269,14 @@ async def compute_route_candidates(
                 )
             else:
                 logger.debug(
-                    "[Routes API Request] request_id=%s route_%d origin=(%.6f,%.6f) dest=(%.6f,%.6f) round_trip=%s",
+                    "[Routes API Request] request_id=%s route_%d origin=(%.6f,%.6f) dest=(%.6f,%.6f) waypoints=%d round_trip=%s",
                     request_id,
                     idx,
                     start_lat,
                     start_lng,
                     dest["lat"],
                     dest["lng"],
+                    len(dest.get("waypoints") or []) if isinstance(dest, dict) else 0,
                     round_trip,
                 )
             

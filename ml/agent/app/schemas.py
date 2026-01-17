@@ -29,6 +29,8 @@ class Spot(BaseModel):
     """見どころスポットの情報"""
     name: str  # スポット名
     type: str  # スポットタイプ（例: "park", "cafe"）
+    lat: confloat(ge=-90, le=90)  # 緯度
+    lng: confloat(ge=-180, le=180)  # 経度
 
 
 class TitleResponse(BaseModel):

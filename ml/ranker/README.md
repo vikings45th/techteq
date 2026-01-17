@@ -47,6 +47,8 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
         "loop_closure_m": 50.0,
         "park_poi_ratio": 0.3,
         "poi_density": 0.5,
+        "spot_type_diversity": 0.6,
+        "detour_over_ratio": 0.1,
         "theme_exercise": 1,
         "has_stairs": 1,
         "elevation_density": 25.0
@@ -73,6 +75,8 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
         "distance_penalty": -0.033,
         "loop_closure_bonus": 0.2,
         "poi_bonus": 0.145,
+        "diversity_bonus": 0.072,
+        "detour_penalty": -0.015,
         "exercise_bonus": 0.35,
         "final_score": 0.85
       }
@@ -173,10 +177,30 @@ if theme_exercise:
   - 5-10m/km: 軽い坂道（+0.1）
   - 50m/km以上: 急な坂道（+0.1）
 
+#### 5. スポット多様性ボーナス
+
+スポットのカテゴリが分散しているほど良い。
+
+```python
+diversity_bonus = min(max(spot_type_diversity, 0.0), 1.0) * 0.12
+```
+
+- `spot_type_diversity`: スポットタイプ多様性（0.0-1.0）
+
+#### 6. 寄り道超過ペナルティ
+
+許容寄り道距離を超えた分を減点。
+
+```python
+detour_penalty = -min(max(detour_over_ratio, 0.0), 1.0) * 0.15
+```
+
+- `detour_over_ratio`: 逸脱超過比率（0.0-∞、大きいほど悪い）
+
 ### 最終スコア
 
 ```python
-score = base + distance_penalty + loop_closure_bonus + poi_bonus + exercise_bonus
+score = base + distance_penalty + loop_closure_bonus + poi_bonus + diversity_bonus + detour_penalty + exercise_bonus
 score = max(0.0, min(1.0, score))  # 0.0-1.0の範囲にクリップ
 ```
 
@@ -187,6 +211,8 @@ score = max(0.0, min(1.0, score))  # 0.0-1.0の範囲にクリップ
 - `loop_closure_m`: ループ閉鎖距離（m、小さいほど良い）
 - `park_poi_ratio`: 公園POI比率（大きいほど良い）
 - `poi_density`: POI密度（大きいほど良い）
+- `spot_type_diversity`: スポットタイプ多様性（大きいほど良い）
+- `detour_over_ratio`: 寄り道超過比率（小さいほど良い）
 - `theme_exercise`: 運動テーマフラグ（1 or 0）
 - `has_stairs`: 階段の有無（1 or 0）
 - `elevation_density`: 標高差密度（m/km）

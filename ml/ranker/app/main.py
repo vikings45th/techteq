@@ -45,6 +45,14 @@ def _calculate_score(features: Dict[str, Any]) -> tuple[float, Dict[str, float]]
     park_poi_ratio = float(features.get("park_poi_ratio", 0.0))  # 公園POI比率
     poi_density = float(features.get("poi_density", 0.0))  # POI密度
     poi_bonus = park_poi_ratio * 0.15 + min(poi_density, 1.0) * 0.1  # 上限あり（poi_densityは1.0でクランプ）
+
+    # 3.5 スポットタイプ多様性ボーナス（単調さ抑止）
+    spot_type_diversity = float(features.get("spot_type_diversity", 0.0))  # 0.0-1.0
+    diversity_bonus = min(max(spot_type_diversity, 0.0), 1.0) * 0.12
+
+    # 3.6 寄り道超過ペナルティ（許容距離を超えた分を減点）
+    detour_over_ratio = float(features.get("detour_over_ratio", 0.0))  # 0.0-∞
+    detour_penalty = -min(max(detour_over_ratio, 0.0), 1.0) * 0.15
     
     # 4. Exerciseテーマの場合: 坂道と階段のボーナス
     exercise_bonus = 0.0
@@ -70,7 +78,7 @@ def _calculate_score(features: Dict[str, Any]) -> tuple[float, Dict[str, float]]
     base = 0.5
     
     # 合計スコアを計算
-    score = base + distance_penalty + loop_closure_bonus + poi_bonus + exercise_bonus
+    score = base + distance_penalty + loop_closure_bonus + poi_bonus + diversity_bonus + detour_penalty + exercise_bonus
     score = max(0.0, min(1.0, score))  # 0.0-1.0の範囲にクリップ
     
     # 内訳（デバッグ用）
@@ -79,6 +87,8 @@ def _calculate_score(features: Dict[str, Any]) -> tuple[float, Dict[str, float]]
         "distance_penalty": distance_penalty,  # 距離乖離ペナルティ
         "loop_closure_bonus": loop_closure_bonus,  # ループ閉鎖ボーナス
         "poi_bonus": poi_bonus,  # POIボーナス
+        "diversity_bonus": diversity_bonus,  # 多様性ボーナス
+        "detour_penalty": detour_penalty,  # 寄り道超過ペナルティ
         "exercise_bonus": exercise_bonus,  # 運動ボーナス
         "final_score": score,  # 最終スコア
     }

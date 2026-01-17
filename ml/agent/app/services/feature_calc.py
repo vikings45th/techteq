@@ -30,6 +30,9 @@ def calc_features(
     candidate_rank_in_theme: int,
     poi_density: float = 0.0,
     park_poi_ratio: float = 0.0,
+    spot_type_diversity: float = 0.0,
+    detour_over_ratio: float = 0.0,
+    detour_allowance_m: float = 0.0,
 ) -> Dict[str, Any]:
     """
     ルート候補から機械学習用の特徴量を計算する
@@ -97,4 +100,7 @@ def calc_features(
         # オプション特徴量（MVP: 利用不可の場合は0.0）
         "poi_density": float(poi_density),  # POI密度
         "park_poi_ratio": float(park_poi_ratio),  # 公園POI比率
+        "spot_type_diversity": float(spot_type_diversity),  # スポットタイプ多様性
+        "detour_over_ratio": float(detour_over_ratio),  # 寄り道超過比率
+        "detour_allowance_m": float(detour_allowance_m),  # 許容寄り道距離（m）
     }

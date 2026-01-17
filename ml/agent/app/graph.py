@@ -159,9 +159,11 @@ def _build_spots_from_places(places: List[Dict[str, Any]]) -> List[Spot]:
         Spot(
             name=p.get("name", ""),
             type=translate_place_type_to_japanese(p.get("type", "unknown")),
+            lat=float(p.get("lat")),
+            lng=float(p.get("lng")),
         )
         for p in places
-        if p.get("name")
+        if p.get("name") and p.get("lat") is not None and p.get("lng") is not None
     ]
 
 
@@ -170,6 +172,154 @@ def _ensure_tool_used(tools_used: List[ToolName], tool: ToolName) -> List[ToolNa
     if tool not in updated:
         updated.append(tool)
     return updated
+
+
+def _select_unique_types(places: List[Dict[str, Any]], max_spots: int) -> List[Dict[str, Any]]:
+    if not places:
+        return []
+    unique_type_spots: List[Dict[str, Any]] = []
+    used_types = set()
+    for p in places:
+        p_type = p.get("type") or "unknown"
+        if p_type in used_types:
+            continue
+        unique_type_spots.append(p)
+        used_types.add(p_type)
+        if len(unique_type_spots) >= max_spots:
+            break
+
+    if len(unique_type_spots) < max_spots:
+        for p in places:
+            if p in unique_type_spots:
+                continue
+            unique_type_spots.append(p)
+            if len(unique_type_spots) >= max_spots:
+                break
+
+    return unique_type_spots[:max_spots]
+
+
+def _place_dedupe_key(place: Dict[str, Any]) -> tuple[str, str] | None:
+    place_id = place.get("place_id")
+    if place_id:
+        return ("place_id", str(place_id))
+    name = place.get("name")
+    if name:
+        return ("name", str(name))
+    lat = place.get("lat")
+    lng = place.get("lng")
+    if lat is None or lng is None:
+        return None
+    return ("latlng", f"{float(lat):.5f},{float(lng):.5f}")
+
+
+def _spot_type_diversity(places: List[Dict[str, Any]]) -> float:
+    if not places:
+        return 0.0
+    types = [
+        translate_place_type_to_japanese(p.get("type", "unknown"))
+        for p in places
+        if p.get("type")
+    ]
+    if not types:
+        return 0.0
+    counts: Dict[str, int] = {}
+    for t in types:
+        counts[t] = counts.get(t, 0) + 1
+    max_count = max(counts.values())
+    return max(0.0, 1.0 - (max_count / len(types)))
+
+
+def _detour_allowance_m(distance_km: float) -> float:
+    if distance_km <= 3.0:
+        return 150.0
+    if distance_km <= 6.0:
+        return 250.0
+    if distance_km <= 10.0:
+        return 400.0
+    return 600.0
+
+
+async def _collect_places_two_phase(
+    *,
+    request_id: str,
+    theme: str,
+    sample_points: List[tuple[float, float]],
+    max_spots: int = 5,
+    radius_m: int = 800,
+    max_results: int = 3,
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    merged: List[Dict[str, Any]] = []
+    seen_keys = set()
+    hidden_keyword = places_client.pick_hidden_keyword(theme)
+    classic_types = places_client.get_classic_place_types_for_theme(theme)
+    phases = [
+        {
+            "name": "hidden",
+            "keyword": hidden_keyword,
+            "included_types": None,
+            "allow_unfiltered_fallback": False,
+            "allow_outdoor_no_hours": False,
+        },
+        {
+            "name": "classic",
+            "keyword": None,
+            "included_types": classic_types,
+            "allow_unfiltered_fallback": True,
+            "allow_outdoor_no_hours": True,
+        },
+    ]
+
+    for phase in phases:
+        if len(merged) >= max_spots:
+            break
+        for (lat, lng) in sample_points:
+            if len(merged) >= max_spots:
+                break
+
+            logger.debug(
+                "[Places] request_id=%s phase=%s searching at (%.6f, %.6f) theme=%s keyword=%s",
+                request_id,
+                phase["name"],
+                lat,
+                lng,
+                theme,
+                phase["keyword"],
+            )
+            found = await places_client.search_spots(
+                lat=float(lat),
+                lng=float(lng),
+                theme=theme,
+                radius_m=radius_m,
+                max_results=max_results,
+                included_types=phase["included_types"],
+                keyword=phase["keyword"],
+                allow_unfiltered_fallback=phase["allow_unfiltered_fallback"],
+                allow_outdoor_no_hours=phase["allow_outdoor_no_hours"],
+            )
+            logger.info(
+                "[Places] request_id=%s phase=%s found %d places at (%.6f, %.6f): %s",
+                request_id,
+                phase["name"],
+                len(found),
+                lat,
+                lng,
+                [p.get("name") for p in found],
+            )
+            for p in found:
+                if len(merged) >= max_spots:
+                    break
+
+                key = _place_dedupe_key(p)
+                if key is None:
+                    continue
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                merged.append(p)
+
+    selected = _select_unique_types(merged, max_spots)
+    return merged, selected
 
 
 async def validate_request(state: AgentState) -> Dict[str, Any]:
@@ -314,6 +464,46 @@ async def compute_features(state: AgentState) -> Dict[str, Any]:
             has_stairs=normalized.get("has_stairs", False),
             elevation_gain_m=float(normalized.get("elevation_gain_m", 0.0)),
         )
+        spot_type_diversity = 0.0
+        detour_over_ratio = 0.0
+        detour_allowance_m = _detour_allowance_m(float(req.distance_km))
+        try:
+            decoded_points: List[tuple[float, float]] = []
+            if cand.polyline and cand.polyline.strip() not in ("", "xxxx"):
+                decoded_points = polyline.decode_polyline(cand.polyline)
+            sample_points = polyline.sample_points(decoded_points, [0.25, 0.5, 0.75]) if decoded_points else []
+            if not sample_points:
+                sample_points = [(float(req.start_location.lat), float(req.start_location.lng))]
+            merged_places, _ = await _collect_places_two_phase(
+                request_id=req.request_id,
+                theme=req.theme,
+                sample_points=sample_points,
+                max_spots=5,
+                radius_m=800,
+                max_results=3,
+            )
+            spot_type_diversity = _spot_type_diversity(merged_places)
+            if decoded_points and merged_places:
+                over_ratios: List[float] = []
+                for p in merged_places:
+                    lat = p.get("lat")
+                    lng = p.get("lng")
+                    if lat is None or lng is None:
+                        continue
+                    detour_m = polyline.distance_to_path_m(decoded_points, (float(lat), float(lng)))
+                    if detour_allowance_m <= 0:
+                        continue
+                    over = max(0.0, detour_m - detour_allowance_m)
+                    over_ratios.append(over / detour_allowance_m)
+                if over_ratios:
+                    detour_over_ratio = sum(over_ratios) / len(over_ratios)
+        except Exception as e:
+            logger.warning(
+                "[Places Diversity Failed] request_id=%s route_id=%s err=%r",
+                req.request_id,
+                cand.route_id,
+                e,
+            )
         feats = calc_features(
             candidate=cand,
             theme=req.theme,
@@ -321,6 +511,9 @@ async def compute_features(state: AgentState) -> Dict[str, Any]:
             distance_km_target=float(req.distance_km),
             relaxation_step=0,
             candidate_rank_in_theme=i,
+            spot_type_diversity=spot_type_diversity,
+            detour_over_ratio=detour_over_ratio,
+            detour_allowance_m=detour_allowance_m,
         )
         candidate_features_map[cand.route_id] = feats
         candidate_index_map[cand.route_id] = i
@@ -469,85 +662,14 @@ async def fetch_places(state: AgentState) -> Dict[str, Any]:
     places: List[Dict[str, Any]] = []
 
     try:
-        merged: List[Dict[str, Any]] = []
-        seen_names = set()
-        seen_place_ids = set()
-        max_spots = 5
-
-        for (lat, lng) in sample_points:
-            if len(merged) >= max_spots:
-                break
-
-            logger.debug(
-                "[Places] request_id=%s searching at (%.6f, %.6f) theme=%s",
-                req.request_id,
-                lat,
-                lng,
-                req.theme,
-            )
-            found = await places_client.search_spots(
-                lat=float(lat),
-                lng=float(lng),
-                theme=req.theme,
-                radius_m=800,
-                max_results=3,
-            )
-            logger.info(
-                "[Places] request_id=%s found %d places at (%.6f, %.6f): %s",
-                req.request_id,
-                len(found),
-                lat,
-                lng,
-                [p.get("name") for p in found],
-            )
-            for p in found:
-                if len(merged) >= max_spots:
-                    break
-
-                name = p.get("name")
-                place_id = p.get("place_id")
-                if not name:
-                    continue
-
-                is_duplicate = False
-                if place_id:
-                    if place_id in seen_place_ids:
-                        is_duplicate = True
-                    else:
-                        seen_place_ids.add(place_id)
-                else:
-                    if name in seen_names:
-                        is_duplicate = True
-                    else:
-                        seen_names.add(name)
-
-                if not is_duplicate:
-                    merged.append(p)
-
-        if merged:
-            # できるだけ異なるタイプを選ぶ
-            unique_type_spots: List[Dict[str, Any]] = []
-            used_types = set()
-            for p in merged:
-                p_type = p.get("type") or "unknown"
-                if p_type in used_types:
-                    continue
-                unique_type_spots.append(p)
-                used_types.add(p_type)
-                if len(unique_type_spots) >= max_spots:
-                    break
-
-            if len(unique_type_spots) < max_spots:
-                for p in merged:
-                    if p in unique_type_spots:
-                        continue
-                    unique_type_spots.append(p)
-                    if len(unique_type_spots) >= max_spots:
-                        break
-
-            places = unique_type_spots[:max_spots]
-        else:
-            places = []
+        _, places = await _collect_places_two_phase(
+            request_id=req.request_id,
+            theme=req.theme,
+            sample_points=sample_points,
+            max_spots=5,
+            radius_m=800,
+            max_results=3,
+        )
         if places:
             tools_used = _ensure_tool_used(tools_used, "places")
             status = "ok"
@@ -568,6 +690,7 @@ async def fetch_places(state: AgentState) -> Dict[str, Any]:
 async def simplify_polyline_to_waypoints(state: AgentState) -> Dict[str, Any]:
     decoded_points = state["decoded_points"]
     sample_points = state["sample_points"]
+    places = state.get("places", [])
     simplify_meta: Dict[str, Any] = {}
 
     if decoded_points:
@@ -587,6 +710,36 @@ async def simplify_polyline_to_waypoints(state: AgentState) -> Dict[str, Any]:
         }
 
     nav_waypoints = [LatLng(lat=float(lat), lng=float(lng)) for (lat, lng) in waypoint_points]
+    spot_points = [
+        LatLng(lat=float(p["lat"]), lng=float(p["lng"]))
+        for p in places
+        if p.get("lat") is not None and p.get("lng") is not None
+    ]
+    combined = nav_waypoints + spot_points
+    seen = set()
+    deduped: List[LatLng] = []
+    for wp in combined:
+        key = (round(wp.lat, 6), round(wp.lng, 6))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(wp)
+
+    max_points = 10
+    if len(deduped) > max_points:
+        trimmed: List[LatLng] = []
+        if len(nav_waypoints) >= 2:
+            trimmed.append(nav_waypoints[0])
+            trimmed.append(nav_waypoints[-1])
+        for wp in deduped:
+            if len(trimmed) >= max_points:
+                break
+            if wp in trimmed:
+                continue
+            trimmed.append(wp)
+        deduped = trimmed[:max_points]
+
+    nav_waypoints = deduped
     return {"nav_waypoints": nav_waypoints, "simplify_meta": simplify_meta}
 
 
@@ -854,7 +1007,7 @@ async def build_response(state: AgentState) -> Dict[str, Any]:
             },
             "places": {
                 "spots_count": len(spots),
-                "spots": [{"name": s.name, "type": s.type} for s in spots] if spots else [],
+                "spots": [{"name": s.name, "type": s.type, "lat": s.lat, "lng": s.lng} for s in spots] if spots else [],
                 "status": state["places_status"],
             },
             "ranker": {
