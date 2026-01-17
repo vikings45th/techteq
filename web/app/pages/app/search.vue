@@ -30,13 +30,19 @@
     debug: false
   });
 
-  // useStateから検索条件を取得、なければ初期値を使用して保存
-  const savedPayload = useState<ApiRequest>('searchPayload', () => getDefaultPayload());
+  // 初期値を確実に取得
+  const initialPayload = getDefaultPayload();
   
-  // reactiveでjsonPayloadを作成（savedPayload.valueが存在することを確認）
-  const jsonPayload = reactive<ApiRequest>(
-    savedPayload.value ? { ...savedPayload.value } : getDefaultPayload()
-  );
+  // useStateから検索条件を取得、なければ初期値を使用して保存
+  const savedPayload = useState<ApiRequest>('searchPayload', () => ({ ...initialPayload }));
+  
+  // savedPayload.valueが確実に存在するようにする
+  if (!savedPayload.value) {
+    savedPayload.value = { ...initialPayload };
+  }
+  
+  // reactiveでjsonPayloadを作成
+  const jsonPayload = reactive<ApiRequest>({ ...savedPayload.value });
 
   // jsonPayloadの変更をuseStateに保存
   watch(jsonPayload, (newPayload) => {
