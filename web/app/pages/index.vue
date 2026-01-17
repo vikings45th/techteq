@@ -1,6 +1,4 @@
 <script setup lang="ts">
-	const generateParams = ref("/app?theme=exercise&distance=5");
-
 	const features = ref([
 		{
 			title: '今の気分',
@@ -19,15 +17,10 @@
 	const ctaLinks = ref([
 		{
 			label: '散歩する',
-			to: '/app',
+			to: '/app/search',
 			icon: 'i-lucide-square-play'
 		},
 	])
-
-	const handleSubmit = (m: string, d: number) => {
-		generateParams.value = "/app?theme="+m+"&distance="+d;
-	};
-
 </script>
 
 <template>
@@ -45,9 +38,7 @@
 	<UPageSection
     title="早速歩く"
   >
-		<RouteForm :detailed="false" @submit="handleSubmit"/>
-		<UButton label="ルート生成" :to="generateParams"/>
-		<UButton label="詳細条件を入力" variant="outline" to="/app"/>
+		<UButton label="詳細条件を入力" variant="outline" to="/app/search"/>
 	</UPageSection>
 	<UPageSection
     title="“ちょうどいい散歩コース”を提案します"
