@@ -168,11 +168,18 @@ async def compute_route_candidates(
     if not round_trip and end_lat_f is not None and end_lng_f is not None:
         dests = [{"lat": end_lat_f, "lng": end_lng_f}]
     else:
-        # 往復ルートの場合、計算された点を*折り返し地点*として使用
-        # distance_kmが目標の*ループ距離*の場合、折り返し地点は約半分の距離
-        waypoint_distance_km = max((distance_km / 2.0) if round_trip else distance_km, 0.5)
-        # 各方位角に対して目的地を計算
-        dests = [_offset_latlng(start_lat, start_lng, waypoint_distance_km, h) for h in headings]
+        if round_trip:
+            # 往復ルート: 3つの中間地点で曲がりを作る
+            waypoint_distance_km = max(distance_km / 4.0, 0.5)
+            dests = []
+            for h in headings:
+                p1 = _offset_latlng(start_lat, start_lng, waypoint_distance_km, h)
+                p2 = _offset_latlng(start_lat, start_lng, waypoint_distance_km, h + 60)
+                p3 = _offset_latlng(start_lat, start_lng, waypoint_distance_km, h - 60)
+                dests.append([p1, p2, p3])
+        else:
+            waypoint_distance_km = max(distance_km, 0.5)
+            dests = [_offset_latlng(start_lat, start_lng, waypoint_distance_km, h) for h in headings]
     
     headers = {
         "X-Goog-Api-Key": api_key,
@@ -201,25 +208,42 @@ async def compute_route_candidates(
                 }
 
             if round_trip:
-                # Loop route: start -> (turnaround waypoint) -> start
+                # Loop route: start -> (waypoints) -> start
                 body["destination"] = {"location": {"latLng": {"latitude": start_lat, "longitude": start_lng}}}
                 body["intermediates"] = [
-                    {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}}
+                    {"location": {"latLng": {"latitude": wp["lat"], "longitude": wp["lng"]}}}
+                    for wp in dest
                 ]
             else:
                 body["destination"] = {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}}
             
             # リクエストのログ出力（デバッグ用）
-            logger.debug(
-                "[Routes API Request] request_id=%s route_%d origin=(%.6f,%.6f) dest=(%.6f,%.6f) round_trip=%s",
-                request_id,
-                idx,
-                start_lat,
-                start_lng,
-                dest["lat"],
-                dest["lng"],
-                round_trip,
-            )
+            if round_trip:
+                logger.debug(
+                    "[Routes API Request] request_id=%s route_%d origin=(%.6f,%.6f) waypoints=(%.6f,%.6f)->(%.6f,%.6f)->(%.6f,%.6f) round_trip=%s",
+                    request_id,
+                    idx,
+                    start_lat,
+                    start_lng,
+                    dest[0]["lat"],
+                    dest[0]["lng"],
+                    dest[1]["lat"],
+                    dest[1]["lng"],
+                    dest[2]["lat"],
+                    dest[2]["lng"],
+                    round_trip,
+                )
+            else:
+                logger.debug(
+                    "[Routes API Request] request_id=%s route_%d origin=(%.6f,%.6f) dest=(%.6f,%.6f) round_trip=%s",
+                    request_id,
+                    idx,
+                    start_lat,
+                    start_lng,
+                    dest["lat"],
+                    dest["lng"],
+                    round_trip,
+                )
             
             resp = await client.post(settings.MAPS_ROUTES_BASE, json=body, headers=headers)
             
