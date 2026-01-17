@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import logging
+import random
 from typing import Any, Dict, List
 
 import httpx
@@ -147,8 +148,11 @@ async def compute_route_candidates(
         raise RuntimeError("MAPS_API_KEY is not configured")
 
     # 候補を多様化するために5つの方位角を作成（360°を5等分）
-    # 0°, 72°, 144°, 216° (=-144°), 288° (=-72°) で均等に配置
-    headings = [0, 72, 144, -144, -72]
+    # 毎回少し回転・シャッフルして同条件でも変化させる
+    base_headings = [0, 72, 144, -144, -72]
+    rotate_deg = random.uniform(-15.0, 15.0)
+    headings = [h + rotate_deg for h in base_headings]
+    random.shuffle(headings)
 
     # 片道かつ終了地点が指定されている場合は、その地点を目的地として使用
     end_lat_f = float(end_lat) if end_lat is not None else None
@@ -173,13 +177,24 @@ async def compute_route_candidates(
             waypoint_distance_km = max(distance_km / 4.0, 0.5)
             dests = []
             for h in headings:
-                p1 = _offset_latlng(start_lat, start_lng, waypoint_distance_km, h)
-                p2 = _offset_latlng(start_lat, start_lng, waypoint_distance_km, h + 60)
-                p3 = _offset_latlng(start_lat, start_lng, waypoint_distance_km, h - 60)
+                dist_scale = random.uniform(0.85, 1.15)
+                distance_km_jitter = waypoint_distance_km * dist_scale
+                angle_shift = random.uniform(35.0, 75.0)
+                p1 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h)
+                p2 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h + angle_shift)
+                p3 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h - angle_shift)
                 dests.append([p1, p2, p3])
         else:
             waypoint_distance_km = max(distance_km, 0.5)
-            dests = [_offset_latlng(start_lat, start_lng, waypoint_distance_km, h) for h in headings]
+            dests = [
+                _offset_latlng(
+                    start_lat,
+                    start_lng,
+                    waypoint_distance_km * random.uniform(0.9, 1.1),
+                    h,
+                )
+                for h in headings
+            ]
     
     headers = {
         "X-Goog-Api-Key": api_key,
