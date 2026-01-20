@@ -1,4 +1,7 @@
 <script setup lang="ts">
+	const themeItems = ref(['exercise', 'think', 'refresh', 'nature']);
+	const theme = ref("exercise");
+
 	const features = ref([
 		{
 			title: '今の気分',
@@ -38,6 +41,21 @@
 	<UPageSection
     title="早速歩く"
   >
+		<div class="space-y-2">
+      <p class="text-sm font-semibold text-gray-700 tracking-wide">どんな気分？</p>
+      <p class="text-xs text-gray-500">いまの気分に一番近いものを選んでください。</p>
+    </div>
+    <URadioGroup 
+      indicator="hidden" 
+      v-model="theme" 
+      :items="themeItems" 
+      variant="card" 
+      class="mb-2"
+      :ui="{
+        fieldset: 'grid grid-cols-2 gap-2'
+      }"
+    />
+		<UButton label="ルートを検索" color="secondary" :to="`/app/search?theme=${theme}&quicksearch=true`"/>
 		<UButton label="詳細条件を入力" variant="outline" to="/app/search"/>
 	</UPageSection>
 	<UPageSection

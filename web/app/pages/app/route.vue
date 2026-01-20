@@ -1,16 +1,18 @@
 <script setup lang="ts">
-  import type { ApiRequest } from '~/types/route';
+  import type { ApiRequest, Route } from '~/types/route';
   import { useRouteApi } from '~/composables/useRouteApi';
+  import { useGenerateRequestid } from '~/composables/useGenerateRequestid';
 
   definePageMeta({
     layout: 'app',
   })
-
-  import type { Route } from '~/types/route';
-
   const { fetchRoute } = useRouteApi();
-  const routeData = useState<Route>('currentRoute');
-  const savedPayload = useState<ApiRequest>('searchPayload');
+  const { generateRequestid } = useGenerateRequestid();
+
+  const routeState = useState<Route>('currentRoute');
+  const searchParamsState = useState<ApiRequest>('searchParams');
+
+  const loadingRegenerate = ref(false);
 
   let mapInstance: any = null;
   let flightPath: any = null;
@@ -52,7 +54,7 @@
     mapElement.innerHTML = '';
 
     // ルートの座標を取得（デフォルト値は空配列）
-    const coordinates = routeData.value.polyline;
+    const coordinates = routeState.value.polyline;
 
     // まずはデフォルトの中心・ズームでマップを作る
     let center = { lat: 0, lng: -180 };
@@ -101,9 +103,9 @@
   }
 
   const startNavigation = () => {
-    if (!routeData.value?.nav_waypoints || routeData.value.nav_waypoints.length < 2) return;
+    if (!routeState.value?.nav_waypoints || routeState.value.nav_waypoints.length < 2) return;
     
-    const points = routeData.value.nav_waypoints;
+    const points = routeState.value.nav_waypoints;
     const origin = points[0]!;
     const destination = points[points.length - 1]!;
     const waypoints = points.slice(1, -1).map(p => `${p.lat},${p.lng}`).join('|');
@@ -119,25 +121,30 @@
     window.open(`https://www.google.com/maps/dir/?${params.toString()}`, '_blank');
   };
 
-  const loadingRegenerate = ref(false);
-
   const handleResearch = async () => {
     await navigateTo('/app/search');
   };
 
   const handleRegenerate = async () => {
-    if (!savedPayload.value) {
+    if (!searchParamsState.value) {
       await navigateTo('/app/search');
       return;
     }
 
     loadingRegenerate.value = true;
     try {
-      const payload = { ...savedPayload.value, request_id: crypto.randomUUID() };
-      routeData.value = await fetchRoute(payload);
-      savedPayload.value = payload;
+      //request_idだけ新規のものに修正し、検索条件を保存し、ルート検索
+      const payload = { ...searchParamsState.value, request_id: generateRequestid() };
+      searchParamsState.value = payload;
+      const regenedRoute = await fetchRoute(payload);
+
+      //検索結果ルートを保存
+      routeState.value = regenedRoute
+
+      //DOM更新
       await nextTick();
       initMap();
+
     } catch (e) {
       console.error(e);
     } finally {
@@ -146,7 +153,7 @@
   };
 
   onMounted(async () => {
-    if (!routeData.value) {
+    if (!routeState.value) {
       // routeデータが存在しない場合は、searchページにリダイレクト
       await navigateTo('/app/search');
     }
@@ -162,18 +169,18 @@
 
 <template>
   <h1 class="mb-4">生成されたルートがこちらです</h1>
-  <div v-if="routeData">
+  <div v-if="routeState">
     <div>
-      <h2>{{ routeData.title }}</h2>
-      <div v-if="savedPayload" class="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+      <h2>{{ routeState.title }}</h2>
+      <div v-if="searchParamsState" class="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
         <span class="px-2 py-1 bg-gray-100 rounded">
-          テーマ: {{ savedPayload.theme }}
+          テーマ: {{ searchParamsState.theme }}
         </span>
         <span class="px-2 py-1 bg-gray-100 rounded">
-          距離: {{ savedPayload.distance_km }}km
+          距離: {{ searchParamsState.distance_km }}km
         </span>
         <span class="px-2 py-1 bg-gray-100 rounded">
-          開始地点: {{ savedPayload.start_location.lat.toFixed(6) }}, {{ savedPayload.start_location.lng.toFixed(6) }}
+          開始地点: {{ searchParamsState.start_location.lat.toFixed(6) }}, {{ searchParamsState.start_location.lng.toFixed(6) }}
         </span>
       </div>
     </div>
@@ -192,42 +199,42 @@
         <div class="space-y-1">
           <p class="text-sm font-semibold text-gray-800">このルートについて</p>
           <p class="text-sm text-gray-600 leading-relaxed">
-            {{ routeData.summary }}
+            {{ routeState.summary }}
           </p>
         </div>
         <div class="grid grid-cols-3 gap-2 text-center text-xs">
           <div class="rounded-lg bg-white px-2 py-2 border border-gray-100">
             <p class="text-[11px] text-gray-500">距離</p>
             <p class="mt-1 text-sm font-semibold text-primary-600">
-              {{ routeData.distance_km }}km
+              {{ routeState.distance_km }}km
             </p>
           </div>
           <div class="rounded-lg bg-white px-2 py-2 border border-gray-100">
             <p class="text-[11px] text-gray-500">歩数目安</p>
             <p class="mt-1 text-sm font-semibold text-emerald-600">
-              {{ routeData.distance_km! * 1000 }}歩
+              {{ routeState.distance_km! * 1000 }}歩
             </p>
           </div>
           <div class="rounded-lg bg-white px-2 py-2 border border-gray-100">
             <p class="text-[11px] text-gray-500">所要時間</p>
             <p class="mt-1 text-sm font-semibold text-indigo-600">
-              {{ routeData.duration_min }}分
+              {{ routeState.duration_min }}分
             </p>
           </div>
         </div>
       </div>
 
       <!-- 見どころスポット -->
-      <div class="space-y-3">
+      <div v-if="routeState.spots.length > 0" class="space-y-3">
         <div class="flex items-center justify-between">
           <p class="text-sm font-semibold text-gray-800">見どころスポット</p>
           <p class="text-[11px] text-gray-500">
-            全 {{ routeData.spots.length }} か所
+            全 {{ routeState.spots.length }} か所
           </p>
         </div>
         <ul class="space-y-1.5">
           <li
-            v-for="(spot, index) in routeData.spots"
+            v-for="(spot, index) in routeState.spots"
             :key="index"
             class="flex items-start gap-3 py-2 cursor-default"
           >
