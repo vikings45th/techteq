@@ -7,6 +7,11 @@
     loading?: boolean;
   }>();
 
+  // プロップのバリデーション
+  if (!props.jsonpayload) {
+    throw new Error('jsonpayload prop is required');
+  }
+
   const themeItems = ref(['exercise', 'think', 'refresh', 'nature']);
   const currentLat = ref<number>(35.685175);
   const currentLng = ref<number>(139.752799);

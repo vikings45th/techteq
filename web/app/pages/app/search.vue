@@ -6,17 +6,11 @@
     layout: 'app',
   })
 
-  // UUID生成関数（SSR安全）
+  // request_id(UUID)生成関数
   const generateUUID = (): string => {
-    if (process.client && typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-    // SSR時やcrypto.randomUUIDが使えない場合のフォールバック
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
+    return typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).substring(2)}`;
   };
 
   // 初期値を作成
@@ -29,37 +23,25 @@
     round_trip: true,
     debug: false
   });
-
-  // 初期値を確実に取得
-  const initialPayload = getDefaultPayload();
   
   // useStateから検索条件を取得、なければ初期値を使用して保存
-  const savedPayload = useState<ApiRequest>('searchPayload', () => ({ ...initialPayload }));
-  
-  // savedPayload.valueが確実に存在するようにする
-  if (!savedPayload.value) {
-    savedPayload.value = { ...initialPayload };
-  }
-  
-  // reactiveでjsonPayloadを作成
-  const jsonPayload = reactive<ApiRequest>({ ...savedPayload.value });
-
-  // jsonPayloadの変更をuseStateに保存
-  watch(jsonPayload, (newPayload) => {
-    savedPayload.value = { ...newPayload };
-  }, { deep: true });
+  const jsonPayload = useState<ApiRequest>('searchPayload', () => getDefaultPayload());
   
   const { fetchRoute } = useRouteApi();
   const loadingApi = ref(false);
   const routeState = useState('currentRoute');
 
   const callApi = async () => {
+    if (!jsonPayload.value) {
+      console.error('jsonPayload is undefined');
+      return;
+    }
     loadingApi.value = true;
+
     try {
-      const route = await fetchRoute(jsonPayload);
+      const route = await fetchRoute(jsonPayload.value);
       routeState.value = route;
-      savedPayload.value = { ...jsonPayload };
-      await navigateTo(`/app/route?request_id=${jsonPayload.request_id}&route_id=${route.route_id}`);
+      await navigateTo(`/app/route?request_id=${jsonPayload.value.request_id}&route_id=${route.route_id}`);
     } catch (e) {
       console.error(e);
     } finally {
@@ -70,5 +52,5 @@
 </script>
 <template>
   <h1 class="mb-4">目的と距離に合わせてルートを提案します</h1>
-  <RouteForm :detailed="true" :jsonpayload="jsonPayload" :loading="loadingApi" @submit-request="callApi"/>
+  <RouteForm v-if="jsonPayload" :detailed="true" :jsonpayload="jsonPayload" :loading="loadingApi" @submit-request="callApi"/>
 </template>
