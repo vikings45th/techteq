@@ -84,6 +84,7 @@
       <p class="text-sm font-semibold text-gray-700 tracking-wide">どんな気分？</p>
       <p class="text-xs text-gray-500">いまの気分に一番近いものを選んでください。</p>
     </div>
+    <!--
     <URadioGroup 
       indicator="hidden" 
       v-model="props.jsonpayload.theme" 
@@ -94,6 +95,7 @@
         fieldset: 'grid grid-cols-2 gap-2'
       }"
     />
+    -->
     <div class="flex items-start justify-between mb-2 gap-4">
       <div class="space-y-1">
         <p class="text-sm font-semibold text-gray-700 tracking-wide">どれくらい歩く？</p>
