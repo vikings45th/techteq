@@ -112,7 +112,7 @@
 </script>
 <template>
   <h1 class="mb-4">目的と距離に合わせてルートを提案します</h1>
-  <div class="route-form space-y-6">
+  <div class="space-y-6">
     <div class="space-y-2">
       <p class="text-sm font-semibold text-gray-700 tracking-wide">どんな気分？</p>
       <p class="text-xs text-gray-500">いまの気分に一番近いものを選んでください。</p>
