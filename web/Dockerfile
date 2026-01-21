@@ -15,6 +15,9 @@ RUN npm ci
 # アプリケーションのソースコードをコピー
 COPY . .
 
+# 古いビルド成果物を削除（キャッシュ対策）
+RUN rm -rf .output .nuxt .nitro .cache 2>/dev/null || true
+
 # アプリケーションをビルド
 RUN npm run build
 

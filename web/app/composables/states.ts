@@ -12,7 +12,7 @@ export const useSearchParams = () => {
   }));
 };
 
-export const useWalkingRoutes = () => {
+export const useCurrentRoute = () => {
   return useState<Route>('currentRoute', () => ({
     route_id: "initialRouteStateRequestId",
     polyline: [{ lat: 35.685175, lng: 139.752799 },{ lat: 35.685174, lng: 139.752798 }],

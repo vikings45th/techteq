@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { useRouteApi } from '~/composables/useRouteApi';
   import { useGenerateRequestid } from '~/composables/useGenerateRequestid';
+  import { useSearchParams, useCurrentRoute } from '~/composables/states';
 
   definePageMeta({
     layout: 'app',
@@ -9,7 +10,7 @@
   const { generateRequestid } = useGenerateRequestid();
 
   const searchParamsState = useSearchParams();
-  const routeState = useWalkingRoutes();
+  const routeState = useCurrentRoute();
 
   const loadingRegenerate = ref(false);
 
