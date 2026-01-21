@@ -2,6 +2,7 @@
   import type { ApiRequest } from '~/types/route';
   import { useRouteApi } from '~/composables/useRouteApi';
   import { useGenerateRequestid } from '~/composables/useGenerateRequestid';
+  import { useSearchParams, useCurrentRoute } from '~/composables/states';
 
   definePageMeta({
     layout: 'app',
@@ -31,7 +32,7 @@
   const loadingApi = ref<boolean>(false);
   
   const searchParamsState = useSearchParams();
-  const routeState = useWalkingRoutes();
+  const routeState = useCurrentRoute();
 
   const fetchCurrentLocation = (): Promise<void> => {
     if (!navigator.geolocation) {
