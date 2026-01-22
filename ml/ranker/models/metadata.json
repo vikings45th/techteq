@@ -1,6 +1,6 @@
 {
-  "model_version": "shadow_xgb_v1",
-  "trained_at": "2026-01-22T03:20:58.971102+00:00",
+  "model_version": "shadow_xgb_v2",
+  "trained_at": "2026-01-22T05:40:00.868468+00:00",
   "feature_columns": [
     "distance_km",
     "duration_min",
@@ -25,9 +25,9 @@
     "park_poi_ratio"
   ],
   "metrics": {
-    "valid_mae": 72.47429606119792,
-    "valid_rmse": 72.47569692746475,
-    "test_mae": 72.48115880629595,
-    "test_rmse": 72.48253870074895
+    "valid_mae": 0.14511139922671848,
+    "valid_rmse": 0.22499135204887052,
+    "test_mae": 0.16299325157614314,
+    "test_rmse": 0.24982930589224442
   }
 }

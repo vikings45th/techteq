@@ -115,6 +115,8 @@ def to_matrix(df: pd.DataFrame, feature_columns: List[str]) -> Tuple[np.ndarray,
             X[col] = X[col].astype(int)
     X = X.apply(pd.to_numeric, errors="coerce")
     y = pd.to_numeric(df["feedback_rating"], errors="coerce")
+    if y.isna().any():
+        raise ValueError("feedback_rating contains NaN after numeric coercion.")
     X = X.to_numpy(dtype=float)
     y = y.to_numpy(dtype=float)
     return X, y
@@ -126,6 +128,7 @@ def train_model(
     X_valid: Optional[np.ndarray] = None,
     y_valid: Optional[np.ndarray] = None,
 ) -> xgb.XGBRegressor:
+    base_score = float(np.mean(y_train))
     model = xgb.XGBRegressor(
         objective="reg:pseudohubererror",
         eval_metric="mae",
@@ -134,6 +137,7 @@ def train_model(
         learning_rate=0.1,
         subsample=0.9,
         colsample_bytree=0.9,
+        base_score=base_score,
         random_state=42,
         n_jobs=4,
     )
@@ -151,6 +155,7 @@ def train_model(
             learning_rate=0.1,
             subsample=0.9,
             colsample_bytree=0.9,
+            base_score=base_score,
             random_state=42,
             n_jobs=4,
         )
@@ -162,6 +167,11 @@ def mae_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[float, float]:
     mae = float(np.mean(np.abs(y_true - y_pred)))
     rmse = float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
     return mae, rmse
+
+
+def has_splits(model: xgb.XGBRegressor) -> bool:
+    dump = model.get_booster().get_dump(with_stats=False)
+    return any("[" in tree for tree in dump)
 
 
 def main() -> None:
@@ -182,11 +192,25 @@ def main() -> None:
     train_df, valid_df, test_df = prepare_splits(df, feature_columns)
 
     X_train, y_train = to_matrix(train_df, feature_columns)
+    label_min = float(np.nanmin(y_train))
+    label_max = float(np.nanmax(y_train))
+    label_mean = float(np.nanmean(y_train))
+    label_std = float(np.nanstd(y_train))
+    print(
+        f"label stats: min={label_min:.3f} max={label_max:.3f} "
+        f"mean={label_mean:.3f} std={label_std:.3f}"
+    )
+    if label_max - label_min < 1e-6:
+        raise ValueError("feedback_rating has no variance; cannot train a model.")
+    if label_min < 0.0 or label_max > 10.0:
+        raise ValueError("feedback_rating looks out of expected range (0-10).")
     X_valid, y_valid = (None, None)
     if not valid_df.empty:
         X_valid, y_valid = to_matrix(valid_df, feature_columns)
 
     model = train_model(X_train, y_train, X_valid, y_valid)
+    if not has_splits(model):
+        raise ValueError("Trained model has no splits; check training data or label.")
 
     metrics = {}
     if X_valid is not None and y_valid is not None and len(y_valid) > 0:
