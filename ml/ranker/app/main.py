@@ -1,9 +1,15 @@
 from __future__ import annotations
 from typing import Dict, Any
+import logging
+import uuid
+
 from fastapi import FastAPI, HTTPException
 from app.schemas import RankRequest, RankResponse, ScoreItem
 from app.settings import settings
+from app.model_scoring import ModelScorer
+from app.bq_logger import BigQueryRankResultLogger
 
+logger = logging.getLogger(__name__)
 app = FastAPI(title="firstdown Ranker API", version="1.0.0")
 
 
@@ -122,14 +128,32 @@ def rank(req: RankRequest) -> RankResponse:
     Raises:
         HTTPException: すべてのルートのスコアリングに失敗した場合（422）
     """
+    request_id = req.request_id or str(uuid.uuid4())
     scores = []  # 成功したスコアのリスト
     failed = []  # 失敗したルートIDのリスト
+    log_items = []  # BQ用ログ行
+
+    model_scorer = ModelScorer()
 
     # 各ルートをスコアリング
     for r in req.routes:
         try:
             score, breakdown = _calculate_score(r.features)
+            model_score, model_latency_ms, model_status = model_scorer.score(r.features)
+            breakdown = breakdown or {}
+            breakdown["rule_score"] = score
+            breakdown["model_score"] = model_score
+            breakdown["model_latency_ms"] = model_latency_ms
             scores.append(ScoreItem(route_id=r.route_id, score=score, breakdown=breakdown))
+            log_items.append(
+                {
+                    "route_id": r.route_id,
+                    "rule_score": score,
+                    "model_score": model_score,
+                    "model_latency_ms": model_latency_ms,
+                    "status": model_status,
+                }
+            )
         except Exception as e:
             # スコアリングに失敗したルートIDを記録
             failed.append(r.route_id)
@@ -141,4 +165,20 @@ def rank(req: RankRequest) -> RankResponse:
     # スコア順にソート（高い順）
     scores.sort(key=lambda x: x.score, reverse=True)
 
-    return RankResponse(scores=scores, failed_route_ids=failed)
+    response = RankResponse(scores=scores, failed_route_ids=failed)
+
+    if log_items:
+        try:
+            bq_logger = BigQueryRankResultLogger()
+            rows = bq_logger.build_rows(
+                request_id=request_id,
+                items=log_items,
+                rule_version=settings.RANKER_VERSION,
+                model_version=settings.MODEL_VERSION,
+                status="ok",
+            )
+            bq_logger.log_rank_result(rows)
+        except Exception:
+            logger.exception("Failed to write rank_result to BigQuery")
+
+    return response
