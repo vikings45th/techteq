@@ -15,12 +15,24 @@
   const themeParam = route.query.theme as string | undefined;
   const quicksearch = route.query.quicksearch === 'true';
 
-  const themeItems = ref(['exercise', 'think', 'refresh', 'nature']);
+  const themeItems = ref([{
+    label: '体を動かしたい',
+    value: 'exercise'
+  }, {
+    label: '考え事をしたい',
+    value: 'think'
+  }, {
+    label: 'リフレッシュしたい',
+    value: 'refresh'
+  }, {
+    label: '自然を感じたい',
+    value: 'nature'
+  }]);
   // 検索条件の初期値を作成
   const searchParams = ref<ApiRequest>({
     request_id: "initialSearchParamsStateRequestId",
     theme: 'exercise',
-    distance_km: 5,
+    distance_km: 3,
     start_location: {lat: 35.685175,lng: 139.752799},
     end_location: {lat: 35.685175,lng: 139.752799},
     round_trip: true,
@@ -136,12 +148,14 @@
     // 地図を初期化（ドラッグ可能にする）
     mapInstance = new (window as any).google.maps.Map(mapElement, {
       center,
-      zoom: 15,
-      mapTypeId: 'roadmap',
-      disableDefaultUI: true, // UIコントロールを非表示
+      zoom: 16,
+      mapTypeId: 'terrain',
+      disableDefaultUI: true,
       draggable: true,
       scrollwheel: true,
-      disableDoubleClickZoom: false,
+      disableDoubleClickZoom: true,
+      keyboardShortcuts: false,
+      clickableIcons: false,
     });
 
     // 開始地点のマーカーを作成（ドラッグ可能）
@@ -174,7 +188,7 @@
     // quicksearch=trueの場合は自動的に検索を実行
     if (quicksearch) {
       loadingApi.value = true;
-      searchParams.value.theme = themeParam && themeItems.value.includes(themeParam) ? themeParam : searchParams.value.theme
+      searchParams.value.theme = themeParam && themeItems.value.some(item => item.value === themeParam) ? themeParam : searchParams.value.theme
 
       await fetchCurrentLocation();
       await callApi();
@@ -221,92 +235,75 @@
 
 </script>
 <template>
-  <h1 class="mb-4">目的と距離に合わせてルートを提案します</h1>
-  <div class="space-y-6">
-    <div class="space-y-2">
-      <p class="text-sm font-semibold text-gray-700 tracking-wide">どんな気分？</p>
-      <p class="text-xs text-gray-500">いまの気分に一番近いものを選んでください。</p>
-    </div>
-    <URadioGroup 
-      indicator="hidden" 
-      v-model="searchParams.theme" 
-      :items="themeItems" 
-      variant="card" 
-      class="mb-2"
-      :ui="{
-        fieldset: 'grid grid-cols-2 gap-2'
-      }"
-    />
-    <div class="flex items-start justify-between mb-2 gap-4">
-      <div class="space-y-1">
-        <p class="text-sm font-semibold text-gray-700 tracking-wide">どれくらい歩く？</p>
-        <p class="text-xs text-gray-500">距離を変えると、所要時間や歩数も変わります。</p>
-      </div>
-      <div class="text-right text-xs">
-        <p class="font-semibold text-primary-600">
-          {{ searchParams.distance_km }}km
-        </p>
-        <p class="text-gray-500">
-          約 {{ Math.round(searchParams.distance_km/0.06) }} 分
-        </p>
-        <p class="text-gray-400">
-          約 {{ searchParams.distance_km*1000 }} 歩
-        </p>
-      </div>
-    </div>
-    <USlider 
-      v-model="searchParams.distance_km" 
-      :min="0.5" 
-      :max="10" 
-      :step="0.5" 
-      :default-value="5" 
-      class="mb-2"
-    />
-    <div class="space-y-2 mb-2">
-      <p class="text-sm font-semibold text-gray-700 tracking-wide">どこからどこまで？</p>
-      <p class="text-xs text-gray-500">現在地をもとに開始地点と終了地点を指定します。</p>
-    </div>
-    <UButton
-        size="xs"
-        color="primary"
-        :loading="loadingLocation"
-        @click="fetchCurrentLocation"
-        class="mb-2"
-    >
-      現在地を取得
-    </UButton>
-    <!-- 開始地点の地図 -->
-    <div class="space-y-2 mb-2">
-      <p class="text-xs text-gray-500">地図をクリックするか、マーカーをドラッグして開始地点を設定してください。</p>
-      <div class="rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-        <div
-          id="start-location-map"
-          class="w-full h-64"
-        ></div>
-      </div>
-    </div>
-    <!-- 開始地点の座標表示（参考用） -->
-    <div class="text-xs text-gray-500 mb-2">
-      <p>緯度: {{ currentLocation.lat.toFixed(6) }}</p>
-      <p>経度: {{ currentLocation.lng.toFixed(6) }}</p>
-    </div>
-    <UButton 
-      color="secondary"
-      label="ルートを生成"
-      class="w-full mt-2"
-      @click="callApi"
-    />
+  <h1 class="text-lg font-bold mt-2 mb-2">散歩ルートを決める</h1>
+  <p class="text-gray-700 tracking-wide mb-2">どんな気分？</p>
+  <URadioGroup 
+    indicator="hidden" 
+    v-model="searchParams.theme" 
+    :items="themeItems" 
+    variant="card" 
+    :ui="{
+      fieldset: 'grid grid-cols-2 gap-2 mb-2',
+    }"
+  />
+  <div class="flex items-center justify-between mb-2">
+    <p class="text-gray-700 tracking-wide">どれくらい歩く？</p>
+    <p class="font-semibold text-primary-600">{{searchParams.distance_km}}km</p>
   </div>
+  <USlider 
+    v-model="searchParams.distance_km" 
+    :min="1" 
+    :max="9" 
+    :step="0.5" 
+    :default-value="searchParams.distance_km"
+    class="mb-2"
+  />
+  <div class="mb-2">
+    <p class="text-gray-700 tracking-wide mb-2">どこから歩く？</p>
+  </div>
+  <!-- 開始地点の地図 -->
+  <div class="space-y-2 mb-2">
+    <div class="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+      <div
+        id="start-location-map"
+        class="w-full h-64"
+      ></div>
+      <!-- 現在地を取得ボタン（地図右上に重ねて表示） -->
+      <div class="absolute top-2 right-2 z-10">
+        <UButton
+            size="xs"
+            color="primary"
+            :loading="loadingLocation"
+            @click="fetchCurrentLocation"
+            variant="outline"
+            :ui="{
+              base: 'shadow-lg bg-white'
+            }"
+        >
+          <span v-if="loadingLocation">取得中...</span>
+          <span v-else>現在地を<br/>取得</span>
+        </UButton>
+      </div>
+    </div>
+    <p class="text-xs text-gray-500">地図をクリックするか、マーカーをドラッグして開始地点を設定してください。</p>
+  </div>
+  <UButton
+    block
+    color="secondary"
+    label="散歩ルートを探す"
+    class="mt-2 text-lg font-bold rounded-full"
+    @click="callApi"
+  />
 
   <!-- 検索中のモーダル -->
-  <UModal v-model:open="loadingApi">
-    <template #body>
-      <div class="flex items-center justify-center">
-        <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-primary-600 mr-3" />
-        <h3 class="text-xl font-semibold">検索中...</h3>
-      </div>
-      <div class="text-center py-4">
-        <p class="text-gray-600">ルートを生成しています。しばらくお待ちください。</p>
+  <UModal v-model:open="loadingApi" :dismissible="false" title="条件に合う散歩ルートを探しています。" description="しばらくお待ちください。">
+    <template #content>
+      <div class="flex flex-col items-center justify-center space-y-4 py-4">
+        <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-secondary-600" />
+        <div class="text-center space-y-2">
+          <p class="text-gray-600">条件に合う散歩ルートを探しています。</p>
+          <p class="text-gray-600">しばらくお待ちください。</p>
+        </div>
       </div>
     </template>
   </UModal>

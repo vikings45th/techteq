@@ -3,29 +3,40 @@
 
 @theme static {
   /*https://uicolors.app/generate/2259f7*/
-  /* プライマリー */
-  --color-amulet-50: #f2f7f2;
-  --color-amulet-100: #e2eae1;
-  --color-amulet-200: #c4d6c5;
-  --color-amulet-300: #9cb99f;
-  --color-amulet-400: #7a9e7e;
-  --color-amulet-500: #507956;
-  --color-amulet-600: #3c5f42;
-  --color-amulet-700: #304c35;
-  --color-amulet-800: #283d2c;
-  --color-amulet-900: #213325;
-  --color-amulet-950: #121c15;
 
-  /* セカンダリー */
-  --color-porsche-50: #fcf8f0;
-  --color-porsche-100: #f9efdb;
-  --color-porsche-200: #f2ddb6;
-  --color-porsche-300: #eac587;
-  --color-porsche-400: #e0a458;
-  --color-porsche-500: #d98b36;
-  --color-porsche-600: #ca732c;
-  --color-porsche-700: #a85a26;
-  --color-porsche-800: #874925;
-  --color-porsche-900: #6d3c21;
-  --color-porsche-950: #3a1e10;  
+  /* Primary : Green (Go!) */
+  --color-verdant-50:  #E8F5E9;
+  --color-verdant-100: #C8E6C9;
+  --color-verdant-200: #A5D6A7;
+  --color-verdant-300: #81C784;
+  --color-verdant-400: #66BB6A;
+  --color-verdant-500: #4CAF50; /* primary */
+  --color-verdant-600: #43A047;
+  --color-verdant-700: #388E3C;
+  --color-verdant-800: #2E7D32;
+  --color-verdant-900: #1B5E20;
+
+  /* Secondary : Orange (Action!) */
+  --color-ember-50:  #FFF3E0;
+  --color-ember-100: #FFE0B2;
+  --color-ember-200: #FFCC80;
+  --color-ember-300: #FFB74D;
+  --color-ember-400: #FFA726;
+  --color-ember-500: #FF8A3D; /* secondary */
+  --color-ember-600: #FB7C2D;
+  --color-ember-700: #F36C1E;
+  --color-ember-800: #EA5D10;
+  --color-ember-900: #D84300;
+
+  /* Neutral : Bright background */
+  --color-breeze-50:  #FFFFFF;
+  --color-breeze-100: #F9FAF9; /* neutral */
+  --color-breeze-200: #F1F4F1;
+  --color-breeze-300: #E3E8E4;
+  --color-breeze-400: #CFD8D3;
+  --color-breeze-500: #B0BAB4;
+  --color-breeze-600: #8E9C95;
+  --color-breeze-700: #6F7E77;
+  --color-breeze-800: #4F5E57;
+  --color-breeze-900: #2F3E38;
 }
