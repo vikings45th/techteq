@@ -1,0 +1,33 @@
+{
+  "model_version": "shadow_xgb_v1",
+  "trained_at": "2026-01-22T03:20:58.971102+00:00",
+  "feature_columns": [
+    "distance_km",
+    "duration_min",
+    "loop_closure_m",
+    "bbox_area",
+    "path_length_ratio",
+    "turn_count",
+    "turn_density",
+    "theme_exercise",
+    "theme_think",
+    "theme_refresh",
+    "theme_nature",
+    "round_trip_req",
+    "round_trip_fit",
+    "distance_error_ratio",
+    "relaxation_step",
+    "candidate_rank_in_theme",
+    "has_stairs",
+    "elevation_gain_m",
+    "elevation_density",
+    "poi_density",
+    "park_poi_ratio"
+  ],
+  "metrics": {
+    "valid_mae": 72.47429606119792,
+    "valid_rmse": 72.47569692746475,
+    "test_mae": 72.48115880629595,
+    "test_rmse": 72.48253870074895
+  }
+}
