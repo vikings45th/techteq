@@ -6,18 +6,29 @@
   definePageMeta({
     layout: 'app',
   })
-  const { fetchRoute } = useRouteApi();
+  const { fetchRoute, submitRouteFeedback } = useRouteApi();
   const { generateRequestid } = useGenerateRequestid();
 
   const searchParamsState = useSearchParams();
   const routeState = useCurrentRoute();
 
   const loadingRegenerate = ref(false);
+  const showRatingModal = ref(false);
+  const rating = ref(0);
+  const submittingFeedback = ref(false);
+  const feedbackSubmitted = ref(false);
 
   let mapInstance: any = null;
   let flightPath: any = null;
+  let markers: any[] = [];
 
   function destroyMap() {
+    // マーカーを削除
+    markers.forEach((marker) => {
+      marker.setMap(null);
+    });
+    markers = [];
+    
     if (flightPath) {
       flightPath.setMap(null);
       flightPath = null;
@@ -74,17 +85,53 @@
       gestureHandling: 'none',
     });
 
-    // ここから polyline がある場合だけ bounds を使って再調整
-    if (coordinates.length > 0 && mapInstance) {
-      const bounds = new (window as any).google.maps.LatLngBounds();
+    // bounds を使って表示範囲を調整
+    const bounds = new (window as any).google.maps.LatLngBounds();
+    let hasBounds = false;
 
+    // polylineの座標をboundsに追加
+    if (coordinates.length > 0) {
       coordinates.forEach((p) => {
         bounds.extend(new (window as any).google.maps.LatLng(p.lat, p.lng));
+        hasBounds = true;
       });
+    }
 
+    // スポットのマーカーを追加
+    if (routeState.value.spots && routeState.value.spots.length > 0) {
+      routeState.value.spots.forEach((spot, index) => {
+        if (spot.lat !== undefined && spot.lng !== undefined) {
+          const position = new (window as any).google.maps.LatLng(spot.lat, spot.lng);
+          
+          // マーカーを作成（ピン形状、インデックス番号付き）
+          const marker = new (window as any).google.maps.Marker({
+            position: position,
+            map: mapInstance,
+            title: spot.name || 'スポット',
+            label: {
+              text: String(index + 1),
+              color: '#FFFFFF',
+              fontSize: '12px',
+              fontWeight: 'bold',
+            },
+            // デフォルトのピンアイコンを使用（iconプロパティを指定しない）
+          });
+
+          markers.push(marker);
+          
+          // boundsに追加
+          bounds.extend(position);
+          hasBounds = true;
+        }
+      });
+    }
+
+    // boundsがある場合は表示範囲を調整
+    if (hasBounds && mapInstance) {
       mapInstance.fitBounds(bounds);
     }
 
+    // polylineを描画
     if (coordinates.length > 0) {
       // 既存のflightPathがあれば削除
       if (flightPath) {
@@ -119,6 +166,51 @@
 
     if (waypoints) params.set('waypoints', waypoints);
     window.open(`https://www.google.com/maps/dir/?${params.toString()}`, '_blank');
+    
+    // 元のタブで評価モーダルを表示
+    showRatingModal.value = true;
+  };
+
+  const handleRatingSubmit = async () => {
+    if (rating.value === 0) {
+      return;
+    }
+
+    if (!searchParamsState.value || !routeState.value) {
+      return;
+    }
+
+    // 初期値の場合はreturn
+    if (
+      searchParamsState.value.request_id === "initialSearchParamsStateRequestId" ||
+      routeState.value.route_id === "initialRouteStateRequestId"
+    ) {
+      return;
+    }
+
+    submittingFeedback.value = true;
+    try {
+      const response = await submitRouteFeedback({
+        request_id: searchParamsState.value.request_id,
+        route_id: routeState.value.route_id,
+        rating: rating.value,
+      });
+
+      // 送信成功時（statusが"accepted"の場合）
+      if (response && response.status === "accepted") {
+        feedbackSubmitted.value = true;
+        // 2秒後にモーダルを閉じる
+        setTimeout(() => {
+          showRatingModal.value = false;
+          feedbackSubmitted.value = false;
+          rating.value = 0;
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('評価の送信に失敗しました:', error);
+    } finally {
+      submittingFeedback.value = false;
+    }
   };
 
   const handleResearch = async () => {
@@ -153,9 +245,10 @@
   };
 
   onMounted(async () => {
-    if (!routeState.value) {
-      // routeデータが存在しない場合は、searchページにリダイレクト
+    // routeデータが存在しない、または初期値の場合は、searchページにリダイレクト
+    if (!routeState.value || routeState.value.route_id === "initialRouteStateRequestId") {
       await navigateTo('/app/search');
+      return;
     }
 
     initMap();
@@ -259,4 +352,60 @@
       <UButton label="これでいく！" color="secondary" @click="startNavigation"/>
     </div>
   </div>
+
+  <!-- 評価モーダル -->
+  <UModal v-model:open="showRatingModal">
+    <template #header>
+      <h3 class="text-lg font-semibold">
+        {{ feedbackSubmitted ? 'ありがとうございました！' : 'このルートを評価してください' }}
+      </h3>
+    </template>
+    <template #body>
+      <div v-if="feedbackSubmitted" class="space-y-4 py-4">
+        <div class="flex flex-col items-center justify-center space-y-3">
+          <div class="text-5xl">✨</div>
+          <p class="text-center text-base text-gray-700">
+            ご評価ありがとうございました！
+          </p>
+          <p class="text-center text-sm text-gray-500">
+            フィードバックを送信しました。
+          </p>
+        </div>
+      </div>
+      <div v-else class="space-y-4 py-4">
+        <p class="text-sm text-gray-600">このルートはいかがでしたか？</p>
+        <div class="flex justify-center gap-2">
+          <button
+            v-for="star in 5"
+            :key="star"
+            @click="rating = star"
+            class="text-3xl transition-transform hover:scale-110"
+            :class="star <= rating ? 'text-yellow-400' : 'text-gray-300'"
+          >
+            ★
+          </button>
+        </div>
+        <div v-if="rating > 0" class="text-center text-sm text-gray-600">
+          {{ rating }}つ星を選択中
+        </div>
+      </div>
+    </template>
+    <template #footer>
+      <div v-if="!feedbackSubmitted" class="flex justify-end gap-2">
+        <UButton
+          label="キャンセル"
+          color="neutral"
+          variant="outline"
+          @click="showRatingModal = false; rating = 0; feedbackSubmitted = false"
+        />
+        <UButton
+          label="送信"
+          color="secondary"
+          :loading="submittingFeedback"
+          :disabled="rating === 0"
+          @click="handleRatingSubmit"
+        />
+      </div>
+    </template>
+  </UModal>
 </template>

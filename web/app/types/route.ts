@@ -21,7 +21,7 @@ export interface Route {
   title: string;
   summary: string;
   nav_waypoints: LatLng[];
-  spots: { name?: string; type?: string }[];
+  spots: { name?: string; type?: string; lat?: number; lng?: number }[];
 }
 
 export interface ApiResponse {
@@ -31,4 +31,15 @@ export interface ApiResponse {
     route: Route;
     meta: any;
   };
+}
+
+export interface RouteFeedbackRequest {
+  request_id: string;
+  route_id: string;
+  rating: number;
+}
+
+export interface RouteFeedbackResponse {
+  request_id: string;
+  status: string;
 }

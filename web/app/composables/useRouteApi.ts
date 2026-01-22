@@ -1,4 +1,9 @@
-import type { ApiRequest, ApiResponse } from '~/types/route';
+import type { ApiRequest, ApiResponse, RouteFeedbackRequest, RouteFeedbackResponse } from '~/types/route';
+
+interface RouteFeedbackApiResponse {
+  statusCode: number;
+  body: RouteFeedbackResponse;
+}
 
 export const useRouteApi = () => {
   const fetchRoute = async (payload: ApiRequest): Promise<ApiResponse['body']['route']> => {
@@ -9,5 +14,13 @@ export const useRouteApi = () => {
     return response.body.route;
   };
 
-  return { fetchRoute };
+  const submitRouteFeedback = async (payload: RouteFeedbackRequest): Promise<RouteFeedbackResponse> => {
+    const response = await $fetch<RouteFeedbackApiResponse>("/api/route-feedback", {
+      method: "post",
+      body: payload,
+    });
+    return response.body;
+  };
+
+  return { fetchRoute, submitRouteFeedback };
 };
