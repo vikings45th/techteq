@@ -214,7 +214,7 @@ bash test_generate_api.sh
 - `round_trip: true` の場合は `end_location` を無視します（送信は可）
 - `round_trip: false` の場合は `end_location` が必須です
 - 片道で直線距離が短い場合は、目標距離に合わせて回り道します
-- `nav_waypoints` はスポットを優先的に含み、周回ルートでは始終点が一致します
+- `nav_waypoints` は polyline 由来の代表点で構成され、周回ルートでは始終点が一致します
 
 **リクエスト例（周回）:**
 ```json

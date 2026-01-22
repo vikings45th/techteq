@@ -273,6 +273,29 @@ def _haversine_m(a: LatLng, b: LatLng) -> float:
     return 2.0 * 6371000.0 * math.asin(min(1.0, math.sqrt(h)))
 
 
+def _ensure_polyline_start(
+    decoded_points: List[tuple[float, float]],
+    start_lat: float,
+    start_lng: float,
+    round_trip: bool,
+    threshold_m: float = 30.0,
+) -> tuple[List[tuple[float, float]], bool]:
+    if not decoded_points:
+        return decoded_points, False
+    start = LatLng(lat=start_lat, lng=start_lng)
+    first = LatLng(lat=decoded_points[0][0], lng=decoded_points[0][1])
+    changed = False
+    if _haversine_m(start, first) > threshold_m:
+        decoded_points = [(start_lat, start_lng)] + decoded_points
+        changed = True
+    if round_trip:
+        last = LatLng(lat=decoded_points[-1][0], lng=decoded_points[-1][1])
+        if _haversine_m(start, last) > threshold_m:
+            decoded_points = decoded_points + [(start_lat, start_lng)]
+            changed = True
+    return decoded_points, changed
+
+
 async def _collect_places_two_phase(
     *,
     request_id: str,
@@ -672,10 +695,19 @@ async def sample_points_from_polyline(state: AgentState) -> Dict[str, Any]:
     encoded = (best_route.get("polyline") or "").strip()
     decoded_points: List[tuple[float, float]] = []
     sample_points: List[tuple[float, float]] = []
+    updated_route = dict(best_route)
 
     try:
         if encoded and encoded != "xxxx":
             decoded_points = polyline.decode_polyline(encoded)
+            decoded_points, changed = _ensure_polyline_start(
+                decoded_points=decoded_points,
+                start_lat=float(req.start_location.lat),
+                start_lng=float(req.start_location.lng),
+                round_trip=bool(req.round_trip),
+            )
+            if changed:
+                updated_route["polyline"] = polyline_lib.encode(decoded_points)
             sample_points = polyline.sample_points(decoded_points, [0.25, 0.5, 0.75])
     except Exception as e:
         logger.warning("[Polyline Decode Failed] request_id=%s err=%r", req.request_id, e)
@@ -683,7 +715,7 @@ async def sample_points_from_polyline(state: AgentState) -> Dict[str, Any]:
     if not sample_points:
         sample_points = [(float(req.start_location.lat), float(req.start_location.lng))]
 
-    return {"sample_points": sample_points, "decoded_points": decoded_points}
+    return {"sample_points": sample_points, "decoded_points": decoded_points, "best_route": updated_route}
 
 
 async def fetch_places(state: AgentState) -> Dict[str, Any]:
@@ -717,6 +749,13 @@ async def fetch_places(state: AgentState) -> Dict[str, Any]:
                     places=merged,
                     decoded_points=decoded_points,
                     max_distance_m=float(settings.SPOT_MAX_DISTANCE_M_RELAXED),
+                    max_spots=5,
+                )
+            if len(filtered) < 3:
+                filtered = _filter_places_by_route_distance(
+                    places=merged,
+                    decoded_points=decoded_points,
+                    max_distance_m=float(settings.SPOT_MAX_DISTANCE_M_FALLBACK),
                     max_spots=5,
                 )
             places = filtered
@@ -761,13 +800,7 @@ async def simplify_polyline_to_waypoints(state: AgentState) -> Dict[str, Any]:
         }
 
     nav_waypoints = [LatLng(lat=float(lat), lng=float(lng)) for (lat, lng) in waypoint_points]
-    spot_points = [
-        LatLng(lat=float(p["lat"]), lng=float(p["lng"]))
-        for p in places
-        if p.get("lat") is not None and p.get("lng") is not None
-    ]
-    # spotsを優先してnav_waypointsに採用する
-    combined = spot_points + nav_waypoints
+    combined = nav_waypoints
     seen = set()
     deduped: List[LatLng] = []
     for wp in combined:
@@ -780,13 +813,6 @@ async def simplify_polyline_to_waypoints(state: AgentState) -> Dict[str, Any]:
     max_points = 10
     if len(deduped) > max_points:
         trimmed: List[LatLng] = []
-        # spotsを先に確保
-        for sp in spot_points:
-            if len(trimmed) >= max_points:
-                break
-            if sp in trimmed:
-                continue
-            trimmed.append(sp)
         # ルートの始点・終点を優先的に入れる
         if len(nav_waypoints) >= 2:
             for candidate in (nav_waypoints[0], nav_waypoints[-1]):
@@ -804,6 +830,12 @@ async def simplify_polyline_to_waypoints(state: AgentState) -> Dict[str, Any]:
         deduped = trimmed[:max_points]
 
     nav_waypoints = deduped
+    start_wp = LatLng(lat=float(req.start_location.lat), lng=float(req.start_location.lng))
+    start_key = (round(start_wp.lat, 6), round(start_wp.lng, 6))
+    nav_waypoints = [wp for wp in nav_waypoints if (round(wp.lat, 6), round(wp.lng, 6)) != start_key]
+    nav_waypoints.insert(0, start_wp)
+    if len(nav_waypoints) > max_points:
+        nav_waypoints = nav_waypoints[:max_points]
     if req.round_trip and nav_waypoints:
         first = nav_waypoints[0]
         last = nav_waypoints[-1]
