@@ -296,6 +296,17 @@ def _ensure_polyline_start(
     return decoded_points, changed
 
 
+def _dedupe_nearby_points(points: List[LatLng], threshold_m: float = 10.0) -> List[LatLng]:
+    if not points:
+        return []
+    deduped = [points[0]]
+    for p in points[1:]:
+        if _haversine_m(deduped[-1], p) <= threshold_m:
+            continue
+        deduped.append(p)
+    return deduped
+
+
 async def _collect_places_two_phase(
     *,
     request_id: str,
@@ -836,6 +847,7 @@ async def simplify_polyline_to_waypoints(state: AgentState) -> Dict[str, Any]:
     nav_waypoints.insert(0, start_wp)
     if len(nav_waypoints) > max_points:
         nav_waypoints = nav_waypoints[:max_points]
+    nav_waypoints = _dedupe_nearby_points(nav_waypoints, threshold_m=10.0)
     if req.round_trip and nav_waypoints:
         first = nav_waypoints[0]
         last = nav_waypoints[-1]
