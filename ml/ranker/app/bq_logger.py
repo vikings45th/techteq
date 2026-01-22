@@ -36,7 +36,7 @@ class BigQueryRankResultLogger:
         model_version: str,
         status: str,
     ) -> List[Dict[str, Any]]:
-        created_at = datetime.now(timezone.utc)
+        created_at = datetime.now(timezone.utc).isoformat()
         rows: List[Dict[str, Any]] = []
         for item in items:
             rows.append(
