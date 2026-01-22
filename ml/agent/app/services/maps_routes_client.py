@@ -203,19 +203,7 @@ async def compute_route_candidates(
                 seen.add(key)
                 dests.append({"label": label, "waypoints": waypoints})
 
-            # 1) 三角ループ（従来型）
-            for h in headings:
-                dist_scale = random.uniform(0.85, 1.15)
-                distance_km_jitter = waypoint_distance_km * dist_scale
-                angle_shift = random.uniform(35.0, 75.0)
-                p1 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h)
-                p2 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h + angle_shift)
-                p3 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h - angle_shift)
-                add_waypoints("triangle", [p1, p2, p3])
-                if len(dests) >= max_candidates:
-                    break
-
-            # 2) 円に近いループ（四角）
+            # 1) 円に近いループ（四角）を最優先
             if len(dests) < max_candidates:
                 for h in headings:
                     angles = [h, h + 90.0, h + 180.0, h + 270.0]
@@ -226,6 +214,18 @@ async def compute_route_candidates(
                     add_waypoints("circle_like", waypoints)
                     if len(dests) >= max_candidates:
                         break
+
+            # 2) 三角ループ（従来型）
+            for h in headings:
+                if len(dests) >= max_candidates:
+                    break
+                dist_scale = random.uniform(0.85, 1.15)
+                distance_km_jitter = waypoint_distance_km * dist_scale
+                angle_shift = random.uniform(35.0, 75.0)
+                p1 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h)
+                p2 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h + angle_shift)
+                p3 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h - angle_shift)
+                add_waypoints("triangle", [p1, p2, p3])
 
             # 3) 直線的な往復（アウト&バック）
             if len(dests) < max_candidates:
