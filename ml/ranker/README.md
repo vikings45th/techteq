@@ -13,7 +13,7 @@
 
 ## 概要
 
-Ranker APIは、Agent APIから送信されたルート候補を評価し、スコアリングするサービスです。現在はルールベースの実装ですが、将来的に機械学習モデルに置き換える予定です。現状は「シャドウ推論」でモデルスコアを算出し、BigQueryに保存します（意思決定はルールスコアのまま）。
+Ranker APIは、Agent APIから送信されたルート候補を評価し、スコアリングするサービスです。意思決定はルールベースのスコアを維持しつつ、XGBoost回帰モデルによる「シャドウ推論」を実行し、BigQueryに保存します。
 
 ### 主な機能
 
@@ -113,7 +113,7 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
 
 ## スコアリングロジック
 
-現在はルールベースのスタブ実装です（MVP）。
+現在はルールベーススコアを本番の意思決定に利用します。モデル推論は「シャドウ」として実行し、レスポンス内の`breakdown.model_score`とBigQueryログに保存します。
 
 ### 基本スコア
 
@@ -251,6 +251,11 @@ ml/ranker/
 │   └── settings.py          # 設定管理
 ├── bq/
 │   └── rank_result_shadow.sql # rank_resultテーブルDDL
+├── artifacts/              # 学習成果物の出力先（生成物）
+├── models/                 # 推論時に参照する成果物
+├── training/
+│   ├── train_xgb.py         # XGBoost学習スクリプト
+│   └── requirements.txt     # 学習用依存
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
@@ -282,11 +287,13 @@ uvicorn app.main:app --reload --port 8080
 
 ```bash
 # 環境変数（例）
-export MODEL_SHADOW_MODE=stub
-export MODEL_VERSION=stub_v1
+export MODEL_SHADOW_MODE=xgb
+export MODEL_VERSION=shadow_xgb_v1
 export RANKER_VERSION=rule_v1
 export BQ_DATASET=firstdown_mvp
 export BQ_RANK_RESULT_TABLE=rank_result
+export MODEL_PATH=models/model.xgb.json
+export MODEL_FEATURES_PATH=models/feature_columns.json
 
 # ヘルスチェック
 curl http://localhost:8080/health
@@ -316,6 +323,55 @@ curl -X POST http://localhost:8080/rank \
 
 `rank_result` テーブルのDDLは `ml/ranker/bq/rank_result_shadow.sql` にあります。  
 モデル推論・BQ書き込みの失敗はレスポンスに影響せず、ログにのみ記録されます。
+
+## 学習とモデル配置
+
+### 学習（BigQueryから取得）
+
+```bash
+cd ml/ranker
+pip install -r training/requirements.txt
+
+# 例: BigQueryの学習用ビューから学習
+python training/train_xgb.py \
+  --project firstdown-482704 \
+  --dataset firstdown_mvp \
+  --table training_view_poc_aug_v2 \
+  --model-version shadow_xgb_v1 \
+  --output-dir artifacts
+```
+
+学習後、以下の成果物が生成されます。
+
+- `artifacts/model.xgb.json`
+- `artifacts/feature_columns.json`
+- `artifacts/metadata.json`
+
+### 推論用成果物の配置
+
+```bash
+# 成果物を推論用ディレクトリへ配置
+cp artifacts/model.xgb.json models/model.xgb.json
+cp artifacts/feature_columns.json models/feature_columns.json
+```
+
+Cloud Run では `models/` をイメージに同梱するか、ボリュームでマウントしてください。
+
+### 実行確認（ローカル）
+
+```bash
+export MODEL_SHADOW_MODE=xgb
+export MODEL_VERSION=shadow_xgb_v1
+export MODEL_PATH=models/model.xgb.json
+export MODEL_FEATURES_PATH=models/feature_columns.json
+
+uvicorn app.main:app --reload --port 8080
+```
+
+### 推論の注意点
+
+- 学習データは `split` 列（train/valid/test）を前提としています
+- `request_id` 単位での分割が未整備の場合、データリークの恐れがあるため注意してください
 
 ## タイムアウト
 
