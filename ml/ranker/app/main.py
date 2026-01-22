@@ -11,6 +11,7 @@ from app.bq_logger import BigQueryRankResultLogger
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="firstdown Ranker API", version="1.0.0")
+model_scorer = ModelScorer()
 
 
 @app.get("/health")
@@ -132,8 +133,6 @@ def rank(req: RankRequest) -> RankResponse:
     scores = []  # 成功したスコアのリスト
     failed = []  # 失敗したルートIDのリスト
     log_items = []  # BQ用ログ行
-
-    model_scorer = ModelScorer()
 
     # 各ルートをスコアリング
     for r in req.routes:
