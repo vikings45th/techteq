@@ -10,7 +10,7 @@ class RankRoute(BaseModel):
 
 class RankRequest(BaseModel):
     """ランキングリクエストのスキーマ"""
-    request_id: str  # リクエストID（ログ用）
+    request_id: Optional[str] = None  # リクエストID（ログ用）
     routes: List[RankRoute] = Field(min_length=1, max_length=5)  # スコアリング対象のルートリスト（1〜5件）
 
 
@@ -18,7 +18,7 @@ class ScoreItem(BaseModel):
     """スコアリング結果の1件"""
     route_id: str  # ルートID
     score: float  # スコア（0.0-1.0、高いほど良い）
-    breakdown: Optional[Dict[str, float]] = None  # スコア内訳（デバッグ用、各要素の寄与度）
+    breakdown: Optional[Dict[str, Any]] = None  # スコア内訳（デバッグ用、各要素の寄与度）
 
 
 class RankResponse(BaseModel):

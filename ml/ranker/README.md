@@ -13,14 +13,15 @@
 
 ## 概要
 
-Ranker APIは、Agent APIから送信されたルート候補を評価し、スコアリングするサービスです。現在はルールベースの実装ですが、将来的にVertex AIを使った機械学習モデルに置き換える予定です。
+Ranker APIは、Agent APIから送信されたルート候補を評価し、スコアリングするサービスです。現在はルールベースの実装ですが、将来的に機械学習モデルに置き換える予定です。現状は「シャドウ推論」でモデルスコアを算出し、BigQueryに保存します（意思決定はルールスコアのまま）。
 
 ### 主な機能
 
 - **ルートスコアリング**: 特徴量に基づくルート品質評価
 - **複数ルートの並列評価**: 最大5件のルートを一度に評価
 - **部分的な成功を許容**: 一部のルートが失敗してもOK
-- **スコア内訳の提供**: デバッグ用のスコア内訳情報
+- **スコア内訳の提供**: デバッグ用のスコア内訳情報（`model_score`を含む）
+- **シャドウ推論ログ**: モデルスコア/レイテンシをBigQueryへ保存
 
 ## API仕様
 
@@ -78,7 +79,10 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
         "diversity_bonus": 0.072,
         "detour_penalty": -0.015,
         "exercise_bonus": 0.35,
-        "final_score": 0.85
+        "final_score": 0.85,
+        "rule_score": 0.85,
+        "model_score": 0.61,
+        "model_latency_ms": 3
       }
     }
   ],
@@ -90,6 +94,8 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
 - `scores`: スコアリング成功したルートのリスト（スコアは0.0-1.0の範囲、高い順にソート済み）
 - `failed_route_ids`: スコアリング失敗したルートIDのリスト
 - `breakdown`: スコア内訳（デバッグ用、各要素の寄与度）
+  - `rule_score`: ルールスコア
+  - `model_score`: シャドウモデルスコア（失敗時はnull）
 
 **エラー:**
 - `422 Unprocessable Entity`: すべてのルートのスコアリングに失敗した場合
@@ -239,8 +245,12 @@ score = max(0.0, min(1.0, score))  # 0.0-1.0の範囲にクリップ
 ml/ranker/
 ├── app/
 │   ├── main.py              # FastAPIアプリケーション、スコアリングロジック
+│   ├── model_scoring.py     # シャドウ推論インターフェース
+│   ├── bq_logger.py         # BigQueryログ書き込み
 │   ├── schemas.py           # データスキーマ（Pydantic）
 │   └── settings.py          # 設定管理
+├── bq/
+│   └── rank_result_shadow.sql # rank_resultテーブルDDL
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
@@ -271,6 +281,13 @@ uvicorn app.main:app --reload --port 8080
 ### 手動テスト
 
 ```bash
+# 環境変数（例）
+export MODEL_SHADOW_MODE=stub
+export MODEL_VERSION=stub_v1
+export RANKER_VERSION=rule_v1
+export BQ_DATASET=firstdown_mvp
+export BQ_RANK_RESULT_TABLE=rank_result
+
 # ヘルスチェック
 curl http://localhost:8080/health
 
@@ -294,6 +311,11 @@ curl -X POST http://localhost:8080/rank \
     ]
   }'
 ```
+
+### BigQuery テーブル
+
+`rank_result` テーブルのDDLは `ml/ranker/bq/rank_result_shadow.sql` にあります。  
+モデル推論・BQ書き込みの失敗はレスポンスに影響せず、ログにのみ記録されます。
 
 ## タイムアウト
 
