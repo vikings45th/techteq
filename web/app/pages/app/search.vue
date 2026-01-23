@@ -28,11 +28,22 @@
     label: '自然を感じたい',
     value: 'nature'
   }]);
+  const motivationItems = ref([{
+    label: '軽く歩く',
+    value: 'light'
+  }, {
+    label: 'ほどよく歩く',
+    value: 'medium'
+  }, {
+    label: 'しっかり歩く',
+    value: 'heavy'
+  }]);
+  const motivation = ref("light")
   // 検索条件の初期値を作成
   const searchParams = ref<ApiRequest>({
     request_id: "initialSearchParamsStateRequestId",
     theme: 'exercise',
-    distance_km: 3,
+    distance_km: 2,
     start_location: {lat: 35.685175,lng: 139.752799},
     end_location: {lat: 35.685175,lng: 139.752799},
     round_trip: true,
@@ -45,6 +56,7 @@
   
   const searchParamsState = useSearchParams();
   const routeState = useCurrentRoute();
+  const appConfig = useAppConfig();
 
   // 現在地を保存する変数
   const currentLocation = ref<{lat: number, lng: number}>({
@@ -106,7 +118,16 @@
     //round_tripの計算: 緯度 0.001° ≒ 111m、経度 0.001° ≒ 91m
     //const flag:boolean = Math.abs(startLat.value - endLat.value) < 0.001 && Math.abs(startLng.value - endLng.value) < 0.001;
     //searchParams.value.round_trip = flag;
-    searchParams.value.end_location = searchParams.value.start_location
+    searchParams.value.end_location = searchParams.value.start_location;
+
+    // motivation.valueによる分岐
+    if (motivation.value === 'light') {
+      searchParams.value.distance_km = 1;
+    } else if (motivation.value === 'medium') {
+      searchParams.value.distance_km = 2;
+    } else if (motivation.value === 'heavy') {
+      searchParams.value.distance_km = 3;
+    }
 
     try {
       //検索条件を保存し、ルート検索
@@ -149,7 +170,6 @@
     mapInstance = new (window as any).google.maps.Map(mapElement, {
       center,
       zoom: 16,
-      mapTypeId: 'terrain',
       disableDefaultUI: true,
       draggable: true,
       scrollwheel: true,
@@ -158,13 +178,54 @@
       clickableIcons: false,
     });
 
+    // 地図のサイズを再計算（flexboxで高さが確定した後に必要）
+    setTimeout(() => {
+      if (mapInstance) {
+        (window as any).google.maps.event.trigger(mapInstance, 'resize');
+      }
+    }, 300);
+
+    // ResizeObserverで要素のサイズ変更を監視
+    if (mapElement && mapInstance) {
+      const resizeObserver = new ResizeObserver(() => {
+        if (mapInstance) {
+          (window as any).google.maps.event.trigger(mapInstance, 'resize');
+        }
+      });
+      resizeObserver.observe(mapElement);
+      
+      // クリーンアップ用に保存
+      (mapElement as any).__resizeObserver = resizeObserver;
+    }
+
     // 開始地点のマーカーを作成（ドラッグ可能）
     const position = new (window as any).google.maps.LatLng(center.lat, center.lng);
+    
+    // セカンダリーカラーで現在地アイコンを作成
+    const secondaryColorName = appConfig.ui?.colors?.secondary || 'ember';
+      const secondaryColor = getComputedStyle(document.documentElement)
+        .getPropertyValue(`--color-${secondaryColorName}-600`)
+        .trim() || '#FB7C2D';
+    
+    // ピンアイコンSVG
+    const pinIconSvg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
+        <path fill="${secondaryColor}" d="M12 11c-1.33 0-4 .67-4 2v.16c.97 1.12 2.4 1.84 4 1.84s3.03-.72 4-1.84V13c0-1.33-2.67-2-4-2m0-1c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0-8c4.2 0 8 3.22 8 8.2c0 3.32-2.67 7.25-8 11.8c-5.33-4.55-8-8.48-8-11.8C4 5.22 7.8 2 12 2"/>
+      </svg>
+    `;
+    
+    const pinIcon = {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinIconSvg),
+      scaledSize: new (window as any).google.maps.Size(40, 40),
+      anchor: new (window as any).google.maps.Point(20, 20),
+    };
+    
     startMarker = new (window as any).google.maps.Marker({
       position: position,
       map: mapInstance,
       title: '開始地点',
       draggable: true, // マーカーをドラッグ可能にする
+      icon: pinIcon,
     });
 
     // マーカーがドラッグされたときに位置を更新
@@ -208,11 +269,17 @@
       }
     }
 
+    // DOMが完全にレンダリングされた後に地図を初期化
+    await nextTick();
+    
     // 地図を初期化（Google Maps APIの読み込みを待つ）
     const checkGoogleMaps = setInterval(() => {
       if ((window as any).google) {
         clearInterval(checkGoogleMaps);
-        initMap();
+        // さらに少し待ってから初期化（レイアウトが確定するまで）
+        setTimeout(() => {
+          initMap();
+        }, 200);
       }
     }, 100);
 
@@ -224,6 +291,10 @@
 
   // コンポーネントがアンマウントされる時にマップを破棄
   onBeforeUnmount(() => {
+    const mapElement = document.getElementById("start-location-map");
+    if (mapElement && (mapElement as any).__resizeObserver) {
+      (mapElement as any).__resizeObserver.disconnect();
+    }
     if (startMarker) {
       startMarker.setMap(null);
       startMarker = null;
@@ -235,65 +306,66 @@
 
 </script>
 <template>
-  <h1 class="text-lg font-bold mt-2 mb-2">散歩ルートを決める</h1>
-  <p class="text-gray-700 tracking-wide mb-2">どんな気分？</p>
-  <URadioGroup 
-    indicator="hidden" 
-    v-model="searchParams.theme" 
-    :items="themeItems" 
-    variant="card" 
-    :ui="{
-      fieldset: 'grid grid-cols-2 gap-2 mb-2',
-    }"
-  />
-  <div class="flex items-center justify-between mb-2">
-    <p class="text-gray-700 tracking-wide">どれくらい歩く？</p>
-    <p class="font-semibold text-primary-600">{{searchParams.distance_km}}km</p>
-  </div>
-  <USlider 
-    v-model="searchParams.distance_km" 
-    :min="1" 
-    :max="9" 
-    :step="0.5" 
-    :default-value="searchParams.distance_km"
-    class="mb-2"
-  />
-  <div class="mb-2">
-    <p class="text-gray-700 tracking-wide mb-2">どこから歩く？</p>
-  </div>
-  <!-- 開始地点の地図 -->
-  <div class="space-y-2 mb-2">
-    <div class="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-      <div
-        id="start-location-map"
-        class="w-full h-64"
-      ></div>
-      <!-- 現在地を取得ボタン（地図右上に重ねて表示） -->
-      <div class="absolute top-2 right-2 z-10">
-        <UButton
-            size="xs"
-            color="primary"
-            :loading="loadingLocation"
-            @click="fetchCurrentLocation"
-            variant="outline"
-            :ui="{
-              base: 'shadow-lg bg-white'
-            }"
-        >
-          <span v-if="loadingLocation">取得中...</span>
-          <span v-else>現在地を<br/>取得</span>
-        </UButton>
+  <div class="flex flex-col h-[calc(100vh-var(--ui-header-height))]">
+    <!-- 開始地点の地図 -->
+    <div class="flex-1 flex flex-col">
+      <div class="relative flex-1 bg-gray-50">
+        <div
+          id="start-location-map"
+          class="w-full h-full"
+        ></div>
+        <!-- 現在地を取得ボタン（地図右下に重ねて表示） -->
+        <div class="absolute bottom-4 right-4 z-10">
+          <UButton
+              size="xl"
+              color="primary"
+              icon="ic:baseline-my-location"
+              :loading="loadingLocation"
+              @click="fetchCurrentLocation"
+              variant="outline"
+              :ui="{
+                base: 'shadow-lg bg-white'
+              }"
+          />
+        </div>
       </div>
+      <p class="text-xs text-gray-500 px-2 py-1">地図をクリックするか、マーカーをドラッグして開始地点を設定してください。</p>
     </div>
-    <p class="text-xs text-gray-500">地図をクリックするか、マーカーをドラッグして開始地点を設定してください。</p>
+    <!-- フォーム部分（画面下部に固定） -->
+    <div class="flex-none shrink-0 px-2 pb-2">
+      <div class="overflow-x-auto pt-4 pb-4 mr-2 px-2 scrollbar-hide">
+        <URadioGroup 
+          indicator="hidden"
+          orientation="horizontal"
+          v-model="searchParams.theme" 
+          :items="themeItems" 
+          variant="card"
+          :ui="{
+            wrapper: 'shrink-0 min-w-[120px]',  
+          }"
+        />
+      </div>
+      <div class="overflow-x-auto pb-4 mr-2 px-2 scrollbar-hide">
+        <URadioGroup 
+          indicator="hidden"
+          orientation="horizontal"
+          v-model="motivation" 
+          :items="motivationItems" 
+          variant="card"
+          :ui="{
+            wrapper: 'shrink-0 min-w-[120px]', 
+          }"
+        />
+      </div>
+      <UButton
+        block
+        color="secondary"
+        label="散歩ルートを探す"
+        class="my-4 text-lg font-bold rounded-full"
+        @click="callApi"
+      />
+    </div>
   </div>
-  <UButton
-    block
-    color="secondary"
-    label="散歩ルートを探す"
-    class="mt-2 text-lg font-bold rounded-full"
-    @click="callApi"
-  />
 
   <!-- 検索中のモーダル -->
   <UModal v-model:open="loadingApi" :dismissible="false" title="条件に合う散歩ルートを探しています。" description="しばらくお待ちください。">
@@ -308,3 +380,14 @@
     </template>
   </UModal>
 </template>
+
+<style scoped>
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+</style>

@@ -75,7 +75,6 @@
     mapInstance = new (window as any).google.maps.Map(mapElement, {
       zoom,
       center,
-      mapTypeId: 'terrain',
       disableDefaultUI: true,
       draggable: true,
       scrollwheel: true,
@@ -100,23 +99,22 @@
     if (coordinates.length > 0 && coordinates[0]) {
       const startPosition = new (window as any).google.maps.LatLng(coordinates[0].lat, coordinates[0].lng);
       
-      // プライマリーカラーで丸い「S」マーカーを作成
+      // セカンダリーカラーで出発地マーカーを作成
       const secondaryColorName = appConfig.ui?.colors?.secondary || 'ember';
       const secondaryColor = getComputedStyle(document.documentElement)
         .getPropertyValue(`--color-${secondaryColorName}-600`)
         .trim() || '#FB7C2D';
       
       const startMarkerSvg = `
-        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="16" cy="16" r="14" fill="${secondaryColor}" stroke="#FFFFFF" stroke-width="2"/>
-          <text x="16" y="22" text-anchor="middle" font-size="16" font-weight="bold" fill="#FFFFFF">S</text>
-        </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
+        <path fill="${secondaryColor}" d="M12 11c-1.33 0-4 .67-4 2v.16c.97 1.12 2.4 1.84 4 1.84s3.03-.72 4-1.84V13c0-1.33-2.67-2-4-2m0-1c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0-8c4.2 0 8 3.22 8 8.2c0 3.32-2.67 7.25-8 11.8c-5.33-4.55-8-8.48-8-11.8C4 5.22 7.8 2 12 2"/>
+      </svg>
       `;
       
       const startMarkerIcon = {
         url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(startMarkerSvg),
-        scaledSize: new (window as any).google.maps.Size(32, 32),
-        anchor: new (window as any).google.maps.Point(16, 16),
+        scaledSize: new (window as any).google.maps.Size(40, 40),
+        anchor: new (window as any).google.maps.Point(20, 20),
       };
       
       const startMarker = new (window as any).google.maps.Marker({
@@ -314,82 +312,94 @@
 </script>
 
 <template>
-  <h1 class="mt-2 mb-2 text-lg font-bold">{{ routeState.title }}</h1>
-  <p class="leading-relaxed mb-2">
-    {{ routeState.summary }}
-  </p>
-  <!-- マップ -->
-  <div class="rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
-    <div
-      id="route-map"
-      class="w-full h-72"
-    ></div>
-  </div>
+  <div class="flex flex-col h-[calc(100vh-var(--ui-header-height))]">
+    <!-- マップ -->
+    <div class="flex-1 relative border border-gray-100 bg-gray-50">
+      <div
+        id="route-map"
+        class="w-full h-full"
+      ></div>
+    </div>
+    <div class="absolute bottom-4 z-10 px-2">
+      <UCard>
+        <template #header>
+          <h1 class="text-lg font-bold mb-2">{{ routeState.title }}</h1>
+          <p class="text-sm mb-2">
+            {{ routeState.summary }}
+          </p>
+          <div class="grid grid-cols-3 gap-2 text-center text-xs">
+            <p class="mt-1 text-lg font-bold text-primary-600">
+              {{ routeState.distance_km }}km
+            </p>
+            <p class="mt-1 text-lg font-bold text-indigo-600">
+              {{ routeState.duration_min }}分
+            </p>
+            <p class="mt-1 text-lg font-bold text-emerald-600">
+              {{ Math.round(routeState.distance_km! * 100000 / 76) }}歩
+            </p>
+          </div>
+        </template>
 
-  <div class="grid grid-cols-3 gap-2 text-center text-xs mb-2">
-    <p class="mt-1 text-lg font-bold text-primary-600">
-      {{ routeState.distance_km }}km
-    </p>
-    <p class="mt-1 text-lg font-bold text-indigo-600">
-      {{ routeState.duration_min }}分
-    </p>
-    <p class="mt-1 text-lg font-bold text-emerald-600">
-      {{ Math.round(routeState.distance_km! * 100000 / 76) }}歩
-    </p>
-  </div>
-
-  <!-- 見どころスポット -->
-  <div v-if="routeState.spots.length > 0">
-    <p class="text-gray-800">見どころスポット</p>
-    <ul>
-      <li
-        v-for="(spot, index) in routeState.spots"
-        :key="index"
-        class="flex items-start gap-3 py-2 cursor-default"
-      >
-        <!-- ピンアイコン風のバッジ -->
-        <div class="relative mt-0.5 shrink-0 text-primary-600">
-          <svg 
-            width="24" 
-            height="32" 
-            viewBox="0 0 24 32" 
-            fill="none" 
-            xmlns="http://www.w3.org/2000/svg"
-            class="drop-shadow-sm"
-          >
-            <!-- ピンの影部分 -->
-            <path 
-              d="M12 0C5.373 0 0 5.373 0 12C0 18.627 12 32 12 32S24 18.627 24 12C24 5.373 18.627 0 12 0Z" 
-              fill="currentColor"
-            />
-            <!-- 番号を表示する円 -->
-            <circle 
-              cx="12" 
-              cy="12" 
-              r="8" 
-              fill="#FFFFFF"
-            />
-            <text 
-              x="12" 
-              y="16" 
-              text-anchor="middle" 
-              font-size="11" 
-              font-weight="bold" 
-              fill="currentColor"
+        <div v-if="routeState.spots.length > 0">
+          <ul>
+            <li
+              v-for="(spot, index) in routeState.spots"
+              :key="index"
+              class="flex gap-3 py-2 cursor-default items-center"
             >
-              {{ index + 1 }}
-            </text>
-          </svg>
+              <!-- ピンアイコン風のバッジ -->
+              <div class="relative shrink-0 text-primary-600">
+                <svg 
+                  width="24" 
+                  height="32" 
+                  viewBox="0 0 24 32" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="drop-shadow-sm"
+                >
+                  <!-- ピンの影部分 -->
+                  <path 
+                    d="M12 0C5.373 0 0 5.373 0 12C0 18.627 12 32 12 32S24 18.627 24 12C24 5.373 18.627 0 12 0Z" 
+                    fill="currentColor"
+                  />
+                  <!-- 番号を表示する円 -->
+                  <circle 
+                    cx="12" 
+                    cy="12" 
+                    r="8" 
+                    fill="#FFFFFF"
+                  />
+                  <text 
+                    x="12" 
+                    y="16" 
+                    text-anchor="middle" 
+                    font-size="11" 
+                    font-weight="bold" 
+                    fill="currentColor"
+                  >
+                    {{ index + 1 }}
+                  </text>
+                </svg>
+              </div>
+              <p class="text-sm text-gray-700 truncate">
+                {{ spot.name || 'スポット名未設定' }}
+              </p>
+            </li>
+          </ul>
         </div>
-        <p class="text-sm text-gray-700 truncate">
-          {{ spot.name || 'スポット名未設定' }}
-        </p>
-      </li>
-    </ul>
+
+        <template #footer>
+          <UButton block label="このルートを歩く" color="secondary" class="mb-2 text-lg font-bold rounded-full" @click="startNavigation"/>
+        </template>
+      </UCard>
+
+      <!-- 見どころスポット -->
+      <div class="flex gap-2 mt-2">
+        <UButton block label="ルートを再検索" variant="outline" :loading="loadingRegenerate" @click="handleRegenerate" class="flex-1 bg-white" />
+        <UButton block label="検索条件を変更" variant="outline" @click="handleResearch" class="flex-1 bg-white" />
+      </div>
+    </div>
   </div>
-  <UButton block label="このルートを歩く" color="secondary" class="mb-2 text-lg font-bold rounded-full" @click="startNavigation"/>
-  <UButton block label="ルートを再検索" color="primary" variant="outline" :loading="loadingRegenerate" class="mb-2 rounded-full" @click="handleRegenerate" />
-  <UButton block label="検索条件を変更" variant="link" @click="handleResearch"/>
 
   <!-- 再検索中のモーダル -->
   <UModal v-model:open="loadingRegenerate" :dismissible="false" title="ルートを再検索" description="しばらくお待ちください。">
@@ -397,7 +407,7 @@
       <div class="flex flex-col items-center justify-center space-y-4 py-4">
         <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-secondary-600" />
         <div class="text-center space-y-2">
-          <p class="text-gray-600">散歩ルートを再建策しています。</p>
+          <p class="text-gray-600">散歩ルートを再検索しています。</p>
           <p class="text-gray-600">しばらくお待ちください。</p>
         </div>
       </div>
