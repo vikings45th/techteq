@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     RANKER_URL: str = "http://ranker:8080"  # RankerサービスのURL
     REQUEST_TIMEOUT_SEC: float = 10.0  # 一般的なリクエストのタイムアウト（秒）
     RANKER_TIMEOUT_SEC: float = 10.0  # Ranker APIのタイムアウト（秒）
+    LOG_LEVEL: str = "INFO"  # ログレベル（INFO/DEBUG/WARNING）
 
     # Google Maps Platform
     MAPS_API_KEY: str = ""  # Google Maps APIキー
