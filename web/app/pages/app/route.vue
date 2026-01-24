@@ -26,7 +26,7 @@
   function destroyMap() {
     // マーカーを削除
     markers.forEach((marker) => {
-      marker.setMap(null);
+      marker.map = null;
     });
     markers = [];
     
@@ -51,11 +51,14 @@
     }
   }
 
-  const initMap = () => {
+  const initMap = async () => {
     const mapElement = document.getElementById("route-map");
     if (!mapElement || !(window as any).google) {
       return;
     }
+
+    // markerライブラリをインポート
+    const { AdvancedMarkerElement } = await (window as any).google.maps.importLibrary('marker');
 
     // 既にマップが初期化されている場合は削除
     if (mapInstance) {
@@ -72,15 +75,20 @@
     let center = { lat: 0, lng: -180 };
     let zoom = 17;
 
+    // クラウドベースのマップスタイリングを使用する場合は、mapIdに関連付けられたスタイルが自動的に適用されます
+    // スタイルはGoogle Cloud Consoleで管理されます
     mapInstance = new (window as any).google.maps.Map(mapElement, {
       zoom,
       center,
+      mapId: '9153bea12861ba5a84e2b6d3', // 高度なマーカーとクラウドベースのスタイリングを使用するために必要
       disableDefaultUI: true,
       draggable: true,
       scrollwheel: true,
       disableDoubleClickZoom: true,
       keyboardShortcuts: false,
       clickableIcons: false,
+      // クラウドベースのスタイリングを使用する場合、styles配列は不要です
+      // スタイルはGoogle Cloud Consoleで管理され、マップIDに関連付けられます
     });
 
     // bounds を使って表示範囲を調整
@@ -97,7 +105,7 @@
 
     // スタート地点のマーカーを追加
     if (coordinates.length > 0 && coordinates[0]) {
-      const startPosition = new (window as any).google.maps.LatLng(coordinates[0].lat, coordinates[0].lng);
+      const startPosition = { lat: coordinates[0].lat, lng: coordinates[0].lng };
       
       // セカンダリーカラーで出発地マーカーを作成
       const secondaryColorName = appConfig.ui?.colors?.secondary || 'ember';
@@ -105,27 +113,26 @@
         .getPropertyValue(`--color-${secondaryColorName}-600`)
         .trim() || '#FB7C2D';
       
-      const startMarkerSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
-        <path fill="${secondaryColor}" d="M12 11c-1.33 0-4 .67-4 2v.16c.97 1.12 2.4 1.84 4 1.84s3.03-.72 4-1.84V13c0-1.33-2.67-2-4-2m0-1c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0-8c4.2 0 8 3.22 8 8.2c0 3.32-2.67 7.25-8 11.8c-5.33-4.55-8-8.48-8-11.8C4 5.22 7.8 2 12 2"/>
-      </svg>
+      // ピンアイコンSVGをHTML要素として作成
+      const startMarkerElement = document.createElement('div');
+      startMarkerElement.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
+          <path fill="${secondaryColor}" d="M12 11c-1.33 0-4 .67-4 2v.16c.97 1.12 2.4 1.84 4 1.84s3.03-.72 4-1.84V13c0-1.33-2.67-2-4-2m0-1c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0-8c4.2 0 8 3.22 8 8.2c0 3.32-2.67 7.25-8 11.8c-5.33-4.55-8-8.48-8-11.8C4 5.22 7.8 2 12 2"/>
+        </svg>
       `;
+      startMarkerElement.style.width = '40px';
+      startMarkerElement.style.height = '40px';
       
-      const startMarkerIcon = {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(startMarkerSvg),
-        scaledSize: new (window as any).google.maps.Size(40, 40),
-        anchor: new (window as any).google.maps.Point(20, 20),
-      };
-      
-      const startMarker = new (window as any).google.maps.Marker({
-        position: startPosition,
+      // 高度なマーカーを使用
+      const startMarker = new AdvancedMarkerElement({
         map: mapInstance,
+        position: startPosition,
         title: 'スタート地点',
-        icon: startMarkerIcon,
+        content: startMarkerElement,
       });
       
       markers.push(startMarker);
-      bounds.extend(startPosition);
+      bounds.extend(new (window as any).google.maps.LatLng(startPosition.lat, startPosition.lng));
       hasBounds = true;
     }
 
@@ -133,39 +140,38 @@
     if (routeState.value.spots && routeState.value.spots.length > 0) {
       routeState.value.spots.forEach((spot, index) => {
         if (spot.lat !== undefined && spot.lng !== undefined) {
-          const position = new (window as any).google.maps.LatLng(spot.lat, spot.lng);
+          const position = { lat: spot.lat, lng: spot.lng };
           
           // プライマリーカラーでピンアイコンを作成
           const primaryColorName = appConfig.ui?.colors?.primary || 'verdant';
           const primaryColor = getComputedStyle(document.documentElement)
             .getPropertyValue(`--color-${primaryColorName}-600`)
             .trim() || '#43A047';
-          const pinSvg = `
+          
+          // ピンアイコンSVGをHTML要素として作成
+          const pinElement = document.createElement('div');
+          pinElement.innerHTML = `
             <svg width="24" height="32" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 0C5.373 0 0 5.373 0 12C0 18.627 12 32 12 32S24 18.627 24 12C24 5.373 18.627 0 12 0Z" fill="${primaryColor}"/>
               <circle cx="12" cy="12" r="8" fill="#FFFFFF"/>
               <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="bold" fill="${primaryColor}">${index + 1}</text>
             </svg>
           `;
+          pinElement.style.width = '24px';
+          pinElement.style.height = '32px';
           
-          const pinIcon = {
-            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
-            scaledSize: new (window as any).google.maps.Size(24, 32),
-            anchor: new (window as any).google.maps.Point(12, 32),
-          };
-          
-          // マーカーを作成（プライマリーカラーのピンアイコン）
-          const marker = new (window as any).google.maps.Marker({
-            position: position,
+          // 高度なマーカーを使用
+          const marker = new AdvancedMarkerElement({
             map: mapInstance,
+            position: position,
             title: spot.name || 'スポット',
-            icon: pinIcon,
+            content: pinElement,
           });
 
           markers.push(marker);
           
           // boundsに追加
-          bounds.extend(position);
+          bounds.extend(new (window as any).google.maps.LatLng(position.lat, position.lng));
           hasBounds = true;
         }
       });
@@ -173,7 +179,28 @@
 
     // boundsがある場合は表示範囲を調整
     if (hasBounds && mapInstance) {
-      mapInstance.fitBounds(bounds);
+      // UCardの高さを取得（bottom-4の位置にあるUCard）
+      const cardElement = document.querySelector('.absolute.bottom-4') as HTMLElement;
+      const cardHeight = cardElement ? cardElement.offsetHeight + 32 : 0; // bottom-4 = 16px * 2 = 32px
+      const mapHeight = mapElement.clientHeight;
+      
+      // UCardを除いた高さの中心にboundsの中心が来るようにパディングを設定
+      // 利用可能な高さの中心 = (mapHeight - cardHeight) / 2
+      // マップ全体の中心 = mapHeight / 2
+      // 下パディングを調整して、boundsの中心を利用可能な高さの中心に配置
+      const availableHeight = mapHeight - cardHeight;
+      const targetCenterY = availableHeight / 2;
+      
+      // 下パディングを計算（boundsの中心がtargetCenterYに来るように）
+      const bottomPadding = mapHeight - targetCenterY * 2;
+      
+      // fitBoundsで直接中心に表示
+      mapInstance.fitBounds(bounds, {
+        top: 0,
+        right: 0,
+        bottom: bottomPadding,
+        left: 0
+      });
     }
 
     // polylineを描画
@@ -395,8 +422,8 @@
 
       <!-- 見どころスポット -->
       <div class="flex gap-2 mt-2">
-        <UButton block label="ルートを再検索" variant="outline" :loading="loadingRegenerate" @click="handleRegenerate" class="flex-1 bg-white" />
-        <UButton block label="検索条件を変更" variant="outline" @click="handleResearch" class="flex-1 bg-white" />
+        <UButton block label="ルートを再検索" color="secondary" variant="outline" :loading="loadingRegenerate" @click="handleRegenerate" class="flex-1 bg-white" />
+        <UButton block label="検索条件を変更" color="secondary" variant="outline" @click="handleResearch" class="flex-1 bg-white" />
       </div>
     </div>
   </div>
