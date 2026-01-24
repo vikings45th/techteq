@@ -111,6 +111,10 @@
 | `PLACES_RADIUS_M` | Places APIの検索半径（m） | Agent APIのみ |
 | `PLACES_MAX_RESULTS` | 1地点あたりの最大件数 | Agent APIのみ |
 | `PLACES_SAMPLE_POINTS_MAX` | 検索地点数（サンプル点の上限） | Agent APIのみ |
+| `MAX_ROUTES` | 最大生成本数 | Agent APIのみ |
+| `MIN_ROUTES` | 最低生成本数 | Agent APIのみ |
+| `SCORE_THRESHOLD` | 早期終了の閾値（暫定） | Agent APIのみ |
+| `CONCURRENCY` | 外部APIの同時実行数 | Agent APIのみ |
 | `SPOT_MAX_DISTANCE_M` | ルートからの最大距離（m） | Agent APIのみ |
 | `SPOT_MAX_DISTANCE_M_RELAXED` | 緩和時の最大距離（m） | Agent APIのみ |
 | `SPOT_MAX_DISTANCE_M_FALLBACK` | 追加緩和時の最大距離（m） | Agent APIのみ |

@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     PLACES_MAX_RESULTS: int = 2  # 1地点あたりの最大件数
     PLACES_SAMPLE_POINTS_MAX: int = 1  # 検索地点数（サンプル点の上限）
 
+    # ルート生成（逐次生成/早期終了）
+    MAX_ROUTES: int = 5  # 最大生成本数
+    MIN_ROUTES: int = 2  # 最低生成本数
+    SCORE_THRESHOLD: float = 0.6  # 早期終了の閾値（暫定）
+    CONCURRENCY: int = 2  # 外部APIの並列数
+
     # BigQuery
     BQ_DATASET: str = "firstdown_mvp"  # BigQueryデータセット名
     BQ_TABLE_REQUEST: str = "route_request"  # リクエストテーブル名

@@ -5,6 +5,7 @@ import time
 import uuid
 import random
 import math
+import asyncio
 from typing import Any, Dict, List, Optional, TypedDict
 
 import polyline as polyline_lib
@@ -98,10 +99,8 @@ def _init_state(req: GenerateRouteRequest) -> AgentState:
         "fallback_ranking",
         "select_best_route",
         "sample_points_from_polyline",
-        "fetch_places",
+        "parallel_postprocess",
         "simplify_polyline_to_waypoints",
-        "generate_description_vertex",
-        "generate_title_vertex",
         "compute_quality",
         "build_fallback_details",
         "store_candidates_bq",
@@ -427,7 +426,7 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
     error: Optional[str] = None
     try:
         effective_end_location = None if req.round_trip else req.end_location
-        candidates = await maps_routes_client.compute_route_candidates(
+        dests = maps_routes_client.compute_route_dests(
             request_id=req.request_id,
             start_lat=float(req.start_location.lat),
             start_lng=float(req.start_location.lng),
@@ -436,6 +435,44 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
             distance_km=float(req.distance_km),
             round_trip=bool(req.round_trip),
         )
+        max_routes = max(1, int(settings.MAX_ROUTES))
+        min_routes = max(1, int(settings.MIN_ROUTES))
+        dests = dests[:max_routes]
+        best_score: Optional[float] = None
+
+        t0 = time.perf_counter()
+        for idx, dest in enumerate(dests, start=1):
+            route = await maps_routes_client.compute_route_candidate(
+                request_id=req.request_id,
+                start_lat=float(req.start_location.lat),
+                start_lng=float(req.start_location.lng),
+                dest=dest,
+                idx=idx,
+                round_trip=bool(req.round_trip),
+            )
+            if not route:
+                continue
+            candidates.append(route)
+            score = _heuristic_score({"distance_km": route.get("distance_km")}, req)
+            if best_score is None or score > best_score:
+                best_score = score
+            if len(candidates) >= min_routes and best_score >= float(settings.SCORE_THRESHOLD):
+                logger.info(
+                    "[Routes Early Exit] request_id=%s candidates=%d best_score=%.3f threshold=%.3f",
+                    req.request_id,
+                    len(candidates),
+                    best_score,
+                    float(settings.SCORE_THRESHOLD),
+                )
+                break
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "[Routes Latency] request_id=%s candidates=%d elapsed_ms=%d",
+            req.request_id,
+            len(candidates),
+            elapsed_ms,
+        )
+
         if candidates:
             tools_used = _ensure_tool_used(tools_used, "maps_routes")
             status = "ok"
@@ -608,7 +645,15 @@ async def score_by_ranker(state: AgentState) -> Dict[str, Any]:
     score_map: Dict[str, float] = {}
 
     try:
+        t0 = time.perf_counter()
         scores_list, _failed_ids = await ranker_client.rank_routes(req.request_id, rep_routes_payload)
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "[Ranker Latency] request_id=%s routes=%d elapsed_ms=%d",
+            req.request_id,
+            len(rep_routes_payload),
+            elapsed_ms,
+        )
         for item in scores_list:
             if "route_id" in item and "score" in item:
                 score_map[item["route_id"]] = float(item["score"])
@@ -738,6 +783,7 @@ async def fetch_places(state: AgentState) -> Dict[str, Any]:
     places: List[Dict[str, Any]] = []
 
     try:
+        t0 = time.perf_counter()
         merged, selected = await _collect_places_two_phase(
             request_id=req.request_id,
             theme=req.theme,
@@ -774,6 +820,13 @@ async def fetch_places(state: AgentState) -> Dict[str, Any]:
             status = "ok"
         else:
             status = "empty"
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "[Places Latency] request_id=%s spots=%d elapsed_ms=%d",
+            req.request_id,
+            len(places),
+            elapsed_ms,
+        )
     except Exception as e:
         error = repr(e)
         logger.error("[Places Error] request_id=%s err=%r", req.request_id, e)
@@ -783,6 +836,104 @@ async def fetch_places(state: AgentState) -> Dict[str, Any]:
         "places_status": status,
         "places_error": error,
         "tools_used": tools_used,
+    }
+
+
+async def parallel_postprocess(state: AgentState) -> Dict[str, Any]:
+    req = state["request"]
+    tools_used = list(state["tools_used"])
+    fallback_reasons = list(state["fallback_reasons"])
+    sem = asyncio.Semaphore(int(settings.CONCURRENCY))
+
+    async def _run_with_sem(coro):
+        async with sem:
+            return await coro
+
+    state_for_vertex = dict(state)
+    state_for_vertex["places"] = []
+
+    t0 = time.perf_counter()
+    tasks = {
+        "places": asyncio.create_task(_run_with_sem(fetch_places(state))),
+        "desc": asyncio.create_task(_run_with_sem(generate_description_vertex(state_for_vertex))),
+        "title": asyncio.create_task(_run_with_sem(generate_title_vertex(state_for_vertex))),
+    }
+    results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    logger.info("[Postprocess Latency] request_id=%s elapsed_ms=%d", req.request_id, elapsed_ms)
+
+    result_map = dict(zip(tasks.keys(), results))
+    places_result: Dict[str, Any] = {}
+    desc_result: Dict[str, Any] = {}
+    title_result: Dict[str, Any] = {}
+
+    if isinstance(result_map.get("places"), Exception):
+        logger.error("[Places Parallel Error] request_id=%s err=%r", req.request_id, result_map["places"])
+        places_result = {
+            "places": [],
+            "places_status": "error",
+            "places_error": repr(result_map["places"]),
+            "tools_used": tools_used,
+        }
+    else:
+        places_result = result_map.get("places") or {}
+
+    if isinstance(result_map.get("desc"), Exception):
+        logger.error("[Desc Parallel Error] request_id=%s err=%r", req.request_id, result_map["desc"])
+        template_candidates = [
+            "今すぐ歩き出したくなる散歩ルートです",
+            "気分が弾む散歩に出かけたくなるルートです",
+            "景色の変化を楽しめる、わくわくする散歩ルートです",
+        ]
+        desc_result = {
+            "description": random.choice(template_candidates),
+            "desc_llm_status": "error",
+            "desc_fallback_used": True,
+            "summary_type": "template",
+            "tools_used": tools_used,
+            "fallback_reasons": fallback_reasons + ["vertex_llm_failed"],
+        }
+    else:
+        desc_result = result_map.get("desc") or {}
+
+    if isinstance(result_map.get("title"), Exception):
+        logger.error("[Title Parallel Error] request_id=%s err=%r", req.request_id, result_map["title"])
+        title_result = {
+            "title": vertex_llm.fallback_title(
+                theme=req.theme,
+                distance_km=float(state["best_route"].get("distance_km", req.distance_km)),
+                duration_min=float(state["best_route"].get("duration_min") or 30.0),
+                spots=[],
+            ),
+            "title_llm_status": "error",
+            "title_fallback_used": True,
+            "tools_used": tools_used,
+        }
+    else:
+        title_result = result_map.get("title") or {}
+
+    if places_result.get("tools_used"):
+        tools_used = places_result["tools_used"]
+    if desc_result.get("tools_used"):
+        tools_used = desc_result["tools_used"]
+    if title_result.get("tools_used"):
+        tools_used = title_result["tools_used"]
+    if desc_result.get("fallback_reasons"):
+        fallback_reasons = desc_result["fallback_reasons"]
+
+    return {
+        "places": places_result.get("places", []),
+        "places_status": places_result.get("places_status", "error"),
+        "places_error": places_result.get("places_error"),
+        "description": desc_result.get("description"),
+        "desc_llm_status": desc_result.get("desc_llm_status"),
+        "desc_fallback_used": desc_result.get("desc_fallback_used"),
+        "summary_type": desc_result.get("summary_type"),
+        "title": title_result.get("title"),
+        "title_llm_status": title_result.get("title_llm_status"),
+        "title_fallback_used": title_result.get("title_fallback_used"),
+        "tools_used": tools_used,
+        "fallback_reasons": fallback_reasons,
     }
 
 
@@ -878,11 +1029,18 @@ async def generate_description_vertex(state: AgentState) -> Dict[str, Any]:
     summary_type = "template"
 
     try:
+        t0 = time.perf_counter()
         vertex_summary = await vertex_llm.generate_summary(
             theme=req.theme,
             distance_km=float(best_route.get("distance_km", req.distance_km)),
             duration_min=float(best_route.get("duration_min") or 30.0),
             spots=spots,
+        )
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "[Vertex Summary Latency] request_id=%s elapsed_ms=%d",
+            req.request_id,
+            elapsed_ms,
         )
         if vertex_summary:
             description = vertex_summary
@@ -925,11 +1083,18 @@ async def generate_title_vertex(state: AgentState) -> Dict[str, Any]:
     fallback_used = True
 
     try:
+        t0 = time.perf_counter()
         vertex_title = await vertex_llm.generate_title(
             theme=req.theme,
             distance_km=float(best_route.get("distance_km", req.distance_km)),
             duration_min=float(best_route.get("duration_min") or 30.0),
             spots=spots,
+        )
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "[Vertex Title Latency] request_id=%s elapsed_ms=%d",
+            req.request_id,
+            elapsed_ms,
         )
         if vertex_title:
             title = vertex_title
@@ -981,6 +1146,11 @@ async def compute_quality(state: AgentState) -> Dict[str, Any]:
     quality_score = min(1.0, max(0.0, quality_score))
 
     total_latency_ms = int((time.time() - state["start_time"]) * 1000)
+    logger.info(
+        "[Total Latency] request_id=%s elapsed_ms=%d",
+        req.request_id,
+        total_latency_ms,
+    )
 
     return {
         "distance_match": distance_match,
@@ -1167,6 +1337,7 @@ def _build_graph() -> StateGraph:
     graph.add_node("select_best_route", select_best_route)
     graph.add_node("sample_points_from_polyline", sample_points_from_polyline)
     graph.add_node("fetch_places", fetch_places)
+    graph.add_node("parallel_postprocess", parallel_postprocess)
     graph.add_node("simplify_polyline_to_waypoints", simplify_polyline_to_waypoints)
     graph.add_node("generate_description_vertex", generate_description_vertex)
     graph.add_node("generate_title_vertex", generate_title_vertex)
@@ -1195,11 +1366,9 @@ def _build_graph() -> StateGraph:
     )
     graph.add_edge("fallback_ranking", "select_best_route")
     graph.add_edge("select_best_route", "sample_points_from_polyline")
-    graph.add_edge("sample_points_from_polyline", "fetch_places")
-    graph.add_edge("fetch_places", "simplify_polyline_to_waypoints")
-    graph.add_edge("simplify_polyline_to_waypoints", "generate_description_vertex")
-    graph.add_edge("generate_description_vertex", "generate_title_vertex")
-    graph.add_edge("generate_title_vertex", "compute_quality")
+    graph.add_edge("sample_points_from_polyline", "parallel_postprocess")
+    graph.add_edge("parallel_postprocess", "simplify_polyline_to_waypoints")
+    graph.add_edge("simplify_polyline_to_waypoints", "compute_quality")
     graph.add_edge("compute_quality", "build_fallback_details")
     graph.add_edge("build_fallback_details", "store_candidates_bq")
     graph.add_edge("store_candidates_bq", "store_proposal_bq")

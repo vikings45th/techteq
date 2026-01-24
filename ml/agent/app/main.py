@@ -2,6 +2,8 @@ from __future__ import annotations
 import time
 import logging
 from typing import Dict
+from contextlib import asynccontextmanager
+import httpx
 
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
@@ -12,10 +14,22 @@ from app.schemas import (
     FeedbackResponse,
 )
 from app.settings import settings
+from app.services import http_client
 from app.services import bq_writer
 from app.graph import get_route_graph_mermaid, run_generate_graph
 
-app = FastAPI(title="firstdown Agent API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    timeout = httpx.Timeout(settings.REQUEST_TIMEOUT_SEC)
+    limits = httpx.Limits(max_connections=50, max_keepalive_connections=10)
+    client = httpx.AsyncClient(timeout=timeout, limits=limits)
+    http_client.set_client(client)
+    yield
+    await client.aclose()
+    http_client.set_client(None)
+
+
+app = FastAPI(title="firstdown Agent API", version="1.0.0", lifespan=lifespan)
 
 logger = logging.getLogger(__name__)
 

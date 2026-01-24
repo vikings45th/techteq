@@ -69,6 +69,10 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 | `PLACES_RADIUS_M` | `300` | Places APIの検索半径（m） |
 | `PLACES_MAX_RESULTS` | `2` | 1地点あたりの最大件数 |
 | `PLACES_SAMPLE_POINTS_MAX` | `1` | 検索地点数（サンプル点の上限） |
+| `MAX_ROUTES` | `5` | 最大生成本数 |
+| `MIN_ROUTES` | `2` | 最低生成本数（早期終了の下限） |
+| `SCORE_THRESHOLD` | `0.6` | 早期終了の閾値（暫定） |
+| `CONCURRENCY` | `2` | 外部APIの同時実行数 |
 | `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
 | `BQ_TABLE_REQUEST` | `route_request` | BigQueryリクエストテーブル名 |
 | `BQ_TABLE_CANDIDATE` | `route_candidate` | BigQuery候補テーブル名 |
@@ -79,6 +83,29 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 | `SPOT_MAX_DISTANCE_M` | `50.0` | ルートからの最大距離（m） |
 | `SPOT_MAX_DISTANCE_M_RELAXED` | `100.0` | 緩和時の最大距離（m） |
 | `SPOT_MAX_DISTANCE_M_FALLBACK` | `250.0` | 追加緩和時の最大距離（m） |
+
+### SCORE_THRESHOLD の決め方（暫定）
+
+既存の BigQuery ログから「1リクエスト内の最高 rule_score」を抽出して分布を見る。
+`rank_result` テーブルに `rule_score` が保存されている前提です。
+
+```sql
+-- 1リクエスト内の最高 rule_score 分布
+WITH top_scores AS (
+  SELECT
+    request_id,
+    MAX(rule_score) AS best_rule_score
+  FROM `firstdown_mvp.rank_result`
+  WHERE rule_score IS NOT NULL
+  GROUP BY request_id
+)
+SELECT
+  APPROX_QUANTILES(best_rule_score, 20) AS best_score_quantiles,
+  AVG(best_rule_score) AS avg_best_score
+FROM top_scores;
+```
+
+上記の分布を見て `SCORE_THRESHOLD` を仮決定し、早期終了の命中率と品質を観察しながら調整する。
 
 ## API Key 管理
 

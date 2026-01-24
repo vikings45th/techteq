@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from app.settings import settings
+from app.services.http_client import get_client
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +26,13 @@ async def rank_routes(
     """
     payload = {"request_id": request_id, "routes": routes}
 
-    timeout = httpx.Timeout(settings.RANKER_TIMEOUT_SEC)
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            r = await client.post(f"{settings.RANKER_URL}/rank", json=payload)
+        client = get_client()
+        r = await client.post(
+            f"{settings.RANKER_URL}/rank",
+            json=payload,
+            timeout=httpx.Timeout(settings.RANKER_TIMEOUT_SEC),
+        )
     except httpx.TimeoutException as e:
         # タイムアウトエラー
         logger.error(

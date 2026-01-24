@@ -7,6 +7,7 @@ import random
 import httpx
 
 from app.settings import settings
+from app.services.http_client import get_client
 
 logger = logging.getLogger(__name__)
 
@@ -184,26 +185,26 @@ async def search_spots(
         body["keyword"] = keyword
 
     try:
-        async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT_SEC) as client:
-            resp = await client.post(settings.MAPS_PLACES_BASE, json=body, headers=headers)
+        client = get_client()
+        resp = await client.post(settings.MAPS_PLACES_BASE, json=body, headers=headers)
+        if resp.status_code != 200:
+            if resp.status_code == 400 and keyword:
+                logger.info(
+                    "[Places API] Keyword rejected, retrying without keyword. keyword=%s",
+                    keyword,
+                )
+                body_retry = body.copy()
+                body_retry.pop("keyword", None)
+                resp = await client.post(settings.MAPS_PLACES_BASE, json=body_retry, headers=headers)
+                body = body_retry
             if resp.status_code != 200:
-                if resp.status_code == 400 and keyword:
-                    logger.info(
-                        "[Places API] Keyword rejected, retrying without keyword. keyword=%s",
-                        keyword,
-                    )
-                    body_retry = body.copy()
-                    body_retry.pop("keyword", None)
-                    resp = await client.post(settings.MAPS_PLACES_BASE, json=body_retry, headers=headers)
-                    body = body_retry
-                if resp.status_code != 200:
-                    logger.warning(
-                        "[Places API] HTTP error: status=%d response=%s body=%s",
-                        resp.status_code,
-                        resp.text[:500],
-                        str(body)[:500],
-                    )
-                    return []
+                logger.warning(
+                    "[Places API] HTTP error: status=%d response=%s body=%s",
+                    resp.status_code,
+                    resp.text[:500],
+                    str(body)[:500],
+                )
+                return []
             data = resp.json()
             places = data.get("places", [])  # レスポンスから場所リストを取得
             out: List[Dict[str, Any]] = []
