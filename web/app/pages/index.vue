@@ -1,26 +1,30 @@
 <script setup lang="ts">
   const themeItems = ref([{
     label: '体を動かしたい',
-    value: 'exercise'
+    value: 'exercise',
+    icon: 'i-lucide-activity'
   }, {
     label: '考え事をしたい',
-    value: 'think'
+    value: 'think',
+    icon: 'i-lucide-brain'
   }, {
     label: 'リフレッシュしたい',
-    value: 'refresh'
+    value: 'refresh',
+    icon: 'i-lucide-sparkles'
   }, {
     label: '自然を感じたい',
-    value: 'nature'
+    value: 'nature',
+    icon: 'i-lucide-trees'
   }]);
 	const theme = ref("exercise");
 
 	const features = ref([
 		{
-			title: '今の気分',
+			title: '気分',
 			icon: 'i-lucide-smile',
 		},
 		{
-			title: '使える時間',
+			title: 'やる気',
 			icon: 'i-lucide-a-large-small',
 		},
 		{
@@ -52,20 +56,30 @@
 	</UPageHero>
 	<UPageSection
     title="早速歩く"
+		description="今どんな気分？"
   >
 		<div>
-			<URadioGroup 
-				indicator="hidden" 
-				v-model="theme" 
-				:items="themeItems" 
-				variant="card" 
-				class="mb-2"
-				:ui="{
-					fieldset: 'grid grid-cols-2 gap-2 mb-2'
-				}"
-			/>
+      <div class="overflow-x-auto pb-4 mr-2 px-2 scrollbar-hide">
+        <URadioGroup 
+          indicator="hidden"
+          orientation="horizontal"
+          v-model="theme" 
+          :items="themeItems" 
+          variant="card"
+          :ui="{
+            wrapper: 'shrink-0 whitespace-nowrap w-auto',  
+          }"
+        >
+          <template #label="{ item }">
+            <div class="flex items-center gap-2">
+              <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
+              <span>{{ item.label }}</span>
+            </div>
+          </template>
+        </URadioGroup>
+      </div>
 			<UButton block label="散歩ルートを検索" color="secondary" :to="`/app/search?theme=${theme}&quicksearch=true`" class="text-lg mb-2 font-bold rounded-full"/>
-			<UButton block label="詳細条件を入力" variant="link" to="/app/search" class="rounded-full"/>
+			<UButton block label="詳細条件を入力" color="secondary" variant="link" to="/app/search" class="rounded-full"/>
 		</div>
 	</UPageSection>
 	<UPageSection
@@ -77,3 +91,14 @@
 		:links="ctaLinks"
 	/>
 </template>
+
+<style scoped>
+	.scrollbar-hide {
+		-ms-overflow-style: none;  /* IE and Edge */
+		scrollbar-width: none;  /* Firefox */
+	}
+	
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;  /* Chrome, Safari and Opera */
+	}
+</style>

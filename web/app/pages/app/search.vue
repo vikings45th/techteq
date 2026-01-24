@@ -17,26 +17,33 @@
 
   const themeItems = ref([{
     label: '体を動かしたい',
-    value: 'exercise'
+    value: 'exercise',
+    icon: 'i-lucide-activity'
   }, {
     label: '考え事をしたい',
-    value: 'think'
+    value: 'think',
+    icon: 'i-lucide-brain'
   }, {
     label: 'リフレッシュしたい',
-    value: 'refresh'
+    value: 'refresh',
+    icon: 'i-lucide-sparkles'
   }, {
     label: '自然を感じたい',
-    value: 'nature'
+    value: 'nature',
+    icon: 'i-lucide-trees'
   }]);
   const motivationItems = ref([{
     label: '軽く歩く',
-    value: 'light'
+    value: 'light',
+    icon: 'mdi:walk'
   }, {
     label: 'ほどよく歩く',
-    value: 'medium'
+    value: 'medium',
+    icon: 'mdi:run'
   }, {
     label: 'しっかり歩く',
-    value: 'heavy'
+    value: 'heavy',
+    icon: 'mdi:run-fast'
   }]);
   const motivation = ref("light")
   // 検索条件の初期値を作成
@@ -145,16 +152,19 @@
     }
   };
 
-  const initMap = () => {
+  const initMap = async () => {
     const mapElement = document.getElementById("start-location-map");
     if (!mapElement || !(window as any).google) {
       return;
     }
 
+    // markerライブラリをインポート
+    const { AdvancedMarkerElement } = await (window as any).google.maps.importLibrary('marker');
+
     // 既にマップが初期化されている場合は削除
     if (mapInstance) {
       if (startMarker) {
-        startMarker.setMap(null);
+        startMarker.map = null;
         startMarker = null;
       }
       mapInstance = null;
@@ -167,15 +177,20 @@
     };
 
     // 地図を初期化（ドラッグ可能にする）
+    // クラウドベースのマップスタイリングを使用する場合は、mapIdに関連付けられたスタイルが自動的に適用されます
+    // スタイルはGoogle Cloud Consoleで管理されます
     mapInstance = new (window as any).google.maps.Map(mapElement, {
       center,
       zoom: 16,
+      mapId: '9153bea12861ba5a84e2b6d3', // 高度なマーカーとクラウドベースのスタイリングを使用するために必要
       disableDefaultUI: true,
       draggable: true,
       scrollwheel: true,
       disableDoubleClickZoom: true,
       keyboardShortcuts: false,
       clickableIcons: false,
+      // クラウドベースのスタイリングを使用する場合、styles配列は不要です
+      // スタイルはGoogle Cloud Consoleで管理され、マップIDに関連付けられます
     });
 
     // 地図のサイズを再計算（flexboxで高さが確定した後に必要）
@@ -199,48 +214,49 @@
     }
 
     // 開始地点のマーカーを作成（ドラッグ可能）
-    const position = new (window as any).google.maps.LatLng(center.lat, center.lng);
+    const position = { lat: center.lat, lng: center.lng };
     
     // セカンダリーカラーで現在地アイコンを作成
     const secondaryColorName = appConfig.ui?.colors?.secondary || 'ember';
-      const secondaryColor = getComputedStyle(document.documentElement)
-        .getPropertyValue(`--color-${secondaryColorName}-600`)
-        .trim() || '#FB7C2D';
+    const secondaryColor = getComputedStyle(document.documentElement)
+      .getPropertyValue(`--color-${secondaryColorName}-600`)
+      .trim() || '#FB7C2D';
     
-    // ピンアイコンSVG
-    const pinIconSvg = `
+    // ピンアイコンSVGをHTML要素として作成
+    const pinIconElement = document.createElement('div');
+    pinIconElement.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
         <path fill="${secondaryColor}" d="M12 11c-1.33 0-4 .67-4 2v.16c.97 1.12 2.4 1.84 4 1.84s3.03-.72 4-1.84V13c0-1.33-2.67-2-4-2m0-1c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0-8c4.2 0 8 3.22 8 8.2c0 3.32-2.67 7.25-8 11.8c-5.33-4.55-8-8.48-8-11.8C4 5.22 7.8 2 12 2"/>
       </svg>
     `;
+    pinIconElement.style.cursor = 'grab';
+    pinIconElement.style.width = '40px';
+    pinIconElement.style.height = '40px';
     
-    const pinIcon = {
-      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinIconSvg),
-      scaledSize: new (window as any).google.maps.Size(40, 40),
-      anchor: new (window as any).google.maps.Point(20, 20),
-    };
-    
-    startMarker = new (window as any).google.maps.Marker({
-      position: position,
+    // 高度なマーカーを使用
+    startMarker = new AdvancedMarkerElement({
       map: mapInstance,
+      position: position,
       title: '開始地点',
-      draggable: true, // マーカーをドラッグ可能にする
-      icon: pinIcon,
+      content: pinIconElement,
+      gmpDraggable: true, // マーカーをドラッグ可能にする
     });
 
     // マーカーがドラッグされたときに位置を更新
     startMarker.addListener('dragend', (event: any) => {
-      const lat = event.latLng.lat();
-      const lng = event.latLng.lng();
-      currentLocation.value = { lat, lng };
+      const position = event.target.position;
+      if (position) {
+        const lat = typeof position.lat === 'function' ? position.lat() : position.lat;
+        const lng = typeof position.lng === 'function' ? position.lng() : position.lng;
+        currentLocation.value = { lat, lng };
+      }
     });
 
     // 地図がクリックされたときにもマーカーを移動
     mapInstance.addListener('click', (event: any) => {
       const lat = event.latLng.lat();
       const lng = event.latLng.lng();
-      const position = new (window as any).google.maps.LatLng(lat, lng);
-      startMarker.setPosition(position);
+      startMarker.position = { lat, lng };
       currentLocation.value = { lat, lng };
     });
   };
@@ -318,7 +334,7 @@
         <div class="absolute bottom-4 right-4 z-10">
           <UButton
               size="xl"
-              color="primary"
+              color="secondary"
               icon="ic:baseline-my-location"
               :loading="loadingLocation"
               @click="fetchCurrentLocation"
@@ -341,9 +357,16 @@
           :items="themeItems" 
           variant="card"
           :ui="{
-            wrapper: 'shrink-0 min-w-[120px]',  
+            wrapper: 'shrink-0 whitespace-nowrap w-auto',  
           }"
-        />
+        >
+          <template #label="{ item }">
+            <div class="flex items-center gap-2">
+              <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
+              <span>{{ item.label }}</span>
+            </div>
+          </template>
+        </URadioGroup>
       </div>
       <div class="overflow-x-auto pb-4 mr-2 px-2 scrollbar-hide">
         <URadioGroup 
@@ -353,9 +376,16 @@
           :items="motivationItems" 
           variant="card"
           :ui="{
-            wrapper: 'shrink-0 min-w-[120px]', 
+            wrapper: 'shrink-0 whitespace-nowrap w-auto', 
           }"
-        />
+        >
+          <template #label="{ item }">
+            <div class="flex items-center gap-2">
+              <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
+              <span>{{ item.label }}</span>
+            </div>
+          </template>
+        </URadioGroup>
       </div>
       <UButton
         block
