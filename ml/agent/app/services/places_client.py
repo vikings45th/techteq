@@ -205,77 +205,78 @@ async def search_spots(
                     str(body)[:500],
                 )
                 return []
-            data = resp.json()
-            places = data.get("places", [])  # レスポンスから場所リストを取得
-            out: List[Dict[str, Any]] = []
-            # 各場所から必要な情報を抽出
-            for p in places[:max_results]:
-                name = p.get("displayName", {}).get("text")  # 表示名を取得
-                place_id = p.get("id")  # place_idを取得
-                types = p.get("types") or []  # 場所タイプのリスト
-                primary = types[0] if types else "unknown"  # 最初のタイプを主要タイプとする
-                location = p.get("location") or {}
-                lat = location.get("latitude")
-                lng = location.get("longitude")
-                if name and lat is not None and lng is not None:
-                    out.append(
-                        {
-                            "name": name,
-                            "type": primary,
-                            "place_id": place_id,
-                            "lat": float(lat),
-                            "lng": float(lng),
-                        }
-                    )
-            
-            # themeフィルタを使用したが結果が空の場合、フォールバックとしてincludedTypesなしで再検索
-            if allow_unfiltered_fallback and use_theme_filter and len(out) == 0:
-                logger.info(
-                    "[Places API] No results with theme filter, falling back to unfiltered search"
+
+        data = resp.json()
+        places = data.get("places", [])  # レスポンスから場所リストを取得
+        out: List[Dict[str, Any]] = []
+        # 各場所から必要な情報を抽出
+        for p in places[:max_results]:
+            name = p.get("displayName", {}).get("text")  # 表示名を取得
+            place_id = p.get("id")  # place_idを取得
+            types = p.get("types") or []  # 場所タイプのリスト
+            primary = types[0] if types else "unknown"  # 最初のタイプを主要タイプとする
+            location = p.get("location") or {}
+            lat = location.get("latitude")
+            lng = location.get("longitude")
+            if name and lat is not None and lng is not None:
+                out.append(
+                    {
+                        "name": name,
+                        "type": primary,
+                        "place_id": place_id,
+                        "lat": float(lat),
+                        "lng": float(lng),
+                    }
                 )
-                body_fallback = body.copy()
-                body_fallback.pop("includedTypes", None)
-                resp_fallback = await client.post(settings.MAPS_PLACES_BASE, json=body_fallback, headers=headers)
-                if resp_fallback.status_code == 200:
-                    data_fallback = resp_fallback.json()
-                    places_fallback = data_fallback.get("places", [])
-                    logger.info(
-                        "[Places API] Fallback search returned %d places",
-                        len(places_fallback),
-                    )
-                    for p in places_fallback[:max_results]:
-                        name = p.get("displayName", {}).get("text")
-                        place_id = p.get("id")
-                        types = p.get("types") or []
-                        primary = types[0] if types else "unknown"
-                        location = p.get("location") or {}
-                        lat = location.get("latitude")
-                        lng = location.get("longitude")
-                        if name and lat is not None and lng is not None:
-                            out.append(
-                                {
-                                    "name": name,
-                                    "type": primary,
-                                    "place_id": place_id,
-                                    "lat": float(lat),
-                                    "lng": float(lng),
-                                }
-                            )
-                else:
-                    logger.warning(
-                        "[Places API] Fallback search HTTP error: status=%d response=%s",
-                        resp_fallback.status_code,
-                        resp_fallback.text[:200],
-                    )
             
+        # themeフィルタを使用したが結果が空の場合、フォールバックとしてincludedTypesなしで再検索
+        if allow_unfiltered_fallback and use_theme_filter and len(out) == 0:
             logger.info(
-                "[Places API] Found %d places near (%.6f, %.6f) theme=%s",
-                len(out),
-                lat,
-                lng,
-                theme or "any",
+                "[Places API] No results with theme filter, falling back to unfiltered search"
             )
-            return out
+            body_fallback = body.copy()
+            body_fallback.pop("includedTypes", None)
+            resp_fallback = await client.post(settings.MAPS_PLACES_BASE, json=body_fallback, headers=headers)
+            if resp_fallback.status_code == 200:
+                data_fallback = resp_fallback.json()
+                places_fallback = data_fallback.get("places", [])
+                logger.info(
+                    "[Places API] Fallback search returned %d places",
+                    len(places_fallback),
+                )
+                for p in places_fallback[:max_results]:
+                    name = p.get("displayName", {}).get("text")
+                    place_id = p.get("id")
+                    types = p.get("types") or []
+                    primary = types[0] if types else "unknown"
+                    location = p.get("location") or {}
+                    lat = location.get("latitude")
+                    lng = location.get("longitude")
+                    if name and lat is not None and lng is not None:
+                        out.append(
+                            {
+                                "name": name,
+                                "type": primary,
+                                "place_id": place_id,
+                                "lat": float(lat),
+                                "lng": float(lng),
+                            }
+                        )
+            else:
+                logger.warning(
+                    "[Places API] Fallback search HTTP error: status=%d response=%s",
+                    resp_fallback.status_code,
+                    resp_fallback.text[:200],
+                )
+
+        logger.info(
+            "[Places API] Found %d places near (%.6f, %.6f) theme=%s",
+            len(out),
+            lat,
+            lng,
+            theme or "any",
+        )
+        return out
     except httpx.TimeoutException as e:
         logger.warning("[Places API] Timeout: lat=%.6f lng=%.6f err=%r", lat, lng, e)
         return []
