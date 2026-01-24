@@ -18,6 +18,14 @@ from app.services import http_client
 from app.services import bq_writer
 from app.graph import get_route_graph_mermaid, run_generate_graph
 
+def _configure_logging() -> None:
+    level = str(getattr(settings, "LOG_LEVEL", "INFO")).upper()
+    logging.basicConfig(level=getattr(logging, level, logging.INFO))
+
+
+_configure_logging()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     timeout = httpx.Timeout(settings.REQUEST_TIMEOUT_SEC)
