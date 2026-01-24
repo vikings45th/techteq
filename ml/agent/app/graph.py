@@ -856,7 +856,6 @@ async def parallel_postprocess(state: AgentState) -> Dict[str, Any]:
     tasks = {
         "places": asyncio.create_task(_run_with_sem(fetch_places(state))),
         "desc": asyncio.create_task(_run_with_sem(generate_description_vertex(state_for_vertex))),
-        "title": asyncio.create_task(_run_with_sem(generate_title_vertex(state_for_vertex))),
     }
     results = await asyncio.gather(*tasks.values(), return_exceptions=True)
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
@@ -896,21 +895,17 @@ async def parallel_postprocess(state: AgentState) -> Dict[str, Any]:
     else:
         desc_result = result_map.get("desc") or {}
 
-    if isinstance(result_map.get("title"), Exception):
-        logger.error("[Title Parallel Error] request_id=%s err=%r", req.request_id, result_map["title"])
-        title_result = {
-            "title": vertex_llm.fallback_title(
-                theme=req.theme,
-                distance_km=float(state["best_route"].get("distance_km", req.distance_km)),
-                duration_min=float(state["best_route"].get("duration_min") or 30.0),
-                spots=[],
-            ),
-            "title_llm_status": "error",
-            "title_fallback_used": True,
-            "tools_used": tools_used,
-        }
-    else:
-        title_result = result_map.get("title") or {}
+    title_result = {
+        "title": vertex_llm.fallback_title(
+            theme=req.theme,
+            distance_km=float(state["best_route"].get("distance_km", req.distance_km)),
+            duration_min=float(state["best_route"].get("duration_min") or 30.0),
+            spots=[],
+        ),
+        "title_llm_status": "template",
+        "title_fallback_used": True,
+        "tools_used": tools_used,
+    }
 
     if places_result.get("tools_used"):
         tools_used = places_result["tools_used"]
