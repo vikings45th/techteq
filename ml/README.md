@@ -21,9 +21,9 @@
 **主な機能:**
 - テーマ別ルート生成（exercise, think, refresh, nature）
 - 片道/周回ルート対応（片道は`end_location`必須）
-- ルート上のスポット検索（日本語対応、二段階検索+営業時間フィルタ）
+- ルート上のスポット検索（日本語対応、二段階検索+営業時間フィルタ+近傍フィルタ）
 - AIによる紹介文・タイトル生成（Vertex AI）
-- ナビ用代表点`nav_waypoints`の生成（スポット座標を含む）
+- ナビ用代表点`nav_waypoints`の生成（polyline由来の代表点のみ、周回時は始終点を一致）
 - フォールバック機能（外部API障害時も簡易ルートを提供）
 
 詳細は [Agent README](./agent/README.md) を参照してください。
@@ -75,14 +75,15 @@
 
 ### 処理フロー
 
-1. **ルート候補生成**: Maps Routes APIで複数のルート候補を生成
+1. **ルート候補生成**: Maps Routes APIで複数のルート候補を生成（形状バリエーション）
 2. **特徴量抽出**: 各ルート候補から特徴量を計算
 3. **ルート評価**: Ranker APIでスコアリング
 4. **最適ルート選択**: スコアが最も高いルートを選択
 5. **スポット検索**: ルート上の25/50/75%地点から二段階検索（営業時間フィルタ）
-6. **紹介文・タイトル生成**: Jinjaテンプレート + 構造化出力で生成
-7. **nav_waypoints生成**: polyline簡略化 + スポット座標を統合 → 最大10点
-8. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
+6. **近傍フィルタ**: ルートから近いスポットに絞り込み
+7. **紹介文・タイトル生成**: Jinjaテンプレート + 構造化出力で生成
+8. **nav_waypoints生成**: polyline簡略化のみ → 最大10点
+9. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
 
 ### フォールバック機能
 
@@ -107,6 +108,12 @@
 | `VERTEX_PROJECT` | Google Cloud Project ID | Agent APIのみ |
 | `VERTEX_LOCATION` | Vertex AI リージョン | Agent APIのみ |
 | `VERTEX_FORBIDDEN_WORDS` | 禁止ワード（カンマ区切り） | Agent APIのみ |
+| `PLACES_RADIUS_M` | Places APIの検索半径（m） | Agent APIのみ |
+| `PLACES_MAX_RESULTS` | 1地点あたりの最大件数 | Agent APIのみ |
+| `PLACES_SAMPLE_POINTS_MAX` | 検索地点数（サンプル点の上限） | Agent APIのみ |
+| `SPOT_MAX_DISTANCE_M` | ルートからの最大距離（m） | Agent APIのみ |
+| `SPOT_MAX_DISTANCE_M_RELAXED` | 緩和時の最大距離（m） | Agent APIのみ |
+| `SPOT_MAX_DISTANCE_M_FALLBACK` | 追加緩和時の最大距離（m） | Agent APIのみ |
 
 ## API Key 管理
 
@@ -335,6 +342,7 @@ ml/ranker/
 - ルート上の25/50/75%地点から検索
 - 重複排除（place_id優先、なければnameで判定）
 - 最大5件まで取得
+- ルート近傍でフィルタ（50m → 100m → 250mの順で緩和）
 - `name`と`type`を日本語で返却
 
 #### フォールバック機能

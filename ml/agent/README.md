@@ -21,21 +21,22 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 - **テーマ別ルート生成**: 4つのテーマ（exercise, think, refresh, nature）に対応
 - **片道/周回ルート**: `round_trip`で周回/片道を切り替え（片道は`end_location`必須）
 - **ルート最適化**: Ranker APIを使用したルート品質評価とランキング
-- **スポット検索**: 二段階検索 + 営業時間フィルタで見どころを抽出
+- **スポット検索**: 二段階検索 + 営業時間フィルタ + ルート近傍フィルタ
 - **AI紹介文・タイトル生成**: Jinjaテンプレート + 構造化出力で安定生成
-- **ナビ用代表点**: polyline簡略化 + スポット統合で最大10点の`nav_waypoints`
+- **ナビ用代表点**: polyline由来の代表点のみで最大10点の`nav_waypoints`（周回時は始終点一致）
 - **フォールバック機能**: 外部API障害時も簡易ルートを提供
 
 ### 処理フロー
 
-1. **ルート候補生成**: Maps Routes APIで複数のルート候補を生成
+1. **ルート候補生成**: Maps Routes APIで複数のルート候補を生成（形状バリエーション）
 2. **特徴量抽出**: 各ルート候補から特徴量を計算
 3. **ルート評価**: Ranker APIでスコアリング
 4. **最適ルート選択**: スコアが最も高いルートを選択
 5. **スポット検索**: ルート上の25/50/75%地点から二段階検索（営業時間フィルタ）
-6. **紹介文・タイトル生成**: Vertex AIで紹介文とタイトルを生成
-7. **nav_waypoints生成**: polyline簡略化 + スポット座標を統合 → 最大10点
-8. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
+6. **近傍フィルタ**: ルートから近いスポットに絞り込み
+7. **紹介文・タイトル生成**: Vertex AIで紹介文とタイトルを生成
+8. **nav_waypoints生成**: polyline簡略化のみ → 最大10点（周回時は始終点一致）
+9. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
 
 ### プロンプトテンプレート
 
@@ -65,6 +66,9 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 | `VERTEX_TOP_P` | `0.95` | Vertex AIのtop_pパラメータ |
 | `VERTEX_TOP_K` | `40` | Vertex AIのtop_kパラメータ |
 | `VERTEX_FORBIDDEN_WORDS` | `""` | 禁止ワード（カンマ区切り） |
+| `PLACES_RADIUS_M` | `300` | Places APIの検索半径（m） |
+| `PLACES_MAX_RESULTS` | `2` | 1地点あたりの最大件数 |
+| `PLACES_SAMPLE_POINTS_MAX` | `1` | 検索地点数（サンプル点の上限） |
 | `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
 | `BQ_TABLE_REQUEST` | `route_request` | BigQueryリクエストテーブル名 |
 | `BQ_TABLE_CANDIDATE` | `route_candidate` | BigQuery候補テーブル名 |
@@ -72,6 +76,9 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 | `BQ_TABLE_FEEDBACK` | `route_feedback` | BigQueryフィードバックテーブル名 |
 | `FEATURES_VERSION` | `mvp_v1` | 特徴量バージョン |
 | `RANKER_VERSION` | `rule_v1` | Rankerバージョン |
+| `SPOT_MAX_DISTANCE_M` | `50.0` | ルートからの最大距離（m） |
+| `SPOT_MAX_DISTANCE_M_RELAXED` | `100.0` | 緩和時の最大距離（m） |
+| `SPOT_MAX_DISTANCE_M_FALLBACK` | `250.0` | 追加緩和時の最大距離（m） |
 
 ## API Key 管理
 
@@ -211,7 +218,7 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 - `route.duration_min`: 所要時間（分）
 - `route.title`: ルートのタイトル（日本語）
 - `route.summary`: ルートの紹介文（日本語）
-- `route.nav_waypoints`: ナビ用の代表点（スポットを含む、最大10点）
+- `route.nav_waypoints`: ナビ用の代表点（polyline由来のみ、最大10点、周回時は始終点一致）
 - `route.spots`: 見どころスポットのリスト（日本語、緯度経度つき）
   - `name`: スポット名（日本語）
   - `type`: スポットタイプ（日本語、例: "公園", "カフェ"）

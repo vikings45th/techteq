@@ -1,5 +1,17 @@
 <script setup lang="ts">
-	const themeItems = ref(['exercise', 'think', 'refresh', 'nature']);
+  const themeItems = ref([{
+    label: '体を動かしたい',
+    value: 'exercise'
+  }, {
+    label: '考え事をしたい',
+    value: 'think'
+  }, {
+    label: 'リフレッシュしたい',
+    value: 'refresh'
+  }, {
+    label: '自然を感じたい',
+    value: 'nature'
+  }]);
 	const theme = ref("exercise");
 
 	const features = ref([
@@ -41,26 +53,23 @@
 	<UPageSection
     title="早速歩く"
   >
-		<div class="space-y-2">
-      <p class="text-sm font-semibold text-gray-700 tracking-wide">どんな気分？</p>
-      <p class="text-xs text-gray-500">いまの気分に一番近いものを選んでください。</p>
-    </div>
-    <URadioGroup 
-      indicator="hidden" 
-      v-model="theme" 
-      :items="themeItems" 
-      variant="card" 
-      class="mb-2"
-      :ui="{
-        fieldset: 'grid grid-cols-2 gap-2'
-      }"
-    />
-		<UButton label="ルートを検索" color="secondary" :to="`/app/search?theme=${theme}&quicksearch=true`"/>
-		<UButton label="詳細条件を入力" variant="outline" to="/app/search"/>
+		<div>
+			<URadioGroup 
+				indicator="hidden" 
+				v-model="theme" 
+				:items="themeItems" 
+				variant="card" 
+				class="mb-2"
+				:ui="{
+					fieldset: 'grid grid-cols-2 gap-2 mb-2'
+				}"
+			/>
+			<UButton block label="散歩ルートを検索" color="secondary" :to="`/app/search?theme=${theme}&quicksearch=true`" class="text-lg mb-2 font-bold rounded-full"/>
+			<UButton block label="詳細条件を入力" variant="link" to="/app/search" class="rounded-full"/>
+		</div>
 	</UPageSection>
 	<UPageSection
     title="“ちょうどいい散歩コース”を提案します"
-    description="気分を選ぶだけ"
 		:features="features"
   />
 	<UPageCTA

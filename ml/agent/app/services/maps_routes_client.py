@@ -147,9 +147,9 @@ async def compute_route_candidates(
     if not api_key:
         raise RuntimeError("MAPS_API_KEY is not configured")
 
-    # 候補を多様化するために5つの方位角を作成（360°を5等分）
+    # 候補を多様化するために方位角を作成（360°を6等分）
     # 毎回少し回転・シャッフルして同条件でも変化させる
-    base_headings = [0, 72, 144, -144, -72]
+    base_headings = [0, 60, 120, 180, -120, -60]
     rotate_deg = random.uniform(-15.0, 15.0)
     headings = [h + rotate_deg for h in base_headings]
     random.shuffle(headings)
@@ -187,17 +187,73 @@ async def compute_route_candidates(
             dests = [{"lat": end_lat_f, "lng": end_lng_f}]
     else:
         if round_trip:
-            # 往復ルート: 3つの中間地点で曲がりを作る
+            # 往復ルート: 形状バリエーションを増やす
             waypoint_distance_km = max(distance_km / 4.0, 0.5)
+            radius_km = max(distance_km / (2.0 * math.pi), 0.35)
+            max_candidates = 6
             dests = []
-            for h in headings:
-                dist_scale = random.uniform(0.85, 1.15)
-                distance_km_jitter = waypoint_distance_km * dist_scale
-                angle_shift = random.uniform(35.0, 75.0)
-                p1 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h)
-                p2 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h + angle_shift)
-                p3 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h - angle_shift)
-                dests.append([p1, p2, p3])
+            seen = set()
+
+            def add_waypoints(label: str, waypoints: List[Dict[str, float]]) -> None:
+                if len(waypoints) < 2:
+                    return
+                key = tuple((round(wp["lat"], 5), round(wp["lng"], 5)) for wp in waypoints)
+                if key in seen:
+                    return
+                seen.add(key)
+                dests.append({"label": label, "waypoints": waypoints})
+
+            # 1) 円に近いループ（四角）を最優先
+            if len(dests) < max_candidates:
+                for h in headings:
+                    angles = [h, h + 90.0, h + 180.0, h + 270.0]
+                    waypoints = []
+                    for a in angles:
+                        r = radius_km * random.uniform(0.9, 1.1)
+                        waypoints.append(_offset_latlng(start_lat, start_lng, r, a))
+                    add_waypoints("circle_like", waypoints)
+                    if len(dests) >= max_candidates:
+                        break
+
+            # 2) 三角ループ（従来型）
+            if len(dests) < max_candidates:
+                for h in headings:
+                    if len(dests) >= max_candidates:
+                        break
+                    dist_scale = random.uniform(0.85, 1.15)
+                    distance_km_jitter = waypoint_distance_km * dist_scale
+                    angle_shift = random.uniform(35.0, 75.0)
+                    p1 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h)
+                    p2 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h + angle_shift)
+                    p3 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h - angle_shift)
+                    add_waypoints("triangle", [p1, p2, p3])
+
+            # 3) 直線的な往復（アウト&バック）
+            if len(dests) < max_candidates:
+                for h in headings:
+                    far_km = waypoint_distance_km * random.uniform(1.4, 1.9)
+                    near_km = waypoint_distance_km * random.uniform(0.6, 0.9)
+                    p_far = _offset_latlng(start_lat, start_lng, far_km, h)
+                    p_near = _offset_latlng(start_lat, start_lng, near_km, h)
+                    add_waypoints("out_and_back", [p_far, p_near])
+                    if len(dests) >= max_candidates:
+                        break
+
+            # 4) 蛇行（ジグザグ）
+            if len(dests) < max_candidates:
+                for h in headings:
+                    base_step_km = max(distance_km / 6.0, 0.4)
+                    lateral_km = base_step_km * 0.45
+                    waypoints = []
+                    for i in range(4):
+                        forward_km = base_step_km * (1.0 + i * 0.35)
+                        base_pt = _offset_latlng(start_lat, start_lng, forward_km, h)
+                        side_heading = h + (90.0 if i % 2 == 0 else -90.0)
+                        side_pt = _offset_latlng(base_pt["lat"], base_pt["lng"], lateral_km, side_heading)
+                        waypoints.append(side_pt)
+                    add_waypoints("serpentine", waypoints)
+                    if len(dests) >= max_candidates:
+                        break
         else:
             waypoint_distance_km = max(distance_km, 0.5)
             dests = [
@@ -239,9 +295,12 @@ async def compute_route_candidates(
             if round_trip:
                 # Loop route: start -> (waypoints) -> start
                 body["destination"] = {"location": {"latLng": {"latitude": start_lat, "longitude": start_lng}}}
+                waypoints = dest.get("waypoints") if isinstance(dest, dict) else dest
+                if not waypoints:
+                    waypoints = []
                 body["intermediates"] = [
                     {"location": {"latLng": {"latitude": wp["lat"], "longitude": wp["lng"]}}}
-                    for wp in dest
+                    for wp in waypoints
                 ]
             else:
                 body["destination"] = {"location": {"latLng": {"latitude": dest["lat"], "longitude": dest["lng"]}}}
@@ -253,18 +312,19 @@ async def compute_route_candidates(
             
             # リクエストのログ出力（デバッグ用）
             if round_trip:
+                waypoints = dest.get("waypoints") if isinstance(dest, dict) else dest
+                label = dest.get("label", "") if isinstance(dest, dict) else ""
+                wp_text = "->".join(
+                    [f"({wp['lat']:.6f},{wp['lng']:.6f})" for wp in (waypoints or [])]
+                )
                 logger.debug(
-                    "[Routes API Request] request_id=%s route_%d origin=(%.6f,%.6f) waypoints=(%.6f,%.6f)->(%.6f,%.6f)->(%.6f,%.6f) round_trip=%s",
+                    "[Routes API Request] request_id=%s route_%d origin=(%.6f,%.6f) waypoints=%s label=%s round_trip=%s",
                     request_id,
                     idx,
                     start_lat,
                     start_lng,
-                    dest[0]["lat"],
-                    dest[0]["lng"],
-                    dest[1]["lat"],
-                    dest[1]["lng"],
-                    dest[2]["lat"],
-                    dest[2]["lng"],
+                    wp_text,
+                    label,
                     round_trip,
                 )
             else:

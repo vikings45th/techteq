@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     VERTEX_TOP_K: int = 40  # Top-kサンプリングパラメータ
     VERTEX_FORBIDDEN_WORDS: str = ""  # 禁止ワード（カンマ区切り）
 
+    # Places API（コスト最適化）
+    PLACES_RADIUS_M: int = 300  # 検索半径（m）
+    PLACES_MAX_RESULTS: int = 2  # 1地点あたりの最大件数
+    PLACES_SAMPLE_POINTS_MAX: int = 1  # 検索地点数（サンプル点の上限）
+
     # BigQuery
     BQ_DATASET: str = "firstdown_mvp"  # BigQueryデータセット名
     BQ_TABLE_REQUEST: str = "route_request"  # リクエストテーブル名
@@ -35,6 +40,11 @@ class Settings(BaseSettings):
     # 特徴量/バージョニング
     FEATURES_VERSION: str = "mvp_v1"  # 特徴量のバージョン（モデルの互換性管理用）
     RANKER_VERSION: str = "rule_v1"  # Rankerのバージョン（モデル/ロジックの追跡用）
+
+    # ルート近傍の見どころ抽出
+    SPOT_MAX_DISTANCE_M: float = 50.0  # ルートからの最大距離（m）
+    SPOT_MAX_DISTANCE_M_RELAXED: float = 100.0  # 緩和時の最大距離（m）
+    SPOT_MAX_DISTANCE_M_FALLBACK: float = 250.0  # 追加緩和時の最大距離（m）
 
 
 settings = Settings()  # グローバル設定インスタンス

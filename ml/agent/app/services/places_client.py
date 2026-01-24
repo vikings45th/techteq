@@ -94,31 +94,6 @@ def _get_classic_place_types_for_theme(theme: str) -> List[str]:
     return theme_to_types.get(theme, ["park"])
 
 
-def _is_outdoor_type(place_type: str) -> bool:
-    outdoor_types = {
-        "park",
-        "national_park",
-        "state_park",
-        "botanical_garden",
-        "garden",
-        "beach",
-        "hiking_area",
-        "cycling_park",
-        "plaza",
-        "playground",
-        "athletic_field",
-        "wildlife_park",
-        "wildlife_refuge",
-        "observation_deck",
-        "tourist_attraction",
-    }
-    return place_type in outdoor_types
-
-
-def _has_opening_hours(place: Dict[str, Any]) -> bool:
-    return bool(place.get("currentOpeningHours") or place.get("regularOpeningHours"))
-
-
 def pick_hidden_keyword(theme: Optional[str]) -> Optional[str]:
     if not theme:
         return None
@@ -142,7 +117,6 @@ async def search_spots(
     included_types: Optional[List[str]] = None,
     keyword: Optional[str] = None,
     allow_unfiltered_fallback: bool = True,
-    allow_outdoor_no_hours: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Fetch nearby places filtered by theme. Returns a small list of {name, type, place_id}.
@@ -157,7 +131,6 @@ async def search_spots(
         included_types: 明示的に指定する場所タイプ
         keyword: 日本語キーワード（穴場検索用）
         allow_unfiltered_fallback: テーマフィルタなし検索へのフォールバック可否
-        allow_outdoor_no_hours: 営業時間がなくても屋外なら許可
     
     Returns:
         場所のリスト（name, type, place_idを含む）
@@ -176,9 +149,10 @@ async def search_spots(
         max_results,
     )
 
+    field_mask = "places.id,places.displayName,places.types,places.location"
     headers = {
         "X-Goog-Api-Key": api_key,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.types,places.location,places.currentOpeningHours,places.regularOpeningHours",
+        "X-Goog-FieldMask": field_mask,
     }
     body = {
         "locationRestriction": {
@@ -242,9 +216,7 @@ async def search_spots(
                 location = p.get("location") or {}
                 lat = location.get("latitude")
                 lng = location.get("longitude")
-                has_hours = _has_opening_hours(p)
-                allow_no_hours = allow_outdoor_no_hours and _is_outdoor_type(primary)
-                if name and lat is not None and lng is not None and (has_hours or allow_no_hours):
+                if name and lat is not None and lng is not None:
                     out.append(
                         {
                             "name": name,
@@ -278,9 +250,7 @@ async def search_spots(
                         location = p.get("location") or {}
                         lat = location.get("latitude")
                         lng = location.get("longitude")
-                        has_hours = _has_opening_hours(p)
-                        allow_no_hours = allow_outdoor_no_hours and _is_outdoor_type(primary)
-                        if name and lat is not None and lng is not None and (has_hours or allow_no_hours):
+                        if name and lat is not None and lng is not None:
                             out.append(
                                 {
                                     "name": name,

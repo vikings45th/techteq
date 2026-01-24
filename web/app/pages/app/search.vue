@@ -15,12 +15,35 @@
   const themeParam = route.query.theme as string | undefined;
   const quicksearch = route.query.quicksearch === 'true';
 
-  const themeItems = ref(['exercise', 'think', 'refresh', 'nature']);
+  const themeItems = ref([{
+    label: '体を動かしたい',
+    value: 'exercise'
+  }, {
+    label: '考え事をしたい',
+    value: 'think'
+  }, {
+    label: 'リフレッシュしたい',
+    value: 'refresh'
+  }, {
+    label: '自然を感じたい',
+    value: 'nature'
+  }]);
+  const motivationItems = ref([{
+    label: '軽く歩く',
+    value: 'light'
+  }, {
+    label: 'ほどよく歩く',
+    value: 'medium'
+  }, {
+    label: 'しっかり歩く',
+    value: 'heavy'
+  }]);
+  const motivation = ref("light")
   // 検索条件の初期値を作成
   const searchParams = ref<ApiRequest>({
     request_id: "initialSearchParamsStateRequestId",
     theme: 'exercise',
-    distance_km: 5,
+    distance_km: 2,
     start_location: {lat: 35.685175,lng: 139.752799},
     end_location: {lat: 35.685175,lng: 139.752799},
     round_trip: true,
@@ -33,16 +56,6 @@
   
   const searchParamsState = useSearchParams();
   const routeState = useCurrentRoute();
-
-  // 現在地を保存する変数
-  const currentLocation = ref<{lat: number, lng: number}>({
-    lat: 35.685175,
-    lng: 139.752799
-  });
-
-  // 地図関連
-  let mapInstance: any = null;
-  let startMarker: any = null;
 
   const fetchCurrentLocation = (): Promise<void> => {
     if (!navigator.geolocation) {
@@ -94,7 +107,16 @@
     //round_tripの計算: 緯度 0.001° ≒ 111m、経度 0.001° ≒ 91m
     //const flag:boolean = Math.abs(startLat.value - endLat.value) < 0.001 && Math.abs(startLng.value - endLng.value) < 0.001;
     //searchParams.value.round_trip = flag;
-    searchParams.value.end_location = searchParams.value.start_location
+    searchParams.value.end_location = searchParams.value.start_location;
+
+    // motivation.valueによる分岐
+    if (motivation.value === 'light') {
+      searchParams.value.distance_km = 1;
+    } else if (motivation.value === 'medium') {
+      searchParams.value.distance_km = 2;
+    } else if (motivation.value === 'heavy') {
+      searchParams.value.distance_km = 3;
+    }
 
     try {
       //検索条件を保存し、ルート検索
@@ -112,69 +134,11 @@
     }
   };
 
-  const initMap = () => {
-    const mapElement = document.getElementById("start-location-map");
-    if (!mapElement || !(window as any).google) {
-      return;
-    }
-
-    // 既にマップが初期化されている場合は削除
-    if (mapInstance) {
-      if (startMarker) {
-        startMarker.setMap(null);
-        startMarker = null;
-      }
-      mapInstance = null;
-    }
-
-    // 現在地の座標を取得
-    const center = {
-      lat: currentLocation.value.lat,
-      lng: currentLocation.value.lng
-    };
-
-    // 地図を初期化（ドラッグ可能にする）
-    mapInstance = new (window as any).google.maps.Map(mapElement, {
-      center,
-      zoom: 15,
-      mapTypeId: 'roadmap',
-      disableDefaultUI: true, // UIコントロールを非表示
-      draggable: true,
-      scrollwheel: true,
-      disableDoubleClickZoom: false,
-    });
-
-    // 開始地点のマーカーを作成（ドラッグ可能）
-    const position = new (window as any).google.maps.LatLng(center.lat, center.lng);
-    startMarker = new (window as any).google.maps.Marker({
-      position: position,
-      map: mapInstance,
-      title: '開始地点',
-      draggable: true, // マーカーをドラッグ可能にする
-    });
-
-    // マーカーがドラッグされたときに位置を更新
-    startMarker.addListener('dragend', (event: any) => {
-      const lat = event.latLng.lat();
-      const lng = event.latLng.lng();
-      currentLocation.value = { lat, lng };
-    });
-
-    // 地図がクリックされたときにもマーカーを移動
-    mapInstance.addListener('click', (event: any) => {
-      const lat = event.latLng.lat();
-      const lng = event.latLng.lng();
-      const position = new (window as any).google.maps.LatLng(lat, lng);
-      startMarker.setPosition(position);
-      currentLocation.value = { lat, lng };
-    });
-  };
-
   onMounted(async() => {
     // quicksearch=trueの場合は自動的に検索を実行
     if (quicksearch) {
       loadingApi.value = true;
-      searchParams.value.theme = themeParam && themeItems.value.includes(themeParam) ? themeParam : searchParams.value.theme
+      searchParams.value.theme = themeParam && themeItems.value.some(item => item.value === themeParam) ? themeParam : searchParams.value.theme
 
       await fetchCurrentLocation();
       await callApi();
@@ -193,54 +157,48 @@
         await fetchCurrentLocation();
       }
     }
-
-    // 地図を初期化（Google Maps APIの読み込みを待つ）
-    const checkGoogleMaps = setInterval(() => {
-      if ((window as any).google) {
-        clearInterval(checkGoogleMaps);
-        initMap();
-      }
-    }, 100);
-
-    // タイムアウト（10秒後）
-    setTimeout(() => {
-      clearInterval(checkGoogleMaps);
-    }, 10000);
-  });
-
-  // コンポーネントがアンマウントされる時にマップを破棄
-  onBeforeUnmount(() => {
-    if (startMarker) {
-      startMarker.setMap(null);
-      startMarker = null;
-    }
-    if (mapInstance) {
-      mapInstance = null;
-    }
-  });
+  })
 
 </script>
 <template>
-  <h1 class="mb-4">目的と距離に合わせてルートを提案します</h1>
-  <div class="space-y-6">
-    <div class="space-y-2">
-      <p class="text-sm font-semibold text-gray-700 tracking-wide">どんな気分？</p>
-      <p class="text-xs text-gray-500">いまの気分に一番近いものを選んでください。</p>
+  <div class="flex flex-col h-[calc(100vh-var(--ui-header-height))]">
+    <!-- 開始地点の地図 -->
+    <div class="flex-1 flex flex-col">
+      <div class="relative flex-1 bg-gray-50">
+        <div
+          id="start-location-map"
+          class="w-full h-full"
+        ></div>
+        <!-- 現在地を取得ボタン（地図右下に重ねて表示） -->
+        <div class="absolute bottom-4 right-4 z-10">
+          <UButton
+              size="xl"
+              color="primary"
+              icon="ic:baseline-my-location"
+              :loading="loadingLocation"
+              @click="fetchCurrentLocation"
+              variant="outline"
+              :ui="{
+                base: 'shadow-lg bg-white'
+              }"
+          />
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 px-2 py-1">地図をクリックするか、マーカーをドラッグして開始地点を設定してください。</p>
     </div>
-    <URadioGroup 
-      indicator="hidden" 
-      v-model="searchParams.theme" 
-      :items="themeItems" 
-      variant="card" 
-      class="mb-2"
-      :ui="{
-        fieldset: 'grid grid-cols-2 gap-2'
-      }"
-    />
-    <div class="flex items-start justify-between mb-2 gap-4">
-      <div class="space-y-1">
-        <p class="text-sm font-semibold text-gray-700 tracking-wide">どれくらい歩く？</p>
-        <p class="text-xs text-gray-500">距離を変えると、所要時間や歩数も変わります。</p>
+    <!-- フォーム部分（画面下部に固定） -->
+    <div class="flex-none shrink-0 px-2 pb-2">
+      <div class="overflow-x-auto pt-4 pb-4 mr-2 px-2 scrollbar-hide">
+        <URadioGroup 
+          indicator="hidden"
+          orientation="horizontal"
+          v-model="searchParams.theme" 
+          :items="themeItems" 
+          variant="card"
+          :ui="{
+            wrapper: 'shrink-0 min-w-[120px]',  
+          }"
+        />
       </div>
       <div class="text-right text-xs">
         <p class="font-semibold text-primary-600">
@@ -271,25 +229,22 @@
         color="primary"
         :loading="loadingLocation"
         @click="fetchCurrentLocation"
-        class="mb-2"
     >
       現在地を取得
     </UButton>
-    <!-- 開始地点の地図 -->
-    <div class="space-y-2 mb-2">
-      <p class="text-xs text-gray-500">地図をクリックするか、マーカーをドラッグして開始地点を設定してください。</p>
-      <div class="rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-        <div
-          id="start-location-map"
-          class="w-full h-64"
-        ></div>
-      </div>
-    </div>
-    <!-- 開始地点の座標表示（参考用） -->
-    <div class="text-xs text-gray-500 mb-2">
-      <p>緯度: {{ currentLocation.lat.toFixed(6) }}</p>
-      <p>経度: {{ currentLocation.lng.toFixed(6) }}</p>
-    </div>
+    <!-- 開始地点・終了地点 -->
+    <UInput
+      v-model.number="searchParams.start_location.lat"
+      type="number"
+      step="0.000001"
+      placeholder="開始地点の緯度"
+    />
+    <UInput
+      v-model.number="searchParams.start_location.lng"
+      type="number"
+      step="0.000001"
+      placeholder="開始地点の経度"
+    />
     <UButton 
       color="secondary"
       label="ルートを生成"
@@ -299,15 +254,26 @@
   </div>
 
   <!-- 検索中のモーダル -->
-  <UModal v-model:open="loadingApi">
-    <template #body>
-      <div class="flex items-center justify-center">
-        <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-primary-600 mr-3" />
-        <h3 class="text-xl font-semibold">検索中...</h3>
-      </div>
-      <div class="text-center py-4">
-        <p class="text-gray-600">ルートを生成しています。しばらくお待ちください。</p>
+  <UModal v-model:open="loadingApi" :dismissible="false" title="条件に合う散歩ルートを探しています。" description="しばらくお待ちください。">
+    <template #content>
+      <div class="flex flex-col items-center justify-center space-y-4 py-4">
+        <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-secondary-600" />
+        <div class="text-center space-y-2">
+          <p class="text-gray-600">条件に合う散歩ルートを探しています。</p>
+          <p class="text-gray-600">しばらくお待ちください。</p>
+        </div>
       </div>
     </template>
   </UModal>
 </template>
+
+<style scoped>
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+</style>

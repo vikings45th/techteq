@@ -48,4 +48,5 @@ jobs:
             --timeout=30 \
             --memory=512Mi \
             --cpu=1 \
+            --set-env-vars "MODEL_VERSION=shadow_xgb_v2,RANKER_VERSION=rule_v1" \
             --concurrency=10

@@ -11,6 +11,7 @@
 
   const searchParamsState = useSearchParams();
   const routeState = useCurrentRoute();
+  const appConfig = useAppConfig();
 
   const loadingRegenerate = ref(false);
   const showRatingModal = ref(false);
@@ -69,20 +70,17 @@
 
     // まずはデフォルトの中心・ズームでマップを作る
     let center = { lat: 0, lng: -180 };
-    let zoom = 2;
+    let zoom = 17;
 
     mapInstance = new (window as any).google.maps.Map(mapElement, {
       zoom,
       center,
-      mapTypeId: 'terrain',
-      // すべてのインタラクションを無効化
       disableDefaultUI: true,
-      draggable: false,
-      scrollwheel: false,
+      draggable: true,
+      scrollwheel: true,
       disableDoubleClickZoom: true,
       keyboardShortcuts: false,
       clickableIcons: false,
-      gestureHandling: 'none',
     });
 
     // bounds を使って表示範囲を調整
@@ -95,39 +93,7 @@
         bounds.extend(new (window as any).google.maps.LatLng(p.lat, p.lng));
         hasBounds = true;
       });
-    }
 
-    // スポットのマーカーを追加
-    if (routeState.value.spots && routeState.value.spots.length > 0) {
-      routeState.value.spots.forEach((spot, index) => {
-        if (spot.lat !== undefined && spot.lng !== undefined) {
-          const position = new (window as any).google.maps.LatLng(spot.lat, spot.lng);
-          
-          // マーカーを作成（ピン形状、インデックス番号付き）
-          const marker = new (window as any).google.maps.Marker({
-            position: position,
-            map: mapInstance,
-            title: spot.name || 'スポット',
-            label: {
-              text: String(index + 1),
-              color: '#FFFFFF',
-              fontSize: '12px',
-              fontWeight: 'bold',
-            },
-            // デフォルトのピンアイコンを使用（iconプロパティを指定しない）
-          });
-
-          markers.push(marker);
-          
-          // boundsに追加
-          bounds.extend(position);
-          hasBounds = true;
-        }
-      });
-    }
-
-    // boundsがある場合は表示範囲を調整
-    if (hasBounds && mapInstance) {
       mapInstance.fitBounds(bounds);
     }
 
@@ -138,12 +104,18 @@
         flightPath.setMap(null);
       }
       
+      // セカンダリーカラーをCSS変数から取得
+      const secondaryColorName = appConfig.ui?.colors?.secondary || 'ember';
+      const secondaryColor = getComputedStyle(document.documentElement)
+        .getPropertyValue(`--color-${secondaryColorName}-600`)
+        .trim() || '#FB7C2D';
+      
       flightPath = new (window as any).google.maps.Polyline({
         path: coordinates,
         geodesic: true,
-        strokeColor: "#FF0000",
+        strokeColor: secondaryColor,
         strokeOpacity: 1.0,
-        strokeWeight: 2,
+        strokeWeight: 4,
       });
       flightPath.setMap(mapInstance);
     }
@@ -261,151 +233,92 @@
 </script>
 
 <template>
-  <h1 class="mb-4">生成されたルートがこちらです</h1>
-  <div v-if="routeState">
-    <div>
-      <h2>{{ routeState.title }}</h2>
-      <div v-if="searchParamsState" class="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
-        <span class="px-2 py-1 bg-gray-100 rounded">
-          テーマ: {{ searchParamsState.theme }}
-        </span>
-        <span class="px-2 py-1 bg-gray-100 rounded">
-          距離: {{ searchParamsState.distance_km }}km
-        </span>
-        <span class="px-2 py-1 bg-gray-100 rounded">
-          開始地点: {{ searchParamsState.start_location.lat.toFixed(6) }}, {{ searchParamsState.start_location.lng.toFixed(6) }}
-        </span>
-      </div>
+  <div class="flex flex-col h-[calc(100vh-var(--ui-header-height))]">
+    <!-- マップ -->
+    <div class="flex-1 relative border border-gray-100 bg-gray-50">
+      <div
+        id="route-map"
+        class="w-full h-full"
+      ></div>
     </div>
-    <div>
-      <!-- マップ（静的イメージ風） -->
-      <div class="rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
-        <div
-          id="route-map"
-          class="w-full h-72 pointer-events-none select-none"
-          style="cursor: default;"
-        ></div>
-      </div>
-
-      <!-- サマリー & 数字情報 -->
-      <div class="rounded-xl bg-gray-50 px-4 py-3 border border-gray-100 space-y-3">
-        <div class="space-y-1">
-          <p class="text-sm font-semibold text-gray-800">このルートについて</p>
-          <p class="text-sm text-gray-600 leading-relaxed">
+    <div class="absolute bottom-4 z-10 px-2">
+      <UCard>
+        <template #header>
+          <h1 class="text-lg font-bold mb-2">{{ routeState.title }}</h1>
+          <p class="text-sm mb-2">
             {{ routeState.summary }}
           </p>
-        </div>
-        <div class="grid grid-cols-3 gap-2 text-center text-xs">
-          <div class="rounded-lg bg-white px-2 py-2 border border-gray-100">
-            <p class="text-[11px] text-gray-500">距離</p>
-            <p class="mt-1 text-sm font-semibold text-primary-600">
+          <div class="grid grid-cols-3 gap-2 text-center text-xs">
+            <p class="mt-1 text-lg font-bold text-primary-600">
               {{ routeState.distance_km }}km
             </p>
-          </div>
-          <div class="rounded-lg bg-white px-2 py-2 border border-gray-100">
-            <p class="text-[11px] text-gray-500">歩数目安</p>
-            <p class="mt-1 text-sm font-semibold text-emerald-600">
-              {{ routeState.distance_km! * 1000 }}歩
-            </p>
-          </div>
-          <div class="rounded-lg bg-white px-2 py-2 border border-gray-100">
-            <p class="text-[11px] text-gray-500">所要時間</p>
-            <p class="mt-1 text-sm font-semibold text-indigo-600">
+            <p class="mt-1 text-lg font-bold text-indigo-600">
               {{ routeState.duration_min }}分
             </p>
+            <p class="mt-1 text-lg font-bold text-emerald-600">
+              {{ Math.round(routeState.distance_km! * 100000 / 76) }}歩
+            </p>
           </div>
-        </div>
-      </div>
+        </template>
 
-      <!-- 見どころスポット -->
-      <div v-if="routeState.spots.length > 0" class="space-y-3">
-        <div class="flex items-center justify-between">
-          <p class="text-sm font-semibold text-gray-800">見どころスポット</p>
-          <p class="text-[11px] text-gray-500">
-            全 {{ routeState.spots.length }} か所
-          </p>
-        </div>
-        <ul class="space-y-1.5">
-          <li
-            v-for="(spot, index) in routeState.spots"
-            :key="index"
-            class="flex items-start gap-3 py-2 cursor-default"
-          >
-            <div class="mt-0.5 h-5 w-5 flex items-center justify-center text-[11px] font-medium text-gray-400">
-              {{ index + 1 }}.
-            </div>
-            <div class="flex-1 min-w-0">
+        <div v-if="routeState.spots.length > 0">
+          <ul>
+            <li
+              v-for="(spot, index) in routeState.spots"
+              :key="index"
+              class="flex gap-3 py-2 cursor-default items-center"
+            >
+              <!-- ピンアイコン風のバッジ -->
+              <div class="relative shrink-0 text-primary-600">
+                <svg 
+                  width="24" 
+                  height="32" 
+                  viewBox="0 0 24 32" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="drop-shadow-sm"
+                >
+                  <!-- ピンの影部分 -->
+                  <path 
+                    d="M12 0C5.373 0 0 5.373 0 12C0 18.627 12 32 12 32S24 18.627 24 12C24 5.373 18.627 0 12 0Z" 
+                    fill="currentColor"
+                  />
+                  <!-- 番号を表示する円 -->
+                  <circle 
+                    cx="12" 
+                    cy="12" 
+                    r="8" 
+                    fill="#FFFFFF"
+                  />
+                  <text 
+                    x="12" 
+                    y="16" 
+                    text-anchor="middle" 
+                    font-size="11" 
+                    font-weight="bold" 
+                    fill="currentColor"
+                  >
+                    {{ index + 1 }}
+                  </text>
+                </svg>
+              </div>
               <p class="text-sm text-gray-700 truncate">
                 {{ spot.name || 'スポット名未設定' }}
               </p>
-              <p class="text-[11px] text-gray-400 mt-0.5">
-                {{ spot.type || 'スポット' }}
-              </p>
-            </div>
-          </li>
-        </ul>
+            </li>
+          </ul>
+        </div>
+
+        <template #footer>
+          <UButton block label="このルートを歩く" color="secondary" class="mb-2 text-lg font-bold rounded-full" @click="startNavigation"/>
+        </template>
+      </UCard>
+
+      <!-- 見どころスポット -->
+      <div class="flex gap-2 mt-2">
+        <UButton block label="ルートを再検索" variant="outline" :loading="loadingRegenerate" @click="handleRegenerate" class="flex-1 bg-white" />
+        <UButton block label="検索条件を変更" variant="outline" @click="handleResearch" class="flex-1 bg-white" />
       </div>
-    </div>
-    <div>
-      <UButton label="検索条件を変更" color="neutral" variant="outline" @click="handleResearch" />
-      <UButton label="もう一度提案求む" color="neutral" variant="outline" :loading="loadingRegenerate" @click="handleRegenerate" />
-      <UButton label="これでいく！" color="secondary" @click="startNavigation"/>
     </div>
   </div>
-
-  <!-- 評価モーダル -->
-  <UModal v-model:open="showRatingModal">
-    <template #header>
-      <h3 class="text-lg font-semibold">
-        {{ feedbackSubmitted ? 'ありがとうございました！' : 'このルートを評価してください' }}
-      </h3>
-    </template>
-    <template #body>
-      <div v-if="feedbackSubmitted" class="space-y-4 py-4">
-        <div class="flex flex-col items-center justify-center space-y-3">
-          <div class="text-5xl">✨</div>
-          <p class="text-center text-base text-gray-700">
-            ご評価ありがとうございました！
-          </p>
-          <p class="text-center text-sm text-gray-500">
-            フィードバックを送信しました。
-          </p>
-        </div>
-      </div>
-      <div v-else class="space-y-4 py-4">
-        <p class="text-sm text-gray-600">このルートはいかがでしたか？</p>
-        <div class="flex justify-center gap-2">
-          <button
-            v-for="star in 5"
-            :key="star"
-            @click="rating = star"
-            class="text-3xl transition-transform hover:scale-110"
-            :class="star <= rating ? 'text-yellow-400' : 'text-gray-300'"
-          >
-            ★
-          </button>
-        </div>
-        <div v-if="rating > 0" class="text-center text-sm text-gray-600">
-          {{ rating }}つ星を選択中
-        </div>
-      </div>
-    </template>
-    <template #footer>
-      <div v-if="!feedbackSubmitted" class="flex justify-end gap-2">
-        <UButton
-          label="キャンセル"
-          color="neutral"
-          variant="outline"
-          @click="showRatingModal = false; rating = 0; feedbackSubmitted = false"
-        />
-        <UButton
-          label="送信"
-          color="secondary"
-          :loading="submittingFeedback"
-          :disabled="rating === 0"
-          @click="handleRatingSubmit"
-        />
-      </div>
-    </template>
-  </UModal>
 </template>

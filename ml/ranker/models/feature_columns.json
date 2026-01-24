@@ -1,0 +1,23 @@
+[
+  "distance_km",
+  "duration_min",
+  "loop_closure_m",
+  "bbox_area",
+  "path_length_ratio",
+  "turn_count",
+  "turn_density",
+  "theme_exercise",
+  "theme_think",
+  "theme_refresh",
+  "theme_nature",
+  "round_trip_req",
+  "round_trip_fit",
+  "distance_error_ratio",
+  "relaxation_step",
+  "candidate_rank_in_theme",
+  "has_stairs",
+  "elevation_gain_m",
+  "elevation_density",
+  "poi_density",
+  "park_poi_ratio"
+]

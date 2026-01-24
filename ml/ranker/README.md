@@ -5,6 +5,7 @@
 ## 📋 目次
 
 - [概要](#概要)
+- [環境変数](#環境変数)
 - [API仕様](#api仕様)
 - [スコアリングロジック](#スコアリングロジック)
 - [実装詳細](#実装詳細)
@@ -22,6 +23,22 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
 - **部分的な成功を許容**: 一部のルートが失敗してもOK
 - **スコア内訳の提供**: デバッグ用のスコア内訳情報（`model_score`を含む）
 - **シャドウ推論ログ**: モデルスコア/レイテンシをBigQueryへ保存
+
+## 環境変数
+
+### 主な環境変数
+
+| 変数名 | デフォルト値 | 説明 |
+|--------|------------|------|
+| `MODEL_VERSION` | `unknown` | モデルバージョン（影響確認用） |
+| `MODEL_SHADOW_MODE` | `xgb` | シャドウ推論モード（`xgb` / `stub` / `disabled`） |
+| `MODEL_TIMEOUT_S` | `5.0` | 推論タイムアウト（秒） |
+| `MODEL_PATH` | `models/model.xgb.json` | XGBoost成果物パス |
+| `MODEL_FEATURES_PATH` | `models/feature_columns.json` | 特徴量カラム定義パス |
+| `RANKER_VERSION` | `unknown` | ルール版のバージョン |
+| `BQ_PROJECT` | なし | BigQueryプロジェクトID |
+| `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
+| `BQ_RANK_RESULT_TABLE` | `rank_result` | BigQueryテーブル名 |
 
 ## API仕様
 
