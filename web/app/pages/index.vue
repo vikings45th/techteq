@@ -2,19 +2,15 @@
   const themeItems = ref([{
     label: '体を動かしたい',
     value: 'exercise',
-    icon: 'i-lucide-activity'
   }, {
     label: '考え事をしたい',
     value: 'think',
-    icon: 'i-lucide-brain'
   }, {
     label: 'リフレッシュしたい',
     value: 'refresh',
-    icon: 'i-lucide-sparkles'
   }, {
     label: '自然を感じたい',
     value: 'nature',
-    icon: 'i-lucide-trees'
   }]);
 	const theme = ref("exercise");
 
@@ -69,14 +65,7 @@
           :ui="{
             wrapper: 'shrink-0 whitespace-nowrap w-auto',  
           }"
-        >
-          <template #label="{ item }">
-            <div class="flex items-center gap-2">
-              <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
-              <span>{{ item.label }}</span>
-            </div>
-          </template>
-        </URadioGroup>
+        />
       </div>
 			<UButton block label="散歩ルートを検索" color="secondary" :to="`/app/search?theme=${theme}&quicksearch=true`" class="text-lg mb-2 font-bold rounded-full"/>
 			<UButton block label="詳細条件を入力" color="secondary" variant="link" to="/app/search" class="rounded-full"/>

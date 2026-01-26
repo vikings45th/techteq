@@ -18,32 +18,25 @@
   const themeItems = ref([{
     label: '体を動かしたい',
     value: 'exercise',
-    icon: 'i-lucide-activity'
   }, {
     label: '考え事をしたい',
     value: 'think',
-    icon: 'i-lucide-brain'
   }, {
     label: 'リフレッシュしたい',
     value: 'refresh',
-    icon: 'i-lucide-sparkles'
   }, {
     label: '自然を感じたい',
     value: 'nature',
-    icon: 'i-lucide-trees'
   }]);
   const motivationItems = ref([{
     label: '軽く歩く',
     value: 'light',
-    icon: 'mdi:walk'
   }, {
     label: 'ほどよく歩く',
     value: 'medium',
-    icon: 'mdi:run'
   }, {
     label: 'しっかり歩く',
     value: 'heavy',
-    icon: 'mdi:run-fast'
   }]);
   const motivation = ref("light")
   // 検索条件の初期値を作成
@@ -71,11 +64,67 @@
     lng: 139.752799
   });
 
-  // 地図関連
-  let mapInstance: any = null;
-  let startMarker: any = null;
+  // 地図の中心位置（固定、変更しない）
+  const mapCenter = ref<{lat: number, lng: number}>({
+    lat: 35.685175,
+    lng: 139.752799
+  });
+
+  // マーカーとinterval IDを管理する変数
+  const startMarker = ref<any>(null);
+  const checkGoogleMapsInterval = ref<NodeJS.Timeout | null>(null);
+  const mapClickListener = ref<any>(null);
+  const markerDragendListener = ref<any>(null);
+  const mapInstance = ref<any>(null);
+
+  function destroyMap() {
+    // イベントリスナーを削除
+    if (mapClickListener.value && (window as any).google) {
+      (window as any).google.maps.event.removeListener(mapClickListener.value);
+      mapClickListener.value = null;
+    }
+    
+    if (markerDragendListener.value && (window as any).google) {
+      (window as any).google.maps.event.removeListener(markerDragendListener.value);
+      markerDragendListener.value = null;
+    }
+    
+    // マーカーを削除
+    if (startMarker.value) {
+      // AdvancedMarkerElementの場合は、mapプロパティをnullに設定
+      if (startMarker.value.map !== undefined) {
+        startMarker.value.map = null;
+      }
+      // DOMから削除
+      const mapElement = document.querySelector('gmp-map') as any;
+      if (mapElement && startMarker.value.parentNode) {
+        startMarker.value.remove();
+      }
+      startMarker.value = null;
+    }
+    
+    // マップインスタンスをクリーンアップ
+    if (mapInstance.value) {
+      // マップ上のすべてのオーバーレイを削除
+      if (mapInstance.value.overlayMapTypes) {
+        mapInstance.value.overlayMapTypes.clear();
+      }
+      // マップインスタンスをnullに設定
+      mapInstance.value = null;
+    }
+    
+    // DOM要素の内容をクリア（必要に応じて）
+    const mapElement = document.querySelector('gmp-map') as any;
+    if (mapElement) {
+      // マーカーなどの子要素を削除
+      while (mapElement.firstChild) {
+        mapElement.removeChild(mapElement.firstChild);
+      }
+    }
+  }
 
   const fetchCurrentLocation = (): Promise<void> => {
+
     if (!navigator.geolocation) {
       locationError.value = 'このブラウザは位置情報取得に対応していません。';
       return Promise.resolve();
@@ -88,13 +137,18 @@
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           currentLocation.value = {lat: pos.coords.latitude, lng: pos.coords.longitude};
-          
-          // 地図が初期化されている場合は、マーカーと地図の中心を更新
-          if (mapInstance && startMarker) {
-            const position = new (window as any).google.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-            startMarker.setPosition(position);
-            mapInstance.setCenter(position);
-            mapInstance.setZoom(15);
+          // 現在地を取得したときは地図の中心も移動
+          mapCenter.value = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+
+          const mapElement = document.querySelector('gmp-map') as any;
+          if (mapElement) {
+            mapElement.zoom = 16;
+            mapElement.center = { lat: mapCenter.value.lat, lng: mapCenter.value.lng };
+            
+            // マーカーを更新
+            if (startMarker.value) {
+              startMarker.value.position = currentLocation.value;
+            }
           }
 
           loadingLocation.value = false;
@@ -153,112 +207,74 @@
   };
 
   const initMap = async () => {
-    const mapElement = document.getElementById("start-location-map");
+
+    const mapElement = document.querySelector('gmp-map') as any;
+
     if (!mapElement || !(window as any).google) {
       return;
     }
 
-    // markerライブラリをインポート
-    const { AdvancedMarkerElement } = await (window as any).google.maps.importLibrary('marker');
+    // Dynamic Library Importを使用して必要なライブラリを読み込む
+    const { Map } = await (window as any).google.maps.importLibrary('maps');
+    const { AdvancedMarkerElement, PinElement } = await (window as any).google.maps.importLibrary('marker');
 
-    // 既にマップが初期化されている場合は削除
-    if (mapInstance) {
-      if (startMarker) {
-        startMarker.map = null;
-        startMarker = null;
-      }
-      mapInstance = null;
+        // 既にマップが初期化されている場合は削除
+    if (mapInstance.value) {
+      destroyMap();
     }
 
-    // 現在地の座標を取得
-    const center = {
-      lat: currentLocation.value.lat,
-      lng: currentLocation.value.lng
-    };
-
-    // 地図を初期化（ドラッグ可能にする）
-    // クラウドベースのマップスタイリングを使用する場合は、mapIdに関連付けられたスタイルが自動的に適用されます
-    // スタイルはGoogle Cloud Consoleで管理されます
-    mapInstance = new (window as any).google.maps.Map(mapElement, {
-      center,
-      zoom: 16,
-      mapId: '9153bea12861ba5a84e2b6d3', // 高度なマーカーとクラウドベースのスタイリングを使用するために必要
+    mapElement.zoom = 16
+    mapElement.center = { lat: mapCenter.value.lat, lng: mapCenter.value.lng };
+    mapElement.innerMap.setOptions({
       disableDefaultUI: true,
       draggable: true,
       scrollwheel: true,
       disableDoubleClickZoom: true,
       keyboardShortcuts: false,
       clickableIcons: false,
-      // クラウドベースのスタイリングを使用する場合、styles配列は不要です
-      // スタイルはGoogle Cloud Consoleで管理され、マップIDに関連付けられます
+  });
+
+    // mapInstance を innerMap に設定
+    mapInstance.value = mapElement.innerMap;
+
+    // 歩いている人のSVGアイコンをData URLとして作成
+    const walkingSvgString = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="white" d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2M9.8 8.9L7 23h2.1l1.8-8l2.1 2v6h2v-7.5l-2.1-2l.6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1c-.3 0-.5.1-.8.1L6 8.3V13h2V9.6z"/></svg>';
+    const walkingSvgDataUrl = 'data:image/svg+xml,' + encodeURIComponent(walkingSvgString);
+
+    const startPin = new PinElement({
+      scale: 1.5,
+      background: '#FB7C2D',
+      borderColor: '#FFFFFF',
+      glyphSrc: walkingSvgDataUrl
     });
-
-    // 地図のサイズを再計算（flexboxで高さが確定した後に必要）
-    setTimeout(() => {
-      if (mapInstance) {
-        (window as any).google.maps.event.trigger(mapInstance, 'resize');
-      }
-    }, 300);
-
-    // ResizeObserverで要素のサイズ変更を監視
-    if (mapElement && mapInstance) {
-      const resizeObserver = new ResizeObserver(() => {
-        if (mapInstance) {
-          (window as any).google.maps.event.trigger(mapInstance, 'resize');
-        }
-      });
-      resizeObserver.observe(mapElement);
       
-      // クリーンアップ用に保存
-      (mapElement as any).__resizeObserver = resizeObserver;
-    }
-
-    // 開始地点のマーカーを作成（ドラッグ可能）
-    const position = { lat: center.lat, lng: center.lng };
-    
-    // セカンダリーカラーで現在地アイコンを作成
-    const secondaryColorName = appConfig.ui?.colors?.secondary || 'ember';
-    const secondaryColor = getComputedStyle(document.documentElement)
-      .getPropertyValue(`--color-${secondaryColorName}-600`)
-      .trim() || '#FB7C2D';
-    
-    // ピンアイコンSVGをHTML要素として作成
-    const pinIconElement = document.createElement('div');
-    pinIconElement.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
-        <path fill="${secondaryColor}" d="M12 11c-1.33 0-4 .67-4 2v.16c.97 1.12 2.4 1.84 4 1.84s3.03-.72 4-1.84V13c0-1.33-2.67-2-4-2m0-1c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0-8c4.2 0 8 3.22 8 8.2c0 3.32-2.67 7.25-8 11.8c-5.33-4.55-8-8.48-8-11.8C4 5.22 7.8 2 12 2"/>
-      </svg>
-    `;
-    pinIconElement.style.cursor = 'grab';
-    pinIconElement.style.width = '40px';
-    pinIconElement.style.height = '40px';
     
     // 高度なマーカーを使用
-    startMarker = new AdvancedMarkerElement({
-      map: mapInstance,
-      position: position,
-      title: '開始地点',
-      content: pinIconElement,
-      gmpDraggable: true, // マーカーをドラッグ可能にする
+    startMarker.value = new AdvancedMarkerElement({
+      position: currentLocation.value,
+      title: 'スタート地点',
+      gmpDraggable: true,
     });
+    // Append the pin to the marker.
+    startMarker.value.append(startPin);
+    // Append the marker to the map.
+    mapElement.append(startMarker.value);
 
     // マーカーがドラッグされたときに位置を更新
-    startMarker.addListener('dragend', (event: any) => {
-      const position = event.target.position;
-      if (position) {
-        const lat = typeof position.lat === 'function' ? position.lat() : position.lat;
-        const lng = typeof position.lng === 'function' ? position.lng() : position.lng;
-        currentLocation.value = { lat, lng };
-      }
+    markerDragendListener.value = startMarker.value.addListener('dragend', () => {
+        currentLocation.value = startMarker.value.position;
     });
 
     // 地図がクリックされたときにもマーカーを移動
-    mapInstance.addListener('click', (event: any) => {
+    // innerMap が実際の Google Maps Map オブジェクト
+    mapClickListener.value = mapElement.innerMap.addListener('click', (event: any) => {
       const lat = event.latLng.lat();
       const lng = event.latLng.lng();
-      startMarker.position = { lat, lng };
-      currentLocation.value = { lat, lng };
+      const pos = { lat, lng };
+      startMarker.value.position = pos;
+      currentLocation.value = pos;
     });
+
   };
 
   onMounted(async() => {
@@ -279,6 +295,8 @@
         searchParams.value = searchParamsState.value
         // 保存されている検索条件の開始地点を現在地に設定
         currentLocation.value = { ...searchParams.value.start_location };
+        // 地図の中心も設定
+        mapCenter.value = { ...searchParams.value.start_location };
       }else{
         // 初回アクセスまたは初期値の場合は現在地を取得
         await fetchCurrentLocation();
@@ -289,9 +307,12 @@
     await nextTick();
     
     // 地図を初期化（Google Maps APIの読み込みを待つ）
-    const checkGoogleMaps = setInterval(() => {
+    checkGoogleMapsInterval.value = setInterval(() => {
       if ((window as any).google) {
-        clearInterval(checkGoogleMaps);
+        if (checkGoogleMapsInterval.value) {
+          clearInterval(checkGoogleMapsInterval.value);
+          checkGoogleMapsInterval.value = null;
+        }
         // さらに少し待ってから初期化（レイアウトが確定するまで）
         setTimeout(() => {
           initMap();
@@ -301,35 +322,35 @@
 
     // タイムアウト（10秒後）
     setTimeout(() => {
-      clearInterval(checkGoogleMaps);
+      if (checkGoogleMapsInterval.value) {
+        clearInterval(checkGoogleMapsInterval.value);
+        checkGoogleMapsInterval.value = null;
+      }
     }, 10000);
   });
 
   // コンポーネントがアンマウントされる時にマップを破棄
   onBeforeUnmount(() => {
-    const mapElement = document.getElementById("start-location-map");
-    if (mapElement && (mapElement as any).__resizeObserver) {
-      (mapElement as any).__resizeObserver.disconnect();
+    // interval をクリア
+    if (checkGoogleMapsInterval.value) {
+      clearInterval(checkGoogleMapsInterval.value);
+      checkGoogleMapsInterval.value = null;
     }
-    if (startMarker) {
-      startMarker.setMap(null);
-      startMarker = null;
-    }
-    if (mapInstance) {
-      mapInstance = null;
-    }
+
+    destroyMap();
   });
 
 </script>
 <template>
-  <div class="flex flex-col h-[calc(100vh-var(--ui-header-height))]">
+  <div class="flex flex-col h-dvh">
     <!-- 開始地点の地図 -->
     <div class="flex-1 flex flex-col">
       <div class="relative flex-1 bg-gray-50">
-        <div
-          id="start-location-map"
-          class="w-full h-full"
-        ></div>
+        <gmp-map
+          :center="{ lat: mapCenter.lat, lng: mapCenter.lng }"
+          :zoom="17"
+          map-id="9153bea12861ba5a84e2b6d3"
+          class="w-full h-full"></gmp-map>
         <!-- 現在地を取得ボタン（地図右下に重ねて表示） -->
         <div class="absolute bottom-4 right-4 z-10">
           <UButton
@@ -359,14 +380,7 @@
           :ui="{
             wrapper: 'shrink-0 whitespace-nowrap w-auto',  
           }"
-        >
-          <template #label="{ item }">
-            <div class="flex items-center gap-2">
-              <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
-              <span>{{ item.label }}</span>
-            </div>
-          </template>
-        </URadioGroup>
+        />
       </div>
       <div class="overflow-x-auto pb-4 mr-2 px-2 scrollbar-hide">
         <URadioGroup 
@@ -378,14 +392,7 @@
           :ui="{
             wrapper: 'shrink-0 whitespace-nowrap w-auto', 
           }"
-        >
-          <template #label="{ item }">
-            <div class="flex items-center gap-2">
-              <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
-              <span>{{ item.label }}</span>
-            </div>
-          </template>
-        </URadioGroup>
+        />
       </div>
       <UButton
         block

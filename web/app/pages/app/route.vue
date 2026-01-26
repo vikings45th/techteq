@@ -6,6 +6,7 @@
   definePageMeta({
     layout: 'app',
   })
+
   const { fetchRoute, submitRouteFeedback } = useRouteApi();
   const { generateRequestid } = useGenerateRequestid();
 
@@ -19,49 +20,66 @@
   const submittingFeedback = ref(false);
   const feedbackSubmitted = ref(false);
 
-  let mapInstance: any = null;
-  let flightPath: any = null;
-  let markers: any[] = [];
+  // 有効数字2桁に丸める関数
+  const toSignificantDigits = (num: number, digits: number = 2): number => {
+    if (num === 0) return 0;
+    const magnitude = Math.floor(Math.log10(Math.abs(num)));
+    const factor = Math.pow(10, digits - magnitude - 1);
+    return Math.round(num * factor) / factor;
+  };
+
+  // マーカーとinterval IDを管理する変数
+  const mapInstance = ref<any>(null);
+  const flightPath = ref<any>(null);
+  const markers = ref<any[]>([]);
+  const checkGoogleMapsInterval = ref<NodeJS.Timeout | null>(null);
+
+  // 地図の中心位置
+  const mapCenter = ref<{lat: number, lng: number}>({
+    lat: 35.685175,
+    lng: 139.752799
+  });
 
   function destroyMap() {
     // マーカーを削除
-    markers.forEach((marker) => {
+    markers.value.forEach((marker) => {
       marker.map = null;
     });
-    markers = [];
+    markers.value = [];
     
-    if (flightPath) {
-      flightPath.setMap(null);
-      flightPath = null;
+    if (flightPath.value) {
+      flightPath.value.setMap(null);
+      flightPath.value = null;
     }
     
-    if (mapInstance) {
+    if (mapInstance.value) {
       // マップ上のすべてのオーバーレイを削除
-      if (mapInstance.overlayMapTypes) {
-        mapInstance.overlayMapTypes.clear();
+      if (mapInstance.value.overlayMapTypes) {
+        mapInstance.value.overlayMapTypes.clear();
       }
       // マップインスタンスをnullに設定
-      mapInstance = null;
+      mapInstance.value = null;
     }
-    
+
+    const mapElement = document.querySelector('gmp-map') as any;
     // DOM要素の内容をクリア
-    const mapElement = document.getElementById("route-map");
     if (mapElement) {
       mapElement.innerHTML = '';
     }
   }
 
   const initMap = async () => {
-    const mapElement = document.getElementById("route-map");
+    const mapElement = document.querySelector('gmp-map') as any;
     if (!mapElement || !(window as any).google) {
       return;
     }
 
-    // markerライブラリをインポート
-    const { AdvancedMarkerElement } = await (window as any).google.maps.importLibrary('marker');
+    // Dynamic Library Importを使用して必要なライブラリを読み込む
+    const { Map, InfoWindow } = await (window as any).google.maps.importLibrary('maps');
+    const { AdvancedMarkerElement, PinElement } = await (window as any).google.maps.importLibrary('marker');
 
     // 既にマップが初期化されている場合は削除
-    if (mapInstance) {
+    if (mapInstance.value) {
       destroyMap();
     }
     
@@ -71,25 +89,18 @@
     // ルートの座標を取得（デフォルト値は空配列）
     const coordinates = routeState.value.polyline;
 
-    // まずはデフォルトの中心・ズームでマップを作る
-    let center = { lat: 0, lng: -180 };
-    let zoom = 17;
-
-    // クラウドベースのマップスタイリングを使用する場合は、mapIdに関連付けられたスタイルが自動的に適用されます
-    // スタイルはGoogle Cloud Consoleで管理されます
-    mapInstance = new (window as any).google.maps.Map(mapElement, {
-      zoom,
-      center,
-      mapId: '9153bea12861ba5a84e2b6d3', // 高度なマーカーとクラウドベースのスタイリングを使用するために必要
+    // gmp-map の innerMap を使用してマップオプションを設定
+    mapElement.innerMap.setOptions({
       disableDefaultUI: true,
       draggable: true,
       scrollwheel: true,
       disableDoubleClickZoom: true,
       keyboardShortcuts: false,
       clickableIcons: false,
-      // クラウドベースのスタイリングを使用する場合、styles配列は不要です
-      // スタイルはGoogle Cloud Consoleで管理され、マップIDに関連付けられます
     });
+
+    // mapInstance を innerMap に設定
+    mapInstance.value = mapElement.innerMap;
 
     // bounds を使って表示範囲を調整
     const bounds = new (window as any).google.maps.LatLngBounds();
@@ -103,35 +114,34 @@
       });
     }
 
+    const infoWindow = new InfoWindow();
+
     // スタート地点のマーカーを追加
     if (coordinates.length > 0 && coordinates[0]) {
       const startPosition = { lat: coordinates[0].lat, lng: coordinates[0].lng };
       
-      // セカンダリーカラーで出発地マーカーを作成
-      const secondaryColorName = appConfig.ui?.colors?.secondary || 'ember';
-      const secondaryColor = getComputedStyle(document.documentElement)
-        .getPropertyValue(`--color-${secondaryColorName}-600`)
-        .trim() || '#FB7C2D';
-      
-      // ピンアイコンSVGをHTML要素として作成
-      const startMarkerElement = document.createElement('div');
-      startMarkerElement.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
-          <path fill="${secondaryColor}" d="M12 11c-1.33 0-4 .67-4 2v.16c.97 1.12 2.4 1.84 4 1.84s3.03-.72 4-1.84V13c0-1.33-2.67-2-4-2m0-1c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0-8c4.2 0 8 3.22 8 8.2c0 3.32-2.67 7.25-8 11.8c-5.33-4.55-8-8.48-8-11.8C4 5.22 7.8 2 12 2"/>
-        </svg>
-      `;
-      startMarkerElement.style.width = '40px';
-      startMarkerElement.style.height = '40px';
+      // 歩いている人のSVGアイコンをData URLとして作成
+      const walkingSvgString = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="white" d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2M9.8 8.9L7 23h2.1l1.8-8l2.1 2v6h2v-7.5l-2.1-2l.6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1c-.3 0-.5.1-.8.1L6 8.3V13h2V9.6z"/></svg>';
+      const walkingSvgDataUrl = 'data:image/svg+xml,' + encodeURIComponent(walkingSvgString);
+
+      const startPin = new PinElement({
+        scale: 1.5,
+        background: '#FB7C2D',
+        borderColor: '#FFFFFF',
+        glyphSrc: walkingSvgDataUrl
+      });
       
       // 高度なマーカーを使用
       const startMarker = new AdvancedMarkerElement({
-        map: mapInstance,
         position: startPosition,
         title: 'スタート地点',
-        content: startMarkerElement,
       });
+      // Append the pin to the marker.
+      startMarker.append(startPin);
+      // Append the marker to the map.
+      mapElement.append(startMarker);
       
-      markers.push(startMarker);
+      markers.value.push(startMarker);
       bounds.extend(new (window as any).google.maps.LatLng(startPosition.lat, startPosition.lng));
       hasBounds = true;
     }
@@ -142,33 +152,32 @@
         if (spot.lat !== undefined && spot.lng !== undefined) {
           const position = { lat: spot.lat, lng: spot.lng };
           
-          // プライマリーカラーでピンアイコンを作成
-          const primaryColorName = appConfig.ui?.colors?.primary || 'verdant';
-          const primaryColor = getComputedStyle(document.documentElement)
-            .getPropertyValue(`--color-${primaryColorName}-600`)
-            .trim() || '#43A047';
-          
           // ピンアイコンSVGをHTML要素として作成
-          const pinElement = document.createElement('div');
-          pinElement.innerHTML = `
-            <svg width="24" height="32" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 0C5.373 0 0 5.373 0 12C0 18.627 12 32 12 32S24 18.627 24 12C24 5.373 18.627 0 12 0Z" fill="${primaryColor}"/>
-              <circle cx="12" cy="12" r="8" fill="#FFFFFF"/>
-              <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="bold" fill="${primaryColor}">${index + 1}</text>
-            </svg>
-          `;
-          pinElement.style.width = '24px';
-          pinElement.style.height = '32px';
+          const pinElement = new PinElement({
+            background: '#43A047',
+            borderColor: '#FFFFFF',
+            glyphText: `${index+1}`,
+            glyphColor: 'white',
+          });
           
           // 高度なマーカーを使用
           const marker = new AdvancedMarkerElement({
-            map: mapInstance,
             position: position,
             title: spot.name || 'スポット',
-            content: pinElement,
+            gmpClickable: true,
           });
+          // Append the pin to the marker.
+          marker.append(pinElement);
+          // Append the marker to the map.
+          mapElement.append(marker);
+          markers.value.push(marker);
 
-          markers.push(marker);
+          // Add a click listener for each marker, and set up the info window.
+        marker.addListener('click', () => {
+            infoWindow.close();
+            infoWindow.setContent(marker.title);
+            infoWindow.open(marker.map, marker);
+        });
           
           // boundsに追加
           bounds.extend(new (window as any).google.maps.LatLng(position.lat, position.lng));
@@ -178,7 +187,7 @@
     }
 
     // boundsがある場合は表示範囲を調整
-    if (hasBounds && mapInstance) {
+    if (hasBounds && mapInstance.value) {
       // UCardの高さを取得（bottom-4の位置にあるUCard）
       const cardElement = document.querySelector('.absolute.bottom-4') as HTMLElement;
       const cardHeight = cardElement ? cardElement.offsetHeight + 32 : 0; // bottom-4 = 16px * 2 = 32px
@@ -195,7 +204,7 @@
       const bottomPadding = mapHeight - targetCenterY * 2;
       
       // fitBoundsで直接中心に表示
-      mapInstance.fitBounds(bounds, {
+      mapInstance.value.fitBounds(bounds, {
         top: 0,
         right: 0,
         bottom: bottomPadding,
@@ -206,8 +215,8 @@
     // polylineを描画
     if (coordinates.length > 0) {
       // 既存のflightPathがあれば削除
-      if (flightPath) {
-        flightPath.setMap(null);
+      if (flightPath.value) {
+        flightPath.value.setMap(null);
       }
       
       // セカンダリーカラーをCSS変数から取得
@@ -216,14 +225,14 @@
         .getPropertyValue(`--color-${secondaryColorName}-600`)
         .trim() || '#FB7C2D';
       
-      flightPath = new (window as any).google.maps.Polyline({
+      flightPath.value = new (window as any).google.maps.Polyline({
         path: coordinates,
         geodesic: true,
         strokeColor: secondaryColor,
         strokeOpacity: 1.0,
         strokeWeight: 4,
       });
-      flightPath.setMap(mapInstance);
+      flightPath.value.setMap(mapInstance.value);
     }
   }
 
@@ -329,23 +338,61 @@
       return;
     }
 
-    initMap();
+    // ルートの座標から地図の中心を計算
+    const coordinates = routeState.value.polyline;
+    if (coordinates.length > 0) {
+      const centerLat = coordinates.reduce((sum, p) => sum + p.lat, 0) / coordinates.length;
+      const centerLng = coordinates.reduce((sum, p) => sum + p.lng, 0) / coordinates.length;
+      mapCenter.value = { lat: centerLat, lng: centerLng };
+    }
+
+    // DOMが完全にレンダリングされた後に地図を初期化
+    await nextTick();
+    
+    // 地図を初期化（Google Maps APIの読み込みを待つ）
+    checkGoogleMapsInterval.value = setInterval(() => {
+      if ((window as any).google) {
+        if (checkGoogleMapsInterval.value) {
+          clearInterval(checkGoogleMapsInterval.value);
+          checkGoogleMapsInterval.value = null;
+        }
+        // さらに少し待ってから初期化（レイアウトが確定するまで）
+        setTimeout(() => {
+          initMap();
+        }, 200);
+      }
+    }, 100);
+
+    // タイムアウト（10秒後）
+    setTimeout(() => {
+      if (checkGoogleMapsInterval.value) {
+        clearInterval(checkGoogleMapsInterval.value);
+        checkGoogleMapsInterval.value = null;
+      }
+    }, 10000);
   });
 
   // コンポーネントがアンマウントされる時にもマップを破棄
   onBeforeUnmount(() => {
+    // interval をクリア
+    if (checkGoogleMapsInterval.value) {
+      clearInterval(checkGoogleMapsInterval.value);
+      checkGoogleMapsInterval.value = null;
+    }
+
     destroyMap();
   });
 </script>
 
 <template>
-  <div class="flex flex-col h-[calc(100vh-var(--ui-header-height))]">
+  <div class="flex flex-col h-dvh">
     <!-- マップ -->
     <div class="flex-1 relative border border-gray-100 bg-gray-50">
-      <div
-        id="route-map"
-        class="w-full h-full"
-      ></div>
+      <gmp-map
+        :center="{ lat: mapCenter.lat, lng: mapCenter.lng }"
+        :zoom="15"
+        map-id="9153bea12861ba5a84e2b6d3"
+        class="w-full h-full"></gmp-map>
     </div>
     <div class="absolute bottom-4 z-10 px-2">
       <UCard>
@@ -356,67 +403,19 @@
           </p>
           <div class="grid grid-cols-3 gap-2 text-center text-xs">
             <p class="mt-1 text-lg font-bold text-primary-600">
-              {{ routeState.distance_km }}km
+              {{ toSignificantDigits(routeState.distance_km) }}km
             </p>
             <p class="mt-1 text-lg font-bold text-indigo-600">
-              {{ routeState.duration_min }}分
+              {{ toSignificantDigits(routeState.duration_min) }}分
             </p>
             <p class="mt-1 text-lg font-bold text-emerald-600">
-              {{ Math.round(routeState.distance_km! * 100000 / 76) }}歩
+              {{ toSignificantDigits(Math.round(routeState.distance_km! * 100000 / 76)) }}歩
             </p>
           </div>
         </template>
 
-        <div v-if="routeState.spots.length > 0">
-          <ul>
-            <li
-              v-for="(spot, index) in routeState.spots"
-              :key="index"
-              class="flex gap-3 py-2 cursor-default items-center"
-            >
-              <!-- ピンアイコン風のバッジ -->
-              <div class="relative shrink-0 text-primary-600">
-                <svg 
-                  width="24" 
-                  height="32" 
-                  viewBox="0 0 24 32" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="drop-shadow-sm"
-                >
-                  <!-- ピンの影部分 -->
-                  <path 
-                    d="M12 0C5.373 0 0 5.373 0 12C0 18.627 12 32 12 32S24 18.627 24 12C24 5.373 18.627 0 12 0Z" 
-                    fill="currentColor"
-                  />
-                  <!-- 番号を表示する円 -->
-                  <circle 
-                    cx="12" 
-                    cy="12" 
-                    r="8" 
-                    fill="#FFFFFF"
-                  />
-                  <text 
-                    x="12" 
-                    y="16" 
-                    text-anchor="middle" 
-                    font-size="11" 
-                    font-weight="bold" 
-                    fill="currentColor"
-                  >
-                    {{ index + 1 }}
-                  </text>
-                </svg>
-              </div>
-              <p class="text-sm text-gray-700 truncate">
-                {{ spot.name || 'スポット名未設定' }}
-              </p>
-            </li>
-          </ul>
-        </div>
-
         <template #footer>
-          <UButton block label="このルートを歩く" color="secondary" class="mb-2 text-lg font-bold rounded-full" @click="startNavigation"/>
+          <UButton block label="このルートを歩く" color="secondary" class="text-lg font-bold rounded-full" @click="startNavigation"/>
         </template>
       </UCard>
 
