@@ -7,11 +7,15 @@ interface RouteFeedbackApiResponse {
 
 export const useRouteApi = () => {
   const fetchRoute = async (payload: ApiRequest): Promise<ApiResponse['body']['route']> => {
-    const response = await $fetch<ApiResponse>("/api/fetch-ai", {
-      method: "post",
-      body: payload,
-    });
-    return response.body.route;
+    try {
+      const response = await $fetch<ApiResponse>("/api/fetch-ai", {
+        method: "post",
+        body: payload,
+      });
+      return response.body.route;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const submitRouteFeedback = async (payload: RouteFeedbackRequest): Promise<RouteFeedbackResponse> => {

@@ -12,7 +12,6 @@
 
   const searchParamsState = useSearchParams();
   const routeState = useCurrentRoute();
-  const appConfig = useAppConfig();
 
   const loadingRegenerate = ref(false);
   const showRatingModal = ref(false);
@@ -84,7 +83,10 @@
     }
     
     // DOM要素をクリア（既存のマップ要素を削除）
-    mapElement.innerHTML = '';
+    // search.vueから遷移した場合のマーカーも確実に削除するため、すべての子要素を削除
+    while (mapElement.firstChild) {
+      mapElement.removeChild(mapElement.firstChild);
+    }
 
     // ルートの座標を取得（デフォルト値は空配列）
     const coordinates = routeState.value.polyline;
@@ -219,16 +221,10 @@
         flightPath.value.setMap(null);
       }
       
-      // セカンダリーカラーをCSS変数から取得
-      const secondaryColorName = appConfig.ui?.colors?.secondary || 'ember';
-      const secondaryColor = getComputedStyle(document.documentElement)
-        .getPropertyValue(`--color-${secondaryColorName}-600`)
-        .trim() || '#FB7C2D';
-      
       flightPath.value = new (window as any).google.maps.Polyline({
         path: coordinates,
         geodesic: true,
-        strokeColor: secondaryColor,
+        strokeColor: '#FB7C2D',
         strokeOpacity: 1.0,
         strokeWeight: 4,
       });

@@ -197,6 +197,10 @@
 
       //検索結果ルートを保存し、ルート画面に遷移
       routeState.value = route;
+      
+      // 遷移前にマーカーを削除
+      destroyMap();
+      
       await navigateTo(`/app/route?request_id=${searchParams.value.request_id}&route_id=${route.route_id}`);
 
     } catch (e) {
@@ -293,6 +297,7 @@
       }
 
       await fetchCurrentLocation();
+      // 地図を初期化せずに直接APIを呼び出す（quicksearchの場合は地図を表示しない）
       await callApi();
     }else{
       // 保存されている検索条件があれば、searchParamsに代入
@@ -310,32 +315,32 @@
         // 初回アクセスまたは初期値の場合は現在地を取得
         await fetchCurrentLocation();
       }
-    }
+      
+      // DOMが完全にレンダリングされた後に地図を初期化
+      await nextTick();
+      
+      // 地図を初期化（Google Maps APIの読み込みを待つ）
+      checkGoogleMapsInterval.value = setInterval(() => {
+        if ((window as any).google) {
+          if (checkGoogleMapsInterval.value) {
+            clearInterval(checkGoogleMapsInterval.value);
+            checkGoogleMapsInterval.value = null;
+          }
+          // さらに少し待ってから初期化（レイアウトが確定するまで）
+          setTimeout(() => {
+            initMap();
+          }, 200);
+        }
+      }, 100);
 
-    // DOMが完全にレンダリングされた後に地図を初期化
-    await nextTick();
-    
-    // 地図を初期化（Google Maps APIの読み込みを待つ）
-    checkGoogleMapsInterval.value = setInterval(() => {
-      if ((window as any).google) {
+      // タイムアウト（10秒後）
+      setTimeout(() => {
         if (checkGoogleMapsInterval.value) {
           clearInterval(checkGoogleMapsInterval.value);
           checkGoogleMapsInterval.value = null;
         }
-        // さらに少し待ってから初期化（レイアウトが確定するまで）
-        setTimeout(() => {
-          initMap();
-        }, 200);
-      }
-    }, 100);
-
-    // タイムアウト（10秒後）
-    setTimeout(() => {
-      if (checkGoogleMapsInterval.value) {
-        clearInterval(checkGoogleMapsInterval.value);
-        checkGoogleMapsInterval.value = null;
-      }
-    }, 10000);
+      }, 10000);
+    }
   });
 
   // コンポーネントがアンマウントされる時にマップを破棄
