@@ -464,7 +464,7 @@
             :key="star"
             @click="rating = star"
             class="text-3xl transition-transform hover:scale-110"
-            :class="star <= rating ? 'text-secondary-500' : 'text-gray-300'"
+            :class="star <= rating ? 'text-yellow-400' : 'text-gray-300'"
           >
             ★
           </button>
@@ -474,10 +474,11 @@
             block
             label="フィードバックを送信"
             variant="outline"
+            color="secondary"
             :loading="submittingFeedback"
             :disabled="rating === 0"
             @click="handleRatingSubmit"
-            class="text-lg font-bold rounded-full"
+            class="text-lg font-bold rounded-full mx-2"
           />
         </div>
       </div>

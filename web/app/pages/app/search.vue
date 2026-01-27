@@ -138,7 +138,7 @@
         (pos) => {
           currentLocation.value = {lat: pos.coords.latitude, lng: pos.coords.longitude};
           // 現在地を取得したときは地図の中心も移動
-          mapCenter.value = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+          mapCenter.value = currentLocation.value;
 
           const mapElement = document.querySelector('gmp-map') as any;
           if (mapElement) {
