@@ -456,6 +456,8 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
         original_target_km = target_distance_km
         short_max_km = float(getattr(settings, "SHORT_DISTANCE_MAX_KM", 2.0))
         short_ratio = float(getattr(settings, "SHORT_DISTANCE_TARGET_RATIO", 0.9))
+        if original_target_km <= short_max_km:
+            max_error_ratio = min(max_error_ratio, 0.2)
         if target_distance_km <= short_max_km and 0.5 <= short_ratio < 1.0:
             adjusted = max(0.5, target_distance_km * short_ratio)
             if adjusted != target_distance_km:

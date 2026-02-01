@@ -19,10 +19,8 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
     """
     theme_to_types: Dict[str, List[str]] = {
         "exercise": [
-            "park",  # 公園（運動に適した場所）
-            "gym",  # ジム
+            "park",  # 公園（体を使って整える）
             "sports_complex",  # スポーツ施設
-            "fitness_center",  # フィットネスセンター
             "hiking_area",  # ハイキングエリア
             "cycling_park",  # サイクリングパーク
             "stadium",  # スタジアム
@@ -34,30 +32,19 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
             "arena",  # アリーナ
         ],
         "think": [
-            "park",  # 公園（静かな思考に適した場所）
-            "library",  # 図書館
-            "museum",  # 博物館
-            "cafe",  # カフェ
-            "art_gallery",  # 美術館
-            "book_store",  # 書店
-            "university",  # 大学
-            "school",  # 学校
-            "auditorium",  # 講堂
-            "cultural_center",  # 文化センター
-            "performing_arts_theater",  # 劇場
-        ],
-        "refresh": [
-            "park",  # 公園（気分転換に適した場所）
-            "cafe",  # カフェ
-            "restaurant",  # レストラン
-            "tourist_attraction",  # 観光スポット（展望台など）
-            "beach",  # ビーチ
-            "botanical_garden",  # 植物園
+            "park",  # 静かな道
             "garden",  # 庭園
+            "botanical_garden",  # 植物園
             "plaza",  # 広場
             "observation_deck",  # 展望台
-            "amusement_park",  # 遊園地
-            "water_park",  # ウォーターパーク
+        ],
+        "refresh": [
+            "park",  # 景色の変化
+            "plaza",  # 広場
+            "observation_deck",  # 展望台
+            "garden",  # 庭園
+            "botanical_garden",  # 植物園
+            "tourist_attraction",  # 観光スポット（景観寄り）
         ],
         "nature": [
             "park",  # 公園
@@ -65,11 +52,10 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
             "state_park",  # 州立公園
             "hiking_area",  # ハイキングエリア
             "botanical_garden",  # 植物園
-            "beach",  # ビーチ
             "garden",  # 庭園
+            "beach",  # ビーチ
             "wildlife_park",  # 野生動物公園
             "wildlife_refuge",  # 野生動物保護区
-            "zoo",  # 動物園
         ],
     }
     return theme_to_types.get(theme, ["park"])  # デフォルトは公園
@@ -77,20 +63,20 @@ def _get_place_types_for_theme(theme: str) -> List[str]:
 
 def _get_hidden_keywords_for_theme(theme: str) -> List[str]:
     theme_to_keywords: Dict[str, List[str]] = {
-        "exercise": ["穴場", "遊歩道", "静かな道"],
-        "think": ["静か", "落ち着く", "ひっそり"],
-        "refresh": ["穴場", "街歩き", "景色"],
-        "nature": ["緑", "木漏れ日", "自然"],
+        "exercise": ["整える", "リセット", "体を動かす"],
+        "think": ["ぼーっと", "無心", "静かな道"],
+        "refresh": ["景色", "気分転換", "寄り道"],
+        "nature": ["深呼吸", "緑", "木漏れ日"],
     }
     return theme_to_keywords.get(theme, ["穴場"])
 
 
 def _get_classic_place_types_for_theme(theme: str) -> List[str]:
     theme_to_types: Dict[str, List[str]] = {
-        "exercise": ["park", "gym", "sports_complex", "athletic_field"],
-        "think": ["library", "museum", "cafe", "art_gallery"],
-        "refresh": ["tourist_attraction", "restaurant", "cafe", "observation_deck", "plaza"],
-        "nature": ["park", "national_park", "botanical_garden", "garden", "beach"],
+        "exercise": ["park", "sports_complex", "athletic_field", "hiking_area"],
+        "think": ["park", "garden", "botanical_garden", "plaza"],
+        "refresh": ["park", "observation_deck", "plaza", "garden", "botanical_garden"],
+        "nature": ["park", "national_park", "botanical_garden", "garden", "beach", "hiking_area"],
     }
     return theme_to_types.get(theme, ["park"])
 

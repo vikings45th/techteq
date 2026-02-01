@@ -148,10 +148,10 @@ def fallback_title(theme: str, distance_km: float, duration_min: float, spots: O
 
 def _theme_to_natural(theme: str) -> str:
     theme_map = {
-        "exercise": "運動やエクササイズ",
-        "think": "思考やリフレッシュ",
-        "refresh": "気分転換やリフレッシュ",
-        "nature": "自然や緑",
+        "exercise": "体を使って整えるモード（身体刺激でリセット）",
+        "think": "考えなくていい道モード（思考停止のための静かな道）",
+        "refresh": "ちょっとだけ気分転換モード（人混みより景色変化）",
+        "nature": "呼吸を整えるモード（自然＝回復資源）",
     }
     return theme_map.get(theme, theme)
 

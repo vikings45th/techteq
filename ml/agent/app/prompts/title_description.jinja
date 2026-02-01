@@ -11,7 +11,7 @@ Markdownやコードブロックや余計な文字は一切出力しないでく
 - 余計な前置きや注釈を入れない
 {% if forbidden_words %}- 禁止語: {{ forbidden_words | join("、") }}{% endif %}
 
-テーマ: {{ theme_desc }}
+テーマ（意味）: {{ theme_desc }}
 距離: 約{{ distance_km_str }}
 所要時間: 約{{ duration_min_str }}
 {% if spots_text %}見どころ: {{ spots_text }}{% endif %}

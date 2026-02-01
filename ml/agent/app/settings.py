@@ -60,9 +60,9 @@ class Settings(BaseSettings):
     RANKER_VERSION: str = "rule_v1"  # Rankerのバージョン（モデル/ロジックの追跡用）
 
     # ルート近傍の見どころ抽出
-    SPOT_MAX_DISTANCE_M: float = 50.0  # ルートからの最大距離（m）
-    SPOT_MAX_DISTANCE_M_RELAXED: float = 100.0  # 緩和時の最大距離（m）
-    SPOT_MAX_DISTANCE_M_FALLBACK: float = 250.0  # 追加緩和時の最大距離（m）
+    SPOT_MAX_DISTANCE_M: float = 30.0  # ルートからの最大距離（m）
+    SPOT_MAX_DISTANCE_M_RELAXED: float = 60.0  # 緩和時の最大距離（m）
+    SPOT_MAX_DISTANCE_M_FALLBACK: float = 120.0  # 追加緩和時の最大距離（m）
 
 
 settings = Settings()  # グローバル設定インスタンス
