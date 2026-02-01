@@ -174,11 +174,16 @@ def compute_route_dests(
         if round_trip:
             # 往復ルート: 形状バリエーションを増やす
             min_km = _min_km_for_short_distance(distance_km)
-            waypoint_distance_km = max(distance_km / 4.0, min_km)
-            if distance_km <= 1.0:
-                radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.4)
+            if distance_km <= 1.2:
+                waypoint_distance_km = max(distance_km / 6.0, min_km)
             elif distance_km <= 2.0:
-                radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.6)
+                waypoint_distance_km = max(distance_km / 5.0, min_km)
+            else:
+                waypoint_distance_km = max(distance_km / 4.0, min_km)
+            if distance_km <= 1.0:
+                radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.3)
+            elif distance_km <= 2.0:
+                radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.5)
             else:
                 radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.9)
             max_candidates = 6
@@ -211,7 +216,10 @@ def compute_route_dests(
                 for h in headings:
                     if len(dests) >= max_candidates:
                         break
-                    dist_scale = random.uniform(0.85, 1.15)
+                    if distance_km <= 2.0:
+                        dist_scale = random.uniform(0.7, 1.0)
+                    else:
+                        dist_scale = random.uniform(0.85, 1.15)
                     distance_km_jitter = waypoint_distance_km * dist_scale
                     angle_shift = random.uniform(35.0, 75.0)
                     p1 = _offset_latlng(start_lat, start_lng, distance_km_jitter, h)
@@ -222,8 +230,12 @@ def compute_route_dests(
             # 3) 直線的な往復（アウト&バック）
             if len(dests) < max_candidates:
                 for h in headings:
-                    far_km = waypoint_distance_km * random.uniform(1.4, 1.9)
-                    near_km = waypoint_distance_km * random.uniform(0.6, 0.9)
+                    if distance_km <= 2.0:
+                        far_km = waypoint_distance_km * random.uniform(1.1, 1.4)
+                        near_km = waypoint_distance_km * random.uniform(0.45, 0.7)
+                    else:
+                        far_km = waypoint_distance_km * random.uniform(1.4, 1.9)
+                        near_km = waypoint_distance_km * random.uniform(0.6, 0.9)
                     p_far = _offset_latlng(start_lat, start_lng, far_km, h)
                     p_near = _offset_latlng(start_lat, start_lng, near_km, h)
                     add_waypoints("out_and_back", [p_far, p_near])
@@ -233,8 +245,12 @@ def compute_route_dests(
             # 4) 蛇行（ジグザグ）
             if len(dests) < max_candidates:
                 for h in headings:
-                    base_step_km = max(distance_km / 6.0, 0.4)
-                    lateral_km = base_step_km * 0.45
+                    if distance_km <= 2.0:
+                        base_step_km = max(distance_km / 7.0, 0.25)
+                        lateral_km = base_step_km * 0.35
+                    else:
+                        base_step_km = max(distance_km / 6.0, 0.4)
+                        lateral_km = base_step_km * 0.45
                     waypoints = []
                     for i in range(4):
                         forward_km = base_step_km * (1.0 + i * 0.35)
