@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     CONCURRENCY: int = 2  # 外部APIの並列数
     ROUTE_DISTANCE_ERROR_RATIO_MAX: float = 0.3  # 目標距離の許容誤差比率
     ROUTE_DISTANCE_RETRY_MAX: int = 1  # 距離フィルタ後の再生成回数
-    SHORT_DISTANCE_TARGET_RATIO: float = 0.9  # 短距離時の事前距離補正比率
+    SHORT_DISTANCE_TARGET_RATIO: float = 0.8  # 短距離時の事前距離補正比率
     SHORT_DISTANCE_MAX_KM: float = 2.0  # 短距離補正の上限距離（km）
 
     # BigQuery

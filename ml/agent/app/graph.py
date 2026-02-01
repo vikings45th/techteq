@@ -500,7 +500,8 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
                     continue
                 if target_distance_km > 0 and max_error_ratio >= 0:
                     route_distance_km = float(route.get("distance_km") or 0.0)
-                    distance_error_ratio = abs(route_distance_km - target_distance_km) / target_distance_km
+                    error_base_km = original_target_km if original_target_km > 0 else target_distance_km
+                    distance_error_ratio = abs(route_distance_km - error_base_km) / error_base_km
                     if closest_error_ratio is None or distance_error_ratio < closest_error_ratio:
                         closest_error_ratio = distance_error_ratio
                         closest_distance_km = route_distance_km

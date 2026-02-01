@@ -164,6 +164,13 @@ async def _invoke_structured(prompt: str, *, temperature: float, max_output_toke
     return await runnable.ainvoke(prompt)
 
 
+async def _invoke_raw(prompt: str, *, temperature: float, max_output_tokens: int) -> object:
+    llm = _get_llm(temperature=temperature, max_output_tokens=max_output_tokens)
+    if llm is None:
+        raise RuntimeError("Vertex LLM is not configured")
+    return await llm.ainvoke(prompt)
+
+
 async def generate_summary(
     *,
     theme: str,
@@ -318,12 +325,13 @@ async def generate_title_and_description(
             forbidden_words=forbidden_words,
         )
         try:
-            result = await _invoke_structured(
+            result = await _invoke_raw(
                 prompt,
                 temperature=attempt["temperature"],
                 max_output_tokens=attempt["max_out"],
-                schema=TitleDescriptionResponse,
             )
+            if hasattr(result, "content"):
+                result = result.content
             parsed = _coerce_structured(result, TitleDescriptionResponse)
             title = parsed.title
             description = parsed.description
