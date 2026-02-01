@@ -123,8 +123,14 @@ def compute_route_dests(
     round_trip: bool,
 ) -> List[Any]:
     def _min_km_for_short_distance(target_km: float) -> float:
-        # 1km前後のときは下限を小さくして距離誤差を抑える
-        return 0.2 if target_km <= 1.5 else 0.5
+        # 短距離（<=2km）は下限をさらに小さくして距離誤差を抑える
+        if target_km <= 1.0:
+            return 0.08
+        if target_km <= 1.5:
+            return 0.12
+        if target_km <= 2.0:
+            return 0.16
+        return 0.5
 
     # 候補を多様化するために方位角を作成（360°を6等分）
     # 毎回少し回転・シャッフルして同条件でも変化させる
@@ -169,7 +175,10 @@ def compute_route_dests(
             # 往復ルート: 形状バリエーションを増やす
             min_km = _min_km_for_short_distance(distance_km)
             waypoint_distance_km = max(distance_km / 4.0, min_km)
-            radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.9)
+            if distance_km <= 2.0:
+                radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.6)
+            else:
+                radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.9)
             max_candidates = 6
             dests = []
             seen = set()
