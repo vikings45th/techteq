@@ -454,6 +454,19 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
         max_attempts = max(1, int(settings.ROUTE_DISTANCE_RETRY_MAX) + 1)
         target_distance_km = float(req.distance_km)
         original_target_km = target_distance_km
+        short_max_km = float(getattr(settings, "SHORT_DISTANCE_MAX_KM", 2.0))
+        short_ratio = float(getattr(settings, "SHORT_DISTANCE_TARGET_RATIO", 0.9))
+        if target_distance_km <= short_max_km and 0.5 <= short_ratio < 1.0:
+            adjusted = max(0.5, target_distance_km * short_ratio)
+            if adjusted != target_distance_km:
+                logger.info(
+                    "[Routes Target PreAdjust] request_id=%s target=%.3f adjusted=%.3f ratio=%.2f",
+                    req.request_id,
+                    target_distance_km,
+                    adjusted,
+                    short_ratio,
+                )
+                target_distance_km = adjusted
 
         for attempt in range(1, max_attempts + 1):
             attempt_candidates: List[Dict[str, Any]] = []
@@ -533,7 +546,7 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
                 break
 
             if attempt < max_attempts:
-                if original_target_km <= 2.0 and closest_distance_km and closest_distance_km > 0:
+                if original_target_km <= short_max_km and closest_distance_km and closest_distance_km > 0:
                     adjusted = (target_distance_km * target_distance_km) / closest_distance_km
                     adjusted = max(0.5, min(original_target_km, adjusted))
                     if adjusted != target_distance_km:
