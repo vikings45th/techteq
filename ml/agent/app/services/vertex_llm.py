@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import random
+import re
 from typing import Optional
 import logging
 
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 from langchain_core.exceptions import OutputParserException
 from langchain_google_vertexai import ChatVertexAI
+from pydantic import ValidationError
 
 from app.schemas import DescriptionResponse, TitleResponse, TitleDescriptionResponse
 from app.settings import settings
@@ -65,6 +68,22 @@ def _render_prompt(template_name: str, **context: object) -> str:
         logger.error("[Vertex LLM] template not found: %s", template_name)
         return ""
     return template.render(**context).strip()
+
+
+def _coerce_structured(result: object, schema: type) -> object:
+    if isinstance(result, schema):
+        return result
+    if isinstance(result, dict):
+        return schema.model_validate(result)
+    if isinstance(result, str):
+        text = result.strip()
+        try:
+            return schema.model_validate(json.loads(text))
+        except Exception:
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if match:
+                return schema.model_validate(json.loads(match.group(0)))
+    return schema.model_validate(result)
 
 
 def _spot_names(spots: Optional[list]) -> list[str]:
@@ -184,13 +203,13 @@ async def generate_summary(
                 max_output_tokens=attempt["max_out"],
                 schema=DescriptionResponse,
             )
-            parsed = result if isinstance(result, DescriptionResponse) else DescriptionResponse.model_validate(result)
+            parsed = _coerce_structured(result, DescriptionResponse)
             text = parsed.description
             banned = _contains_forbidden(text, forbidden_words)
             if banned:
                 raise ValueError(f"forbidden word found: {banned}")
             return text
-        except (OutputParserException, ValueError) as e:
+        except (OutputParserException, ValidationError, ValueError) as e:
             logger.warning("[Vertex LLM Summary Invalid] err=%r", e)
         except Exception as e:
             logger.exception("[Vertex LLM Summary Error] err=%r", e)
@@ -234,13 +253,13 @@ async def generate_title(
                 max_output_tokens=attempt["max_out"],
                 schema=TitleResponse,
             )
-            parsed = result if isinstance(result, TitleResponse) else TitleResponse.model_validate(result)
+            parsed = _coerce_structured(result, TitleResponse)
             text = parsed.title
             banned = _contains_forbidden(text, forbidden_words)
             if banned:
                 raise ValueError(f"forbidden word found: {banned}")
             return text
-        except (OutputParserException, ValueError) as e:
+        except (OutputParserException, ValidationError, ValueError) as e:
             logger.warning("[Vertex LLM Title Invalid] err=%r", e)
         except Exception as e:
             logger.exception("[Vertex LLM Title Error] err=%r", e)
@@ -305,14 +324,14 @@ async def generate_title_and_description(
                 max_output_tokens=attempt["max_out"],
                 schema=TitleDescriptionResponse,
             )
-            parsed = result if isinstance(result, TitleDescriptionResponse) else TitleDescriptionResponse.model_validate(result)
+            parsed = _coerce_structured(result, TitleDescriptionResponse)
             title = parsed.title
             description = parsed.description
             banned = _contains_forbidden(title, forbidden_words) or _contains_forbidden(description, forbidden_words)
             if banned:
                 raise ValueError(f"forbidden word found: {banned}")
             return {"title": title, "description": description}
-        except (OutputParserException, ValueError) as e:
+        except (OutputParserException, ValidationError, ValueError) as e:
             logger.warning("[Vertex LLM Title+Summary Invalid] err=%r", e)
         except Exception as e:
             logger.exception("[Vertex LLM Title+Summary Error] err=%r", e)

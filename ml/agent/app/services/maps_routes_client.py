@@ -125,11 +125,11 @@ def compute_route_dests(
     def _min_km_for_short_distance(target_km: float) -> float:
         # 短距離（<=2km）は下限をさらに小さくして距離誤差を抑える
         if target_km <= 1.0:
-            return 0.08
+            return 0.05
         if target_km <= 1.5:
-            return 0.12
+            return 0.08
         if target_km <= 2.0:
-            return 0.16
+            return 0.12
         return 0.5
 
     # 候補を多様化するために方位角を作成（360°を6等分）
@@ -175,7 +175,9 @@ def compute_route_dests(
             # 往復ルート: 形状バリエーションを増やす
             min_km = _min_km_for_short_distance(distance_km)
             waypoint_distance_km = max(distance_km / 4.0, min_km)
-            if distance_km <= 2.0:
+            if distance_km <= 1.0:
+                radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.4)
+            elif distance_km <= 2.0:
                 radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.6)
             else:
                 radius_km = max(distance_km / (2.0 * math.pi), min_km * 0.9)

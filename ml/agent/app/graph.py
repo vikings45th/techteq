@@ -453,11 +453,14 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
         max_error_ratio = float(settings.ROUTE_DISTANCE_ERROR_RATIO_MAX)
         max_attempts = max(1, int(settings.ROUTE_DISTANCE_RETRY_MAX) + 1)
         target_distance_km = float(req.distance_km)
+        original_target_km = target_distance_km
 
         for attempt in range(1, max_attempts + 1):
             attempt_candidates: List[Dict[str, Any]] = []
             best_score: Optional[float] = None
             filtered_out = 0
+            closest_distance_km: Optional[float] = None
+            closest_error_ratio: Optional[float] = None
 
             dests = maps_routes_client.compute_route_dests(
                 request_id=req.request_id,
@@ -485,6 +488,9 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
                 if target_distance_km > 0 and max_error_ratio >= 0:
                     route_distance_km = float(route.get("distance_km") or 0.0)
                     distance_error_ratio = abs(route_distance_km - target_distance_km) / target_distance_km
+                    if closest_error_ratio is None or distance_error_ratio < closest_error_ratio:
+                        closest_error_ratio = distance_error_ratio
+                        closest_distance_km = route_distance_km
                     if distance_error_ratio > max_error_ratio:
                         filtered_out += 1
                         logger.info(
@@ -527,6 +533,20 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
                 break
 
             if attempt < max_attempts:
+                if original_target_km <= 2.0 and closest_distance_km and closest_distance_km > 0:
+                    adjusted = (target_distance_km * target_distance_km) / closest_distance_km
+                    adjusted = max(0.5, min(original_target_km, adjusted))
+                    if adjusted != target_distance_km:
+                        logger.info(
+                            "[Routes Target Adjust] request_id=%s target=%.3f adjusted=%.3f observed=%.3f attempt=%d/%d",
+                            req.request_id,
+                            target_distance_km,
+                            adjusted,
+                            closest_distance_km,
+                            attempt,
+                            max_attempts,
+                        )
+                        target_distance_km = adjusted
                 logger.info(
                     "[Routes Retry] request_id=%s filtered_out=%d attempt=%d/%d",
                     req.request_id,
