@@ -15,6 +15,7 @@ WITH feedback_high_raw AS (
     event_ts
   FROM `firstdown_mvp.route_feedback`
   WHERE rating IN (4, 5)
+    AND event_ts >= TIMESTAMP '2026-02-01'
 ),
 
 -- 1 request に複数 feedback がある場合に備えて 1行へ正規化（最新を採用）

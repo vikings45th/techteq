@@ -14,15 +14,15 @@
 
 ## 概要
 
-Ranker APIは、Agent APIから送信されたルート候補を評価し、スコアリングするサービスです。意思決定はルールベースのスコアを維持しつつ、XGBoost回帰モデルによる「シャドウ推論」を実行し、BigQueryに保存します。
+Ranker APIは、Agent APIから送信されたルート候補を評価し、スコアリングするサービスです。意思決定はモデルスコアを優先し、ルールベースのスコアはシャドーで計算してログに保存します（モデル障害時はルールにフォールバック）。
 
 ### 主な機能
 
-- **ルートスコアリング**: 特徴量に基づくルート品質評価
+- **ルートスコアリング**: 特徴量に基づくルート品質評価（モデル優先）
 - **複数ルートの並列評価**: 最大5件のルートを一度に評価
 - **部分的な成功を許容**: 一部のルートが失敗してもOK
-- **スコア内訳の提供**: デバッグ用のスコア内訳情報（`model_score`を含む）
-- **シャドウ推論ログ**: モデルスコア/レイテンシをBigQueryへ保存
+- **スコア内訳の提供**: デバッグ用のスコア内訳情報（`model_score`/`rule_score`）
+- **シャドウログ**: ルールスコア/モデルスコア/レイテンシをBigQueryへ保存
 
 ## 環境変数
 
@@ -31,11 +31,16 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
 | 変数名 | デフォルト値 | 説明 |
 |--------|------------|------|
 | `MODEL_VERSION` | `unknown` | モデルバージョン（影響確認用） |
-| `MODEL_SHADOW_MODE` | `xgb` | シャドウ推論モード（`xgb` / `stub` / `disabled`） |
+| `MODEL_INFERENCE_MODE` | `""` | 推論モード（`vertex` / `xgb` / `stub` / `disabled`）。空なら`MODEL_SHADOW_MODE`へフォールバック |
+| `MODEL_SHADOW_MODE` | `xgb` | 互換用の推論モード（`vertex` / `xgb` / `stub` / `disabled`） |
 | `MODEL_TIMEOUT_S` | `5.0` | 推論タイムアウト（秒） |
 | `MODEL_PATH` | `models/model.xgb.json` | XGBoost成果物パス |
 | `MODEL_FEATURES_PATH` | `models/feature_columns.json` | 特徴量カラム定義パス |
 | `RANKER_VERSION` | `unknown` | ルール版のバージョン |
+| `VERTEX_PROJECT` | なし | Vertex AIのプロジェクトID |
+| `VERTEX_LOCATION` | `asia-northeast1` | Vertex AIのリージョン |
+| `VERTEX_ENDPOINT_ID` | なし | Vertex AI Endpoint ID |
+| `VERTEX_TIMEOUT_S` | `5.0` | Vertex AI推論タイムアウト（秒） |
 | `BQ_PROJECT` | なし | BigQueryプロジェクトID |
 | `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
 | `BQ_RANK_RESULT_TABLE` | `rank_result` | BigQueryテーブル名 |
@@ -130,7 +135,7 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
 
 ## スコアリングロジック
 
-現在はルールベーススコアを本番の意思決定に利用します。モデル推論は「シャドウ」として実行し、レスポンス内の`breakdown.model_score`とBigQueryログに保存します。
+現在はモデルスコアを本番の意思決定に利用します。ルールベーススコアはシャドーとして計算し、レスポンス内の`breakdown.rule_score`とBigQueryログに保存します。モデル推論に失敗した場合はルールスコアにフォールバックします。
 
 ### 基本スコア
 
@@ -384,6 +389,171 @@ cp artifacts/feature_columns.json models/feature_columns.json
 ```
 
 Cloud Run では `models/` をイメージに同梱するか、ボリュームでマウントしてください。
+
+### Vertex AI Online Prediction（カスタムコンテナ）
+
+Vertex AI Endpointを使用した推論に切替える手順です。
+
+#### 前提条件
+
+- GCPプロジェクト: `firstdown-482704`
+- リージョン: `asia-northeast1`
+- Rankerのサービスアカウントに `roles/aiplatform.user` 権限が必要
+
+#### 1) GCSバケットの作成（初回のみ）
+
+```bash
+# バケット名を指定（例: firstdown-vertex-models）
+BUCKET_NAME=firstdown-vertex-models
+gsutil mb -p firstdown-482704 -l asia-northeast1 gs://${BUCKET_NAME}/
+```
+
+#### 2) モデル成果物をGCSに配置
+
+```bash
+# バージョン名を指定（例: shadow_xgb_20260211_since_0201）
+VERSION=shadow_xgb_20260211_since_0201
+BUCKET_NAME=firstdown-vertex-models
+
+# 成果物をGCSにアップロード
+gsutil -m cp ml/ranker/models/model.xgb.json gs://${BUCKET_NAME}/ranker/${VERSION}/model.xgb.json
+gsutil -m cp ml/ranker/models/feature_columns.json gs://${BUCKET_NAME}/ranker/${VERSION}/feature_columns.json
+gsutil -m cp ml/ranker/models/metadata.json gs://${BUCKET_NAME}/ranker/${VERSION}/metadata.json
+```
+
+#### 3) Artifact Registryリポジトリの作成（初回のみ）
+
+```bash
+# リポジトリ名を指定（例: vertex-predictor）
+REPO_NAME=vertex-predictor
+gcloud artifacts repositories create ${REPO_NAME} \
+  --repository-format=docker \
+  --location=asia-northeast1 \
+  --project=firstdown-482704
+```
+
+#### 4) 推論コンテナをビルドしてArtifact Registryへpush
+
+```bash
+PROJECT=firstdown-482704
+REPO_NAME=vertex-predictor
+TAG=latest  # またはバージョンタグ（例: v1.0.0）
+
+gcloud builds submit \
+  --tag asia-northeast1-docker.pkg.dev/${PROJECT}/${REPO_NAME}/vertex-predictor:${TAG} \
+  ml/vertex/predictor
+```
+
+#### 5) Vertex AI Modelを作成
+
+```bash
+PROJECT=firstdown-482704
+BUCKET_NAME=firstdown-vertex-models
+VERSION=shadow_xgb_20260211_since_0201
+REPO_NAME=vertex-predictor
+TAG=latest
+
+gcloud ai models upload \
+  --region=asia-northeast1 \
+  --project=${PROJECT} \
+  --display-name=ranker-xgb-vertex \
+  --container-image-uri=asia-northeast1-docker.pkg.dev/${PROJECT}/${REPO_NAME}/vertex-predictor:${TAG} \
+  --container-env-vars=MODEL_GCS_URI=gs://${BUCKET_NAME}/ranker/${VERSION}/model.xgb.json,FEATURES_GCS_URI=gs://${BUCKET_NAME}/ranker/${VERSION}/feature_columns.json,METADATA_GCS_URI=gs://${BUCKET_NAME}/ranker/${VERSION}/metadata.json \
+  --container-health-route=/health \
+  --container-predict-route=/predict
+```
+
+アップロード後、`MODEL_ID`をメモしておきます。
+
+#### 6) Vertex AI Endpointを作成
+
+```bash
+PROJECT=firstdown-482704
+
+gcloud ai endpoints create \
+  --region=asia-northeast1 \
+  --project=${PROJECT} \
+  --display-name=ranker-xgb-endpoint
+```
+
+作成後、`ENDPOINT_ID`をメモしておきます。
+
+#### 7) EndpointにModelをデプロイ
+
+```bash
+PROJECT=firstdown-482704
+ENDPOINT_ID=<上記で取得したENDPOINT_ID>
+MODEL_ID=<上記で取得したMODEL_ID>
+
+gcloud ai endpoints deploy-model ${ENDPOINT_ID} \
+  --region=asia-northeast1 \
+  --project=${PROJECT} \
+  --model=${MODEL_ID} \
+  --display-name=ranker-xgb-deploy \
+  --machine-type=n1-standard-2 \
+  --min-replica-count=1 \
+  --max-replica-count=2
+```
+
+#### 8) Ranker側の環境変数設定
+
+Cloud RunのRankerサービスに以下の環境変数を設定します：
+
+```bash
+MODEL_INFERENCE_MODE=vertex
+VERTEX_PROJECT=firstdown-482704
+VERTEX_LOCATION=asia-northeast1
+VERTEX_ENDPOINT_ID=<上記で取得したENDPOINT_ID>
+VERTEX_TIMEOUT_S=5.0
+MODEL_VERSION=${VERSION}  # 例: shadow_xgb_20260211_since_0201
+```
+
+#### 9) 切り戻し方法
+
+モデル推論に問題が発生した場合、環境変数を変更して即座にルールスコアに切り戻せます：
+
+```bash
+# ルールスコアに切り戻し
+MODEL_INFERENCE_MODE=disabled
+# または
+MODEL_INFERENCE_MODE=xgb  # XGBoostローカル推論に切り戻し
+```
+
+#### 10) 動作確認
+
+```bash
+# ローカルでRankerを起動してVertex AI推論をテスト
+export MODEL_INFERENCE_MODE=vertex
+export VERTEX_PROJECT=firstdown-482704
+export VERTEX_LOCATION=asia-northeast1
+export VERTEX_ENDPOINT_ID=<ENDPOINT_ID>
+export VERTEX_TIMEOUT_S=5.0
+
+cd ml/ranker
+uvicorn app.main:app --reload --port 8080
+
+# 別ターミナルでテストリクエスト
+curl -X POST http://localhost:8080/rank \
+  -H "Content-Type: application/json" \
+  -d '{
+    "request_id": "test-vertex-001",
+    "routes": [
+      {
+        "route_id": "route_001",
+        "features": {
+          "distance_error_ratio": 0.1,
+          "round_trip_req": 1,
+          "round_trip_fit": 1,
+          "loop_closure_m": 50.0,
+          "park_poi_ratio": 0.3,
+          "poi_density": 0.5
+        }
+      }
+    ]
+  }'
+```
+
+レスポンスの`breakdown.model_score`が設定され、`score`がモデルスコアで並び替えられていることを確認します。
 
 ### 実行確認（ローカル）
 

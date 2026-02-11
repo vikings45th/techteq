@@ -1,6 +1,6 @@
 {
-  "model_version": "shadow_xgb_v2",
-  "trained_at": "2026-01-22T05:40:00.868468+00:00",
+  "model_version": "shadow_xgb_20260211_since_0201",
+  "trained_at": "2026-02-11T12:20:31.423496+00:00",
   "feature_columns": [
     "distance_km",
     "duration_min",
@@ -24,10 +24,5 @@
     "poi_density",
     "park_poi_ratio"
   ],
-  "metrics": {
-    "valid_mae": 0.14511139922671848,
-    "valid_rmse": 0.22499135204887052,
-    "test_mae": 0.16299325157614314,
-    "test_rmse": 0.24982930589224442
-  }
+  "metrics": {}
 }

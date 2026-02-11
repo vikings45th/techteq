@@ -7,6 +7,8 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import xgboost as xgb
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Value
 
 from app.settings import settings
 
@@ -16,14 +18,27 @@ class ModelScorer:
 
     def __init__(self, timeout_s: float | None = None, mode: str | None = None) -> None:
         self._timeout_s = timeout_s if timeout_s is not None else settings.MODEL_TIMEOUT_S
-        self._mode = (mode or settings.MODEL_SHADOW_MODE or "xgb").lower()
+        self._mode = (
+            mode
+            or settings.MODEL_INFERENCE_MODE
+            or settings.MODEL_SHADOW_MODE
+            or "xgb"
+        ).lower()
         self._model: Optional[xgb.XGBRegressor] = None
         self._feature_columns: list[str] = []
         self._load_error: Optional[str] = None
+        self._vertex_client = None
+        self._vertex_endpoint = ""
+        self._vertex_timeout_s = float(settings.VERTEX_TIMEOUT_S)
 
         if self._mode == "xgb":
             try:
                 self._load_model()
+            except Exception as exc:
+                self._load_error = str(exc)
+        if self._mode == "vertex":
+            try:
+                self._init_vertex()
             except Exception as exc:
                 self._load_error = str(exc)
 
@@ -40,6 +55,11 @@ class ModelScorer:
                 return None, self._elapsed_ms(start), "model_disabled"
             if self._mode == "stub":
                 score = self._stub_score(features)
+                return score, self._elapsed_ms(start), "ok"
+            if self._mode == "vertex":
+                if self._load_error or self._vertex_client is None or not self._vertex_endpoint:
+                    return None, self._elapsed_ms(start), "model_not_loaded"
+                score = self._vertex_score(features)
                 return score, self._elapsed_ms(start), "ok"
             if self._mode != "xgb":
                 return None, self._elapsed_ms(start), "model_mode_unsupported"
@@ -67,6 +87,50 @@ class ModelScorer:
         model = xgb.XGBRegressor()
         model.load_model(str(model_path))
         self._model = model
+
+    def _init_vertex(self) -> None:
+        from google.cloud.aiplatform_v1 import PredictionServiceClient
+
+        project = settings.VERTEX_PROJECT or ""
+        location = settings.VERTEX_LOCATION or "asia-northeast1"
+        endpoint_id = settings.VERTEX_ENDPOINT_ID or ""
+        if not endpoint_id:
+            raise ValueError("VERTEX_ENDPOINT_ID is empty.")
+
+        if endpoint_id.startswith("projects/"):
+            endpoint = endpoint_id
+        else:
+            if not project:
+                raise ValueError("VERTEX_PROJECT is empty.")
+            endpoint = f"projects/{project}/locations/{location}/endpoints/{endpoint_id}"
+
+        self._vertex_client = PredictionServiceClient()
+        self._vertex_endpoint = endpoint
+
+    def _vertex_score(self, features: Dict[str, Any]) -> float:
+        instance = self._sanitize_instance(features)
+        value = json_format.ParseDict(instance, Value())
+        response = self._vertex_client.predict(
+            endpoint=self._vertex_endpoint,
+            instances=[value],
+            timeout=self._vertex_timeout_s,
+        )
+        if not response.predictions:
+            raise ValueError("Empty prediction response from Vertex AI.")
+        return _extract_prediction_value(response.predictions[0])
+
+    @staticmethod
+    def _sanitize_instance(features: Dict[str, Any]) -> Dict[str, Any]:
+        sanitized: Dict[str, Any] = {}
+        for key, raw in features.items():
+            if isinstance(raw, bool):
+                sanitized[key] = 1 if raw else 0
+                continue
+            if raw is None:
+                continue
+            sanitized[key] = raw
+        return sanitized
+
 
     def _vectorize_features(self, features: Dict[str, Any]) -> np.ndarray:
         values: list[float] = []
@@ -111,3 +175,21 @@ class ModelScorer:
     @staticmethod
     def _elapsed_ms(start: float) -> int:
         return int((time.perf_counter() - start) * 1000)
+
+
+def _extract_prediction_value(prediction: Any) -> float:
+    if isinstance(prediction, (int, float)):
+        return float(prediction)
+    number_value = getattr(prediction, "number_value", None)
+    if number_value is not None:
+        return float(number_value)
+    list_value = getattr(prediction, "list_value", None)
+    if list_value and getattr(list_value, "values", None):
+        first = list_value.values[0]
+        first_number = getattr(first, "number_value", None)
+        if first_number is not None:
+            return float(first_number)
+    try:
+        return float(prediction)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Unsupported prediction value type.") from exc

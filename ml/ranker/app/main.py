@@ -121,9 +121,12 @@ def rank(req: RankRequest) -> RankResponse:
     """
     ルート候補をスコアリングしてランキングする
     
-    MVP: ルールベースのスタブ実装。後でVertex AIに置き換え予定。
-    
     スコアリングロジック:
+    - **モデルスコアを優先**: Vertex AI EndpointまたはXGBoostモデルからの推論スコアを採用
+    - **ルールスコアはシャドー**: ルールベーススコアは必ず計算し、breakdownとBigQueryログに保存
+    - **フォールバック**: モデル推論に失敗した場合はルールスコアにフォールバック
+    
+    ルールスコアの計算要素:
     - 距離乖離: 目標距離との誤差が小さいほど良い（ペナルティ方式）
     - Loop closure: 往復ルート要求時、loop_closure_mが小さいほど良い
     - POI数: park_poi_ratioとpoi_densityが高いほど良い
@@ -150,17 +153,31 @@ def rank(req: RankRequest) -> RankResponse:
     # 各ルートをスコアリング
     for r in req.routes:
         try:
-            score, breakdown = _calculate_score(r.features)
-            model_score, model_latency_ms, model_status = model_scorer.score(r.features)
+            # ルールスコアは必ず計算（シャドー用）
+            rule_score, breakdown = _calculate_score(r.features)
             breakdown = breakdown or {}
-            breakdown["rule_score"] = score
+            
+            # モデルスコアを取得（Vertex AIまたはXGBoost）
+            model_score, model_latency_ms, model_status = model_scorer.score(r.features)
+            
+            # モデルスコアを優先的に採用、失敗時はルールスコアにフォールバック
+            if model_score is not None and model_status == "ok":
+                final_score = float(model_score)
+            else:
+                # モデル推論失敗時はルールスコアにフォールバック
+                final_score = rule_score
+            
+            # breakdownに両方のスコアを記録
+            breakdown["rule_score"] = rule_score
             breakdown["model_score"] = model_score
             breakdown["model_latency_ms"] = model_latency_ms
-            scores.append(ScoreItem(route_id=r.route_id, score=score, breakdown=breakdown))
+            breakdown["model_status"] = model_status
+            
+            scores.append(ScoreItem(route_id=r.route_id, score=final_score, breakdown=breakdown))
             log_items.append(
                 {
                     "route_id": r.route_id,
-                    "rule_score": score,
+                    "rule_score": rule_score,
                     "model_score": model_score,
                     "model_latency_ms": model_latency_ms,
                     "status": model_status,
