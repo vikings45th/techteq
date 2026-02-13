@@ -16,7 +16,11 @@ const suggestedRouteSchema = z.object({
   distance_km: z.number().min(1).max(3).describe("距離（1-3の数値、小数点可）"),
 });
 
-const createWalkingSuggestionPrompt = (currentDateTime: string) => `現在の日本の状況（日時、天候、時間帯など）を考慮して、以下の4種類の散歩モードのうち最も適切な1つを選んでください。
+const createWalkingSuggestionPrompt = (
+  currentDateTime: string,
+  prevTheme?: string,
+) => `現在の日本の状況（日時、天候、時間帯など）を考慮して、以下の4種類の散歩モードのうち最も適切な1つを選んでください。
+${prevTheme ? `\n【重要】前回の提案テーマは「${prevTheme}」でした。今回の提案では、前回とは**別のテーマ**を必ず選んでください。\n` : ""}
 
 現在の情報：
 ${currentDateTime}
@@ -64,21 +68,17 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
   const apiKey = config.geminiApiKey;
 
-  if (!apiKey) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: "Gemini API key is not configured",
-    });
-  }
-
   const body = await readBody(event);
-  const { model = "gemini-2.5-flash" } = body as {
+  const { model = "gemini-2.5-flash", prevTheme } = body as {
     model?: string;
+    prevTheme?: string;
   };
 
   // 現在の日本の日時情報を取得
   const now = new Date();
-  const jstDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  const jstDate = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }),
+  );
   const currentDateTime = `現在の日時: ${jstDate.toLocaleString("ja-JP", {
     timeZone: "Asia/Tokyo",
     year: "numeric",
@@ -92,7 +92,7 @@ export default defineEventHandler(async (event) => {
   const ai = new GoogleGenAI({ apiKey });
   // @ts-ignore - zod-to-json-schema type compatibility issue
   const jsonSchema = zodToJsonSchema(suggestedRouteSchema);
-  const prompt = createWalkingSuggestionPrompt(currentDateTime);
+  const prompt = createWalkingSuggestionPrompt(currentDateTime, prevTheme);
   const response = await ai.models.generateContent({
     model,
     contents: prompt,
@@ -103,7 +103,6 @@ export default defineEventHandler(async (event) => {
   });
 
   const responseText = response.text;
-  console.log(responseText);
 
   // 構造化出力により、JSONが保証されているので直接パース
   try {

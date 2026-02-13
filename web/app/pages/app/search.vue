@@ -18,11 +18,11 @@ const quicksearch = route.query.quicksearch === "true";
 
 const themeItems = ref([
   {
-    label: "頭を休まる",
+    label: "頭を休ませる",
     value: "think",
   },
   {
-    label: "呼吸を楽にする",
+    label: "呼吸を整える",
     value: "nature",
   },
   {
@@ -67,7 +67,6 @@ const mapCenter = ref<{ lat: number; lng: number }>({
 
 // マーカーとinterval IDを管理する変数
 const startMarker = ref<any>(null);
-const checkGoogleMapsInterval = ref<NodeJS.Timeout | null>(null);
 const mapClickListener = ref<any>(null);
 const markerDragendListener = ref<any>(null);
 const mapInstance = ref<any>(null);
@@ -262,7 +261,11 @@ const initMap = async () => {
 
   // マーカーがドラッグされたときに位置を更新
   markerDragendListener.value = startMarker.value.addListener("dragend", () => {
-    currentLocation.value = startMarker.value.position;
+    const pos = {
+      lat: startMarker.value.position.lat,
+      lng: startMarker.value.position.lng,
+    };
+    currentLocation.value = pos;
   });
 
   // 地図がクリックされたときにもマーカーを移動
@@ -280,6 +283,7 @@ const initMap = async () => {
 };
 
 onMounted(async () => {
+  initMap();
   // quicksearch=trueの場合は自動的に検索を実行
   if (quicksearch) {
     loadingApi.value = true;
@@ -321,39 +325,11 @@ onMounted(async () => {
 
     // DOMが完全にレンダリングされた後に地図を初期化
     await nextTick();
-
-    // 地図を初期化（Google Maps APIの読み込みを待つ）
-    checkGoogleMapsInterval.value = setInterval(() => {
-      if ((window as any).google) {
-        if (checkGoogleMapsInterval.value) {
-          clearInterval(checkGoogleMapsInterval.value);
-          checkGoogleMapsInterval.value = null;
-        }
-        // さらに少し待ってから初期化（レイアウトが確定するまで）
-        setTimeout(() => {
-          initMap();
-        }, 200);
-      }
-    }, 100);
-
-    // タイムアウト（10秒後）
-    setTimeout(() => {
-      if (checkGoogleMapsInterval.value) {
-        clearInterval(checkGoogleMapsInterval.value);
-        checkGoogleMapsInterval.value = null;
-      }
-    }, 10000);
   }
 });
 
 // コンポーネントがアンマウントされる時にマップを破棄
 onBeforeUnmount(() => {
-  // interval をクリア
-  if (checkGoogleMapsInterval.value) {
-    clearInterval(checkGoogleMapsInterval.value);
-    checkGoogleMapsInterval.value = null;
-  }
-
   destroyMap();
 });
 </script>
@@ -363,25 +339,21 @@ onBeforeUnmount(() => {
     <div class="flex-1 flex flex-col">
       <div class="relative flex-1 bg-gray-50">
         <gmp-map
-          :center="{ lat: mapCenter.lat, lng: mapCenter.lng }"
+          :center="mapCenter"
           :zoom="17"
           map-id="9153bea12861ba5a84e2b6d3"
           class="w-full h-full"
         ></gmp-map>
         <!-- 現在地を取得ボタン（地図右下に重ねて表示） -->
-        <div class="absolute bottom-4 right-4 z-10">
-          <UButton
-            size="xl"
-            color="secondary"
-            icon="ic:baseline-my-location"
-            :loading="loadingLocation"
-            @click="fetchCurrentLocation"
-            variant="outline"
-            :ui="{
-              base: 'shadow-lg bg-white',
-            }"
-          />
-        </div>
+        <UButton
+          size="xl"
+          color="secondary"
+          icon="ic:baseline-my-location"
+          :loading="loadingLocation"
+          @click="fetchCurrentLocation"
+          variant="outline"
+          class="absolute !bg-white bottom-6 right-6 p-3 shadow-lg z-10"
+        />
       </div>
       <p class="text-xs text-gray-500 px-2 py-1">
         地図をクリックするか、マーカーをドラッグして開始地点を設定してください。
@@ -401,13 +373,20 @@ onBeforeUnmount(() => {
           }"
         />
       </div>
-      <USlider
-        class="py-4"
-        :min="1"
-        :max="3"
-        :step="0.5"
-        v-model="searchParams.distance_km"
-      />
+      <div class="px-4">
+        <USlider
+          class="py-4"
+          :min="1"
+          :max="3"
+          :step="0.5"
+          v-model="searchParams.distance_km"
+        />
+        <div class="flex justify-between text-xs text-gray-500 -mt-2 px-0.5">
+          <span>15分</span>
+          <span>30分</span>
+          <span>45分</span>
+        </div>
+      </div>
       <UButton
         block
         color="secondary"

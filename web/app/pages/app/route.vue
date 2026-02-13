@@ -322,35 +322,6 @@ const handleRatingSubmit = async () => {
   }
 };
 
-const handleRegenerate = async () => {
-  if (!searchParamsState.value) {
-    await navigateTo("/app/search");
-    return;
-  }
-
-  loadingRegenerate.value = true;
-  try {
-    //request_idだけ新規のものに修正し、検索条件を保存し、ルート検索
-    const payload = {
-      ...searchParamsState.value,
-      request_id: generateRequestid(),
-    };
-    searchParamsState.value = payload;
-    const regenedRoute = await fetchRoute(payload);
-
-    //検索結果ルートを保存
-    routeState.value = regenedRoute;
-
-    //DOM更新
-    await nextTick();
-    initMap();
-  } catch (e) {
-    console.error(e);
-  } finally {
-    loadingRegenerate.value = false;
-  }
-};
-
 onMounted(async () => {
   // routeデータが存在しない、または初期値の場合は、searchページにリダイレクト
   if (
@@ -493,7 +464,6 @@ onBeforeUnmount(() => {
   >
     <template #content>
       <div class="flex flex-col items-center justify-center space-y-4 py-4">
-        <p class="text-lg font-semibold"></p>
         <div v-if="feedbackSubmitted" class="space-y-4 py-4">
           <div class="flex flex-col items-center justify-center space-y-3">
             <div class="text-5xl">✨</div>
@@ -505,21 +475,25 @@ onBeforeUnmount(() => {
             </p>
           </div>
         </div>
-        <div class="flex justify-center gap-2">
-          <p class="text-center text-sm text-gray-500">
-            このルートはいかがでしたか？
-          </p>
-          <button
-            v-for="star in 5"
-            :key="star"
-            @click="rating = star"
-            class="text-3xl transition-transform hover:scale-110"
-            :class="star <= rating ? 'text-yellow-400' : 'text-gray-300'"
-          >
-            ★
-          </button>
-        </div>
         <div v-if="!feedbackSubmitted">
+          <p class="text-2xl font-bold text-center text-gray-700 my-2">
+            散歩、完了です！
+          </p>
+          <div class="text-5xl text-center mb-8">🎉</div>
+          <p class="text-center text-gray-500 mb-2">
+            今回のルートはいかがでしたか？
+          </p>
+          <div class="flex justify-center gap-2 mb-2">
+            <button
+              v-for="star in 5"
+              :key="star"
+              @click="rating = star"
+              class="text-3xl transition-transform hover:scale-110"
+              :class="star <= rating ? 'text-yellow-400' : 'text-gray-300'"
+            >
+              ★
+            </button>
+          </div>
           <UButton
             block
             label="フィードバックを送信"
