@@ -12,6 +12,7 @@ interface SuggestedRoute {
 }
 
 const geminiStatus = ref("ready");
+const isModalOpen = ref(false);
 
 const messages = ref<ChatMessage[]>([]);
 const suggestedRoute = ref<SuggestedRoute>({
@@ -38,7 +39,7 @@ const ctaLinks = ref([
   {
     label: "散歩する",
     to: "/app/search",
-    icon: "i-lucide-square-play",
+    icon: "mdi:walk",
   },
 ]);
 
@@ -115,8 +116,11 @@ const handleButtonClick = (label: string) => {
   }
 };
 
-onMounted(async () => {
-  //await firstSuggest();
+// モーダルが開いたときに自動的に提案を取得
+watch(isModalOpen, (newValue) => {
+  if (newValue && messages.value.length === 0) {
+    firstSuggest();
+  }
 });
 </script>
 
@@ -132,53 +136,6 @@ onMounted(async () => {
       class="rounded-lg shadow-2xl ring ring-default"
     />
   </UPageHero>
-  <!--
-	<UPageSection
-    title="早速歩く"
-		description="今どんな気分？"
-  >
-		<div>
-
-      <div class="overflow-x-auto pb-4 mr-2 px-2 scrollbar-hide">
-        <URadioGroup 
-          indicator="hidden"
-          orientation="horizontal"
-          v-model="theme" 
-          :items="themeItems" 
-          variant="card"
-          :ui="{
-            wrapper: 'shrink-0 whitespace-nowrap w-auto',  
-          }"
-        />
-      </div>
-			<UButton block label="散歩ルートを検索" color="secondary" :to="`/app/search?theme=${theme}&quicksearch=true`" class="text-lg mb-2 font-bold rounded-full"/>
-			<UButton block label="詳細条件を入力" color="secondary" variant="link" to="/app/search" class="rounded-full"/>
-		</div>
-	</UPageSection>
-				-->
-  <UPageSection title="早速歩く">
-    <UButton @click="firstSuggest">CallGemini</UButton>
-    <UChatMessages
-      :status="geminiStatus"
-      :messages="messages"
-      :assistant="{
-        avatar: {
-          src: 'https://github.com/benjamincanac.png',
-        },
-      }"
-    />
-    <div class="flex flex-wrap gap-2">
-      <UButton
-        v-for="(label, index) in chatButtonLabels"
-        :key="index"
-        :label="label"
-        color="neutral"
-        variant="outline"
-        @click="handleButtonClick(label)"
-      />
-    </div>
-  </UPageSection>
-
   <UPageSection
     title="散歩はやったほうがいいと分かっている。でも、疲れていると「どこを歩くか」を考えられない。"
     description="このアプリは、今の気分に沿った散歩ルートを一つだけ提案します。"
@@ -188,15 +145,50 @@ onMounted(async () => {
     title="考えなくていい。今の気分のまま、外に出られる。"
     :links="ctaLinks"
   />
+
+  <!-- フローティングアクションボタン -->
+  <UButton
+    v-if="!isModalOpen"
+    icon="mdi:walk"
+    color="secondary"
+    size="xl"
+    class="fixed bottom-6 right-6 rounded-full shadow-lg z-50 p-4"
+    @click="isModalOpen = true"
+  />
+  <div
+    v-if="isModalOpen"
+    class="fixed bottom-6 bg-white right-6 w-[66vw] h-[50vh] p-4 shadow-lg border border-default rounded-lg"
+  >
+    <div class="flex justify-end">
+      <UButton
+        icon="i-lucide-x"
+        color="neutral"
+        size="xl"
+        variant="link"
+        @click="isModalOpen = false"
+      />
+    </div>
+    <UChatPalette>
+      <UChatMessages
+        :status="geminiStatus"
+        :messages="messages"
+        :assistant="{
+          avatar: {
+            src: 'https://github.com/benjamincanac.png',
+          },
+        }"
+      />
+      <div v-if="geminiStatus === 'ready'" class="flex flex-wrap gap-2 mt-4">
+        <UButton
+          v-for="(label, index) in chatButtonLabels"
+          :key="index"
+          :label="label"
+          color="neutral"
+          variant="outline"
+          class="rounded-full"
+          @click="handleButtonClick(label)"
+        />
+      </div>
+    </UChatPalette>
+  </div>
 </template>
-
-<style scoped>
-.scrollbar-hide {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
-}
-</style>
