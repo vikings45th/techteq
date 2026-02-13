@@ -1,17 +1,18 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  compatibilityDate: '2025-07-15',
+  compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
-  modules: ['@nuxt/ui'],
-  css: ['~/assets/css/main.css'],
+  modules: ["@nuxt/ui"],
+  css: ["~/assets/css/main.css"],
   runtimeConfig: {
+    geminiApiKey: process.env.NUXT_GEMINI_API_KEY,
     public: {
-      googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY
-    }
+      googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+    },
   },
   vue: {
     compilerOptions: {
-      isCustomElement: (tag) => tag.startsWith('gmp-')
-    }
-  }
-})
+      isCustomElement: (tag) => tag.startsWith("gmp-"),
+    },
+  },
+});

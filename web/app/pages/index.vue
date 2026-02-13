@@ -1,204 +1,249 @@
 <script setup lang="ts">
-  const themeItems = ref([{
-    label: '体を動かしたい',
-    value: 'exercise',
-  }, {
-    label: '考え事をしたい',
-    value: 'think',
-  }, {
-    label: 'リフレッシュしたい',
-    value: 'refresh',
-  }, {
-    label: '自然を感じたい',
-    value: 'nature',
-  }]);
-	const theme = ref("exercise");
-	const colorItems = ref([
-  // exercise｜体を動かしたい - 暖色・エネルギー
-  {
-    value: 'exercise-light',
-    ui: {
-      item: `bg-[#F4A896] data-[state=checked]:bg-[#F4A896]`
-    }
-  },
-  {
-    value: 'exercise-medium',
-    ui: {
-      item: `bg-[#E76F51] data-[state=checked]:bg-[#E76F51]`
-    }
-  },
-  {
-    value: 'exercise-heavy',
-    ui: {
-      item: `bg-[#C8553D] data-[state=checked]:bg-[#C8553D]`
-    }
-  },
+type ChatMessage = {
+  id: string;
+  role: "assistant" | "user" | "system";
+  parts: { type: string; text: string }[];
+};
 
-  // think｜考え事をしたい - 寒色・低刺激
-  {
-    value: 'think-light',
-    ui: {
-      item: `bg-[#A8B9C9] data-[state=checked]:bg-[#A8B9C9]`
-    }
-  },
-  {
-    value: 'think-medium',
-    ui: {
-      item: `bg-[#5C7D99] data-[state=checked]:bg-[#5C7D99]`
-    }
-  },
-  {
-    value: 'think-heavy',
-    ui: {
-      item: `bg-[#3E5C73] data-[state=checked]:bg-[#3E5C73]`
-    }
-  },
+interface SuggestedRoute {
+  message: string;
+  theme: string;
+  distance_km: number;
+}
 
-  // refresh｜リフレッシュしたい - 中立・切り替え
-  {
-    value: 'refresh-light',
-    ui: {
-      item: `bg-[#F3E4B5] data-[state=checked]:bg-[#F3E4B5]`
-    }
-  },
-  {
-    value: 'refresh-medium',
-    ui: {
-      item: `bg-[#E9C46A] data-[state=checked]:bg-[#E9C46A]`
-    }
-  },
-  {
-    value: 'refresh-heavy',
-    ui: {
-      item: `bg-[#D4A939] data-[state=checked]:bg-[#D4A939]`
-    }
-  },
+const geminiStatus = ref("ready");
+const isModalOpen = ref(false);
 
-  // nature｜自然を感じたい - 緑・安心感
+const messages = ref<ChatMessage[]>([]);
+const suggestedRoute = ref<SuggestedRoute>({
+  message: "頭を休ませる30分の散歩に出かける？",
+  theme: "think",
+  distance_km: 2,
+});
+const features = ref([
   {
-    value: 'nature-light',
-    ui: {
-      item: `bg-[#B7D3C1] data-[state=checked]:bg-[#B7D3C1]`
-    }
+    title: "どこを歩くか考えなくていい",
+    icon: "i-lucide-smile",
   },
   {
-    value: 'nature-medium',
-    ui: {
-      item: `bg-[#6A9F7A] data-[state=checked]:bg-[#6A9F7A]`
-    }
+    title: "今の気分に合った散歩ができる",
+    icon: "i-lucide-a-large-small",
   },
   {
-    value: 'nature-heavy',
-    ui: {
-      item: `bg-[#4F7F5E] data-[state=checked]:bg-[#4F7F5E]`
+    title: "いつもと少し違う道を歩けることがある",
+    icon: "i-lucide-sun-moon",
+  },
+]);
+
+const chatButtonLabels = ref([
+  "これで行く",
+  "ちょっと違う気分",
+  "もう少し歩きたい",
+  "少し短めがいい",
+]);
+
+const firstSuggest = async () => {
+  messages.value = [
+    {
+      id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+      role: "assistant",
+      parts: [
+        {
+          type: "text",
+          text: "あなたにおすすめの散歩テーマを提案します。",
+        },
+      ],
+    },
+  ];
+  geminiStatus.value = "submitted";
+  const route = await $fetch<SuggestedRoute>("/api/gemini", {
+    method: "POST",
+    body: {
+      model: "gemini-2.5-flash",
+    },
+  });
+
+  geminiStatus.value = "ready";
+
+  suggestedRoute.value = route;
+
+  messages.value.push({
+    id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+    role: "assistant",
+    parts: [
+      {
+        type: "text",
+        text: route.message,
+      },
+    ],
+  });
+};
+
+const resuggest = async () => {
+  messages.value.push({
+    id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+    role: "assistant",
+    parts: [
+      {
+        type: "text",
+        text: "違う気分のテーマを考えています。",
+      },
+    ],
+  });
+  geminiStatus.value = "submitted";
+  const route = await $fetch<SuggestedRoute>("/api/gemini", {
+    method: "POST",
+    body: {
+      prevTheme: suggestedRoute.value.theme,
+      model: "gemini-2.5-flash",
+    },
+  });
+
+  geminiStatus.value = "ready";
+
+  suggestedRoute.value = route;
+
+  messages.value.push({
+    id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+    role: "assistant",
+    parts: [
+      {
+        type: "text",
+        text: route.message,
+      },
+    ],
+  });
+};
+
+const handleButtonClick = (label: string) => {
+  messages.value.push({
+    id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+    role: "user",
+    parts: [
+      {
+        type: "text",
+        text: label,
+      },
+    ],
+  });
+
+  if (label === "これで行く") {
+    navigateTo(
+      `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
+    );
+  } else if (label === "ちょっと違う気分") {
+    resuggest();
+  } else if (label === "もう少し歩きたい") {
+    // 距離を少し増やす処理（最大3kmまで）
+    if (suggestedRoute.value.distance_km < 3) {
+      suggestedRoute.value.distance_km = Math.min(
+        suggestedRoute.value.distance_km + 0.5,
+        3,
+      );
+      navigateTo(
+        `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
+      );
+    }
+  } else if (label === "少し短めがいい") {
+    // 距離を少し減らす処理（最小1kmまで）
+    if (suggestedRoute.value.distance_km > 1) {
+      suggestedRoute.value.distance_km = Math.max(
+        suggestedRoute.value.distance_km - 0.5,
+        1,
+      );
+      navigateTo(
+        `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
+      );
     }
   }
-])
+};
 
-	const colorValue = ref('exercise-medium')
-
-	const handleColorChange = (value: string) => {
-		// valueからthemeを抽出（例: 'exercise-medium' → 'exercise'）
-		const theme = value.split('-')[0]
-		const motivation = value.split('-')[1]
-		// URLにナビゲート
-		navigateTo(`/app/search?theme=${theme}&motivation=${motivation}&quicksearch=true`)
-	}
-
-	const features = ref([
-		{
-			title: 'どこを歩くか考えなくていい',
-			icon: 'i-lucide-smile',
-		},
-		{
-			title: '今の気分に合った散歩ができる',
-			icon: 'i-lucide-a-large-small',
-		},
-		{
-			title: 'いつもと少し違う道を歩けることがある',
-			icon: 'i-lucide-sun-moon',
-		}
-	])
-
-	const ctaLinks = ref([
-		{
-			label: '散歩する',
-			to: '/app/search',
-			icon: 'i-lucide-square-play'
-		},
-	])
+// モーダルが開いたときに自動的に提案を取得
+watch(isModalOpen, (newValue) => {
+  if (newValue && messages.value.length === 0) {
+    firstSuggest();
+  }
+});
 </script>
 
 <template>
-	<UPageHero
-		title="今の気分に、ちょうどいい道。"
-		description="気分に合わせて「少しだけ新しい散歩ルート」が見つかる"
-		orientation="horizontal"
-	>
-		<img
+  <UPageHero
+    title="歩けた。それだけで今日は十分"
+    description="あなたの気分に寄り添った散歩コースを提案します。"
+    orientation="horizontal"
+  >
+    <img
       src="/img/heroimg.jpg"
       alt="App screenshot"
       class="rounded-lg shadow-2xl ring ring-default"
     />
-	</UPageHero>
-				<!--
-	<UPageSection
-    title="早速歩く"
-		description="今どんな気分？"
-  >
-		<div>
+  </UPageHero>
+  <UPageSection
+    title="散歩した方がいいと分かっている。でも、疲れていると「どこを歩くか」を考えられない。"
+    description="このアプリは、今の気分に沿った散歩ルートを一つだけ提案します。"
+    :features="features"
+  />
+  <UPageCTA title="考えなくていい。今の気分のまま、外に出られる。">
+    <UButton
+      color="secondary"
+      label="ルートを教えてもらう"
+      icon="mdi:walk"
+      size="xl"
+      block
+      @click="isModalOpen = true"
+    />
+  </UPageCTA>
 
-      <div class="overflow-x-auto pb-4 mr-2 px-2 scrollbar-hide">
-        <URadioGroup 
-          indicator="hidden"
-          orientation="horizontal"
-          v-model="theme" 
-          :items="themeItems" 
-          variant="card"
-          :ui="{
-            wrapper: 'shrink-0 whitespace-nowrap w-auto',  
+  <!-- フローティングアクションボタン -->
+  <UButton
+    v-if="!isModalOpen"
+    icon="mdi:walk"
+    color="secondary"
+    size="xl"
+    class="fixed bottom-6 right-6 rounded-full shadow-lg z-50 p-4"
+    @click="isModalOpen = true"
+  />
+  <!-- モーダル -->
+  <div
+    v-if="isModalOpen"
+    class="fixed bottom-6 right-6 w-[75vw] h-[50vh] p-4 shadow-lg border rounded-lg z-100 flex flex-col bg-neutral-50 dark:bg-neutral-600"
+  >
+    <div class="flex justify-end flex-shrink-0 mb-2">
+      <UButton
+        icon="i-lucide-x"
+        color="neutral"
+        size="xl"
+        variant="outline"
+        @click="isModalOpen = false"
+        class="rounded-full"
+      />
+    </div>
+    <div class="flex-1 overflow-y-auto min-h-0">
+      <UChatPalette>
+        <UChatMessages
+          :status="geminiStatus"
+          :messages="messages"
+          :assistant="{
+            avatar: {
+              icon: 'i-lucide-bot',
+            },
           }"
         />
-      </div>
-			<UButton block label="散歩ルートを検索" color="secondary" :to="`/app/search?theme=${theme}&quicksearch=true`" class="text-lg mb-2 font-bold rounded-full"/>
-			<UButton block label="詳細条件を入力" color="secondary" variant="link" to="/app/search" class="rounded-full"/>
-		</div>
-	</UPageSection>
-				-->
-	<UPageSection
-    title="気分に会う色を選んで歩く"
-  >
-        <URadioGroup 
-          indicator="hidden"
-          v-model="colorValue" 
-          :items="colorItems" 
-          variant="card"
-          :ui="{
-            fieldset: 'grid grid-cols-3 gap-4'
-          }"
-          @update:modelValue="handleColorChange"
+        <div
+          v-if="geminiStatus === 'ready'"
+          class="flex flex-wrap gap-2 mt-4 justify-end"
         >
-        </URadioGroup>
-	</UPageSection>
-
-	<UPageSection
-    title="散歩はやったほうがいいと分かっている。でも、疲れていると「どこを歩くか」を考えられない。"
-		description="このアプリは、今の気分に沿った散歩ルートを一つだけ提案します。"
-		:features="features"
-  />
-	<UPageCTA
-		title="考えなくていい。今の気分のまま、外に出られる。"
-		:links="ctaLinks"
-	/>
+          <UButton
+            v-for="(label, index) in chatButtonLabels"
+            :key="index"
+            :label="label"
+            :color="index === 0 ? 'secondary' : 'neutral'"
+            variant="outline"
+            class="rounded-full"
+            @click="handleButtonClick(label)"
+          />
+        </div>
+      </UChatPalette>
+    </div>
+  </div>
 </template>
-
-<style scoped>
-	.scrollbar-hide {
-		-ms-overflow-style: none;  /* IE and Edge */
-		scrollbar-width: none;  /* Firefox */
-	}
-	
-	.scrollbar-hide::-webkit-scrollbar {
-		display: none;  /* Chrome, Safari and Opera */
-	}
-</style>
