@@ -11,6 +11,8 @@ interface SuggestedRoute {
   distance_km: number;
 }
 
+const geminiStatus = ref("ready");
+
 const messages = ref<ChatMessage[]>([]);
 const suggestedRoute = ref<SuggestedRoute>({
   message: "頭を休ませる30分の散歩に出かける？",
@@ -47,13 +49,27 @@ const chatButtonLabels = ref([
 ]);
 
 const firstSuggest = async () => {
-  messages.value = [];
+  messages.value = [
+    {
+      id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+      role: "assistant",
+      parts: [
+        {
+          type: "text",
+          text: "あなたにおすすめの散歩ルートを考えています",
+        },
+      ],
+    },
+  ];
+  geminiStatus.value = "submitted";
   const route = await $fetch<SuggestedRoute>("/api/gemini", {
     method: "POST",
     body: {
       model: "gemini-2.5-flash",
     },
   });
+
+  geminiStatus.value = "ready";
 
   suggestedRoute.value = route;
 
@@ -71,18 +87,30 @@ const firstSuggest = async () => {
 
 const handleButtonClick = (label: string) => {
   if (label === "これで行く") {
-    navigateTo(`/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`);
+    navigateTo(
+      `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
+    );
   } else if (label === "もうちょっと長く") {
     // 距離を少し増やす処理（最大3kmまで）
     if (suggestedRoute.value.distance_km < 3) {
-      suggestedRoute.value.distance_km = Math.min(suggestedRoute.value.distance_km + 0.5, 3);
-      firstSuggest();
+      suggestedRoute.value.distance_km = Math.min(
+        suggestedRoute.value.distance_km + 0.5,
+        3,
+      );
+      navigateTo(
+        `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
+      );
     }
   } else if (label === "もうちょっと短く") {
     // 距離を少し減らす処理（最小1kmまで）
     if (suggestedRoute.value.distance_km > 1) {
-      suggestedRoute.value.distance_km = Math.max(suggestedRoute.value.distance_km - 0.5, 1);
-      firstSuggest();
+      suggestedRoute.value.distance_km = Math.max(
+        suggestedRoute.value.distance_km - 0.5,
+        1,
+      );
+      navigateTo(
+        `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
+      );
     }
   }
 };
@@ -130,14 +158,22 @@ onMounted(async () => {
 				-->
   <UPageSection title="早速歩く">
     <UButton @click="firstSuggest">CallGemini</UButton>
-    <UChatMessages :messages="messages" />
+    <UChatMessages
+      :status="geminiStatus"
+      :messages="messages"
+      :assistant="{
+        avatar: {
+          src: 'https://github.com/benjamincanac.png',
+        },
+      }"
+    />
     <div class="flex flex-wrap gap-2">
       <UButton
         v-for="(label, index) in chatButtonLabels"
         :key="index"
         :label="label"
         color="neutral"
-        variant="soft"
+        variant="outline"
         @click="handleButtonClick(label)"
       />
     </div>

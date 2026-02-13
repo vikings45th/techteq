@@ -13,42 +13,28 @@ const { fetchRoute } = useRouteApi();
 
 const route = useRoute();
 const themeParam = route.query.theme as string | undefined;
-const motivationParam = route.query.motivation as string | undefined;
+const distanceParam = route.query.distance_km as string | undefined;
 const quicksearch = route.query.quicksearch === "true";
 
 const themeItems = ref([
   {
-    label: "体を使って整える",
-    value: "exercise",
-  },
-  {
-    label: "考えなくていい",
+    label: "頭を休まる",
     value: "think",
   },
   {
-    label: "気分転換",
+    label: "呼吸を楽にする",
+    value: "nature",
+  },
+  {
+    label: "気分転換をする",
     value: "refresh",
   },
   {
-    label: "呼吸を整える",
-    value: "nature",
+    label: "体を動かす",
+    value: "exercise",
   },
 ]);
-const motivationItems = ref([
-  {
-    label: "軽く歩く",
-    value: "light",
-  },
-  {
-    label: "ほどよく歩く",
-    value: "medium",
-  },
-  {
-    label: "しっかり歩く",
-    value: "heavy",
-  },
-]);
-const motivation = ref("light");
+
 // 検索条件の初期値を作成
 const searchParams = ref<ApiRequest>({
   request_id: "initialSearchParamsStateRequestId",
@@ -197,15 +183,6 @@ const callApi = async () => {
   //searchParams.value.round_trip = flag;
   searchParams.value.end_location = searchParams.value.start_location;
 
-  // motivation.valueによる分岐
-  if (motivation.value === "light") {
-    searchParams.value.distance_km = 1;
-  } else if (motivation.value === "medium") {
-    searchParams.value.distance_km = 2;
-  } else if (motivation.value === "heavy") {
-    searchParams.value.distance_km = 3;
-  }
-
   try {
     //検索条件を保存し、ルート検索
     searchParamsState.value = searchParams.value;
@@ -310,18 +287,14 @@ onMounted(async () => {
       themeParam && themeItems.value.some((item) => item.value === themeParam)
         ? themeParam
         : searchParams.value.theme;
-    motivation.value =
-      motivationParam &&
-      motivationItems.value.some((item) => item.value === motivationParam)
-        ? motivationParam
-        : motivation.value;
-    // motivation.valueによる分岐
-    if (motivation.value === "light") {
-      searchParams.value.distance_km = 1;
-    } else if (motivation.value === "medium") {
-      searchParams.value.distance_km = 2;
-    } else if (motivation.value === "heavy") {
-      searchParams.value.distance_km = 3;
+
+    const parsedDistance = distanceParam ? Number(distanceParam) : NaN;
+    if (
+      !Number.isNaN(parsedDistance) &&
+      parsedDistance > 0 &&
+      parsedDistance <= 30
+    ) {
+      searchParams.value.distance_km = parsedDistance;
     }
 
     await fetchCurrentLocation();
@@ -416,7 +389,7 @@ onBeforeUnmount(() => {
     </div>
     <!-- フォーム部分（画面下部に固定） -->
     <div class="flex-none shrink-0 px-2 pb-2">
-      <div class="overflow-x-auto pt-4 pb-4 mr-2 px-2 scrollbar-hide">
+      <div class="pt-4 pb-4 mr-2 px-2">
         <URadioGroup
           indicator="hidden"
           orientation="horizontal"
@@ -424,22 +397,17 @@ onBeforeUnmount(() => {
           :items="themeItems"
           variant="card"
           :ui="{
-            wrapper: 'shrink-0 whitespace-nowrap w-auto',
+            fieldset: 'grid grid-cols-2 gap-2',
           }"
         />
       </div>
-      <div class="overflow-x-auto pb-4 mr-2 px-2 scrollbar-hide">
-        <URadioGroup
-          indicator="hidden"
-          orientation="horizontal"
-          v-model="motivation"
-          :items="motivationItems"
-          variant="card"
-          :ui="{
-            wrapper: 'shrink-0 whitespace-nowrap w-auto',
-          }"
-        />
-      </div>
+      <USlider
+        class="py-4"
+        :min="1"
+        :max="3"
+        :step="0.5"
+        v-model="searchParams.distance_km"
+      />
       <UButton
         block
         color="secondary"
@@ -471,14 +439,3 @@ onBeforeUnmount(() => {
     </template>
   </UModal>
 </template>
-
-<style scoped>
-.scrollbar-hide {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
-}
-</style>
