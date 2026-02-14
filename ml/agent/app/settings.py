@@ -64,5 +64,12 @@ class Settings(BaseSettings):
     SPOT_MAX_DISTANCE_M_RELAXED: float = 60.0  # 緩和時の最大距離（m）
     SPOT_MAX_DISTANCE_M_FALLBACK: float = 120.0  # 追加緩和時の最大距離（m）
 
+    # /route/generate インプロセスTTLキャッシュ（同一条件の連続リクエストで即時レスポンス）
+    GENERATE_CACHE_ENABLED: bool = True
+    GENERATE_CACHE_TTL_SEC: float = 120.0
+    GENERATE_CACHE_MAXSIZE: int = 256
+    GENERATE_CACHE_ROUND_LATLNG_DECIMALS: int = 5
+    GENERATE_CACHE_ROUND_DISTANCE_DECIMALS: int = 1
+
 
 settings = Settings()  # グローバル設定インスタンス
