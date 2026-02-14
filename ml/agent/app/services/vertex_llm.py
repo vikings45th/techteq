@@ -451,7 +451,7 @@ async def generate_title_and_description(
             "desc_min": 80,
             "desc_max": 120,
             "temperature": temperature,
-            "max_out": max(max_out, 320),
+            "max_out": max(max_out, 640),
         },
         {
             "strict": True,
@@ -460,7 +460,7 @@ async def generate_title_and_description(
             "desc_min": 90,
             "desc_max": 120,
             "temperature": min(temperature, 0.2),
-            "max_out": max(max_out, 320),
+            "max_out": max(max_out, 640),
         },
     ]
 
