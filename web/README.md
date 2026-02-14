@@ -20,6 +20,7 @@ Nuxt 4 を使ったフロントエンドアプリです。`web/` 配下から起
 ユーザーの気分に合わせて散歩ルートを検索・表示するWebアプリです。
 
 ### 主な機能
+- **ランディング用AI提案**: 天候・日時を考慮したテーマ/距離の提案（`/api/gemini`、Gemini API）
 - **テーマ別ルート検索**: exercise / think / refresh / nature
 - **現在地ベース検索**: 位置情報から開始地点を設定
 - **ルート表示**: 地図上にポリラインとスポットを表示
@@ -32,10 +33,20 @@ Nuxt 4 を使ったフロントエンドアプリです。`web/` 配下から起
 ## ディレクトリ構造
 ```
 web/
-├── app/            # 画面・レイアウト・ページ・コンポーザブル
-├── server/api/     # Nuxt サーバー API
-├── assets/         # スタイルなど
-├── public/         # 画像/静的ファイル
+├── app/                     # Nuxt アプリケーション
+│   ├── pages/               # ページ（/, /app/search, /app/route, /contact, /policy 等）
+│   ├── layouts/             # default.vue, app.vue
+│   ├── composables/         # useRouteApi, useSearchParams, useGenerateRequestid, states
+│   ├── types/               # route.ts, nuxt.d.ts
+│   ├── app.vue
+│   └── app.config.ts
+├── server/api/              # Nuxt サーバー API
+│   ├── fetch-ai.post.ts     # ルート生成（Agent API プロキシ）
+│   ├── route-feedback.post.ts  # ルート評価送信
+│   └── gemini.post.ts       # ランディング用テーマ/距離提案（天候・日時考慮）
+├── assets/                  # スタイル（main.css 等）
+├── public/                  # 静的ファイル（robots.txt 等）
+├── nuxt.config.ts
 ├── Dockerfile
 ├── docker-compose.yml
 ├── package.json
@@ -54,13 +65,16 @@ npm install
 ```
 
 ## 環境変数
-Google Maps を使う場合は以下を設定します。
 
-- `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+| 変数名 | 説明 |
+|--------|------|
+| `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps JavaScript API 用（地図表示・検索） |
+| `NUXT_GEMINI_API_KEY` | ランディング用AI提案（テーマ/距離）に使用。未設定時はランディングの提案APIが動作しません。 |
 
 例（PowerShell）:
 ```powershell
-$env:NUXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_API_KEY"
+$env:NUXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_MAPS_API_KEY"
+$env:NUXT_GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 ```
 
 ## 使用方法
@@ -110,9 +124,10 @@ npm run generate
 例: `/app/search?theme=exercise&motivation=light&quicksearch=true`
 
 ## API仕様
-フロントからは Nuxt のサーバー API を経由して Cloud Run に接続します。
+フロントからは Nuxt のサーバー API を経由して Cloud Run（Agent API）に接続します。
 
-- `POST /api/fetch-ai`: ルート生成（`request_id`, `theme`, `distance_km`, `start_location`, `end_location` など）
+- `POST /api/gemini`: ランディング用のテーマ/距離提案（天候・日時考慮）。リクエスト: `{ model?, prevTheme?, prevDistance? }`。レスポンス: `{ message, theme, distance_km }`。要 `NUXT_GEMINI_API_KEY`。
+- `POST /api/fetch-ai`: ルート生成（`request_id`, `theme`, `distance_km`, `start_location`, `end_location`, `round_trip`, `debug` など）
 - `POST /api/route-feedback`: ルート評価（`request_id`, `route_id`, `rating`）
 
 ### リクエスト/レスポンス例
@@ -185,9 +200,10 @@ npm run generate
 ### 開発メモ
 - Google Maps の表示には `gmp-map` を使用しています
 - マップ ID は `app/pages/app/search.vue` と `app/pages/app/route.vue` で設定しています
-- API 接続先は `server/api/fetch-ai.post.ts` と `server/api/route-feedback.post.ts` の URL を変更してください
+- ルート生成の API 接続先は `server/api/fetch-ai.post.ts` 内の URL を変更してください。フィードバックは `server/api/route-feedback.post.ts`
+- ランディングの提案は `server/api/gemini.post.ts`（Gemini + Open-Meteo 天候API）。`app/pages/index.vue` から `/api/gemini` を呼び出します
 - Maps の読み込みは `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` を参照します
-- ルートの座標は polyline をデコードして描画しています
+- ルートの座標は `fetch-ai` が Agent の polyline をデコードして配列で返すため、そのまま描画しています
 
 ### セキュリティ / 秘匿情報
 - API キーは環境変数で管理し、リポジトリにコミットしないでください
@@ -211,6 +227,7 @@ Docker での起動手順は `README-DOCKER.md` を参照してください。
   A. API キー設定とブラウザの位置情報許可を確認してください
 
 ## リンク
+- [インフラ（IaC）README](../infra/README.md)
 - [プロジェクト全体のREADME](../README.md)
 - [ML Services README](../ml/README.md)
 - [Docker手順](./README-DOCKER.md)

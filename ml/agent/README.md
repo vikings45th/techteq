@@ -11,6 +11,10 @@
 - [テスト](#テスト)
 - [ログ](#ログ)
 - [デプロイ](#デプロイ)
+- [コード構造](#コード構造)
+- [主要な機能](#主要な機能)
+- [トラブルシューティング](#トラブルシューティング)
+- [リンク](#リンク)
 
 ## 概要
 
@@ -18,10 +22,10 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 
 ### 主な機能
 
-- **テーマ別ルート生成**: 4つのテーマ（exercise, think, refresh, nature）に対応
+- **気分・モードに応じたルート生成**: ユーザーが選んだ4モード（exercise / think / refresh / nature）に合わせてルートを提案（内部ではテーマ別にルート・スポットを最適化）
 - **片道/周回ルート**: `round_trip`で周回/片道を切り替え（片道は`end_location`必須）
-- **ルート最適化**: Ranker APIを使用したモデルスコア評価とランキング（ルールはシャドー）
-- **スポット検索**: 二段階検索 + 営業時間フィルタ + ルート近傍フィルタ
+- **ルート最適化**: 蓄積的ルート生成（1本ずつ生成し、閾値・最低本数で早期終了）ののち、候補を一括で Ranker API に送ってモデルスコアでランキング（ルールはシャドー）
+- **スポット検索**: 二段階検索（穴場キーワード → テーマに合った場所タイプ、結果なし時はタイプ指定なしで再検索）+ ルート近傍フィルタ（距離で絞り込み・緩和）
 - **AI紹介文・タイトル生成**: Jinjaテンプレート + 構造化出力で安定生成
 - **ナビ用代表点**: polyline由来の代表点のみで最大10点の`nav_waypoints`（周回時は始終点一致）
 - **フォールバック機能**: 外部API障害時も簡易ルートを提供
@@ -29,20 +33,30 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 
 ### 処理フロー
 
-1. **ルート候補生成**: Maps Routes APIで複数のルート候補を生成（形状バリエーション）
-2. **特徴量抽出**: 各ルート候補から特徴量を計算
-3. **ルート評価**: Ranker APIでスコアリング
+1. **ルート候補の蓄積的生成**: 候補を1本ずつ Maps Routes API で生成。各ルートをヒューリスティック（距離乖離など）で簡易評価し、**閾値（SCORE_THRESHOLD）を超えていて**かつ**最低本数（MIN_ROUTES）に達した**時点で打ち切り（早期終了）。最大 MAX_ROUTES 本まで（従来の「5本一括生成→一括スコアリング」から、蓄積的生成に変更）
+2. **特徴量抽出**: 揃った候補それぞれから特徴量を計算
+3. **ルート評価**: 候補を一括で Ranker API に送り、モデルスコアでスコアリング
 4. **最適ルート選択**: スコアが最も高いルートを選択
-5. **スポット検索**: ルート上の25/50/75%地点から二段階検索（営業時間フィルタ）
-6. **近傍フィルタ**: ルートから近いスポットに絞り込み
-7. **紹介文・タイトル生成**: Vertex AIで紹介文とタイトルを生成
-8. **nav_waypoints生成**: polyline簡略化のみ → 最大10点（周回時は始終点一致）
-9. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
+5. **スポット検索**: ルート上の25/50/75%地点から二段階検索（穴場→テーマ別タイプ）+ ルート近傍フィルタ
+6. **紹介文・タイトル生成**: Vertex AIで紹介文とタイトルを生成
+7. **nav_waypoints生成**: polyline簡略化のみ → 最大10点（周回時は始終点一致）
+8. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
+
+### ルート候補生成の詳細（Maps Routes API まわり）
+
+- **目的地の多様化**（`compute_route_dests`）  
+  - **周回**: 方位角を6方向で回転・シャッフルし、形状バリエーション（円に近いループ・三角ループ・アウト&バック・蛇行）で waypoints を生成。距離に応じて半径・ステップを変える。  
+  - **片道（end_location あり）**: 開始〜終了の直線距離が目標未満なら、回り道用の waypoints を挟んで目標距離に近づける。終了が開始に極端に近い（<0.05km）場合は end を無視しオフセット目的地にフォールバック。  
+  - **片道（end なし）**: 方位角ごとに開始点からオフセットした1点を目的地とする。
+- **距離フィルタ**: 各候補について `|実距離−目標|/目標`（目標はユーザー指定の `original_target_km`）を計算し、`ROUTE_DISTANCE_ERROR_RATIO_MAX`（短距離時は 0.2）を超えるものは採用しない。
+- **短距離の扱い**: 目標が `SHORT_DISTANCE_MAX_KM` 以下なら、誤差比率を 0.2 に厳格化。さらに `SHORT_DISTANCE_TARGET_RATIO` で事前に目標距離を補正して Routes API に渡す。1試行目で候補が0件のときは、観測した「目標に最も近い距離」に基づき目標を再計算して最大 `ROUTE_DISTANCE_RETRY_MAX + 1` 回まで再試行する。
+- **無効候補のスキップ**: 実距離が 0.01km 以下、または polyline が空・不正値の候補はスキップ（カウントせず次の目的地でルート取得を続ける）。
 
 ### プロンプトテンプレート
 
 - `app/prompts/description.jinja`: 紹介文の制約（JSON形式、文字数、句点など）
 - `app/prompts/title.jinja`: タイトルの制約（JSON形式、文字数、使用記号）
+- `app/prompts/title_description.jinja`: タイトルと紹介文を一括生成するテンプレート（Vertex 呼び出しで使用）
 
 ## 環境変数
 
@@ -70,9 +84,13 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 | `PLACES_RADIUS_M` | `300` | Places APIの検索半径（m） |
 | `PLACES_MAX_RESULTS` | `2` | 1地点あたりの最大件数 |
 | `PLACES_SAMPLE_POINTS_MAX` | `1` | 検索地点数（サンプル点の上限） |
-| `MAX_ROUTES` | `5` | 最大生成本数 |
-| `MIN_ROUTES` | `2` | 最低生成本数（早期終了の下限） |
-| `SCORE_THRESHOLD` | `0.6` | 早期終了の閾値（暫定） |
+| `MAX_ROUTES` | `5` | 蓄積的生成で作る候補の最大本数 |
+| `MIN_ROUTES` | `2` | 早期終了の下限（この本数に達し、かつ閾値超えで打ち切り） |
+| `SCORE_THRESHOLD` | `0.6` | ヒューリスティックスコアの早期終了閾値（暫定）。この値以上かつ MIN_ROUTES 以上で生成を打ち切る |
+| `ROUTE_DISTANCE_ERROR_RATIO_MAX` | `0.3` | 目標距離との許容誤差比率。実距離が `|実距離−目標|/目標` を超える候補は除外。短距離（≤ SHORT_DISTANCE_MAX_KM）時は 0.2 に厳格化 |
+| `ROUTE_DISTANCE_RETRY_MAX` | `1` | 距離フィルタで候補が0件だった場合の再試行回数。最大試行回数はこの値+1（デフォルト2回） |
+| `SHORT_DISTANCE_MAX_KM` | `3.0` | 短距離とみなす上限（km）。この値以下で誤差比率を厳格化・事前補正の対象にする |
+| `SHORT_DISTANCE_TARGET_RATIO` | `0.7` | 短距離時の事前目標補正。目標距離を (目標 × この比率) に下げて Routes API に渡す（0.5〜1.0）。再試行時は観測した最良距離に合わせて目標を再計算し直す |
 | `CONCURRENCY` | `2` | 外部APIの同時実行数 |
 | `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
 | `BQ_TABLE_REQUEST` | `route_request` | BigQueryリクエストテーブル名 |
@@ -81,9 +99,9 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 | `BQ_TABLE_FEEDBACK` | `route_feedback` | BigQueryフィードバックテーブル名 |
 | `FEATURES_VERSION` | `mvp_v1` | 特徴量バージョン |
 | `RANKER_VERSION` | `rule_v1` | Rankerバージョン |
-| `SPOT_MAX_DISTANCE_M` | `50.0` | ルートからの最大距離（m） |
-| `SPOT_MAX_DISTANCE_M_RELAXED` | `100.0` | 緩和時の最大距離（m） |
-| `SPOT_MAX_DISTANCE_M_FALLBACK` | `250.0` | 追加緩和時の最大距離（m） |
+| `SPOT_MAX_DISTANCE_M` | `30.0` | ルートからの最大距離（m）。この距離以内のスポットを採用 |
+| `SPOT_MAX_DISTANCE_M_RELAXED` | `60.0` | 緩和時の最大距離（m）。30mで3件未満のときに使用 |
+| `SPOT_MAX_DISTANCE_M_FALLBACK` | `120.0` | 追加緩和時の最大距離（m）。60mでも3件未満のときに使用 |
 
 ### SCORE_THRESHOLD の決め方（暫定）
 
@@ -254,7 +272,8 @@ FROM top_scores;
   - `lng`: 経度
 - `meta.fallback_used`: フォールバックが使用されたかどうか
 - `meta.tools_used`: 使用したツールのリスト
-- `meta.fallback_reason`: フォールバック理由（カンマ区切り）
+- `meta.fallback_reason`: フォールバック理由コードの文字列（カンマ区切り）
+- `meta.fallback_details`: フォールバック理由の詳細リスト（UI表示用）。各要素は `reason`（コード）, `description`（説明）, `impact`（影響）
 - `meta.route_quality`: ルート品質情報
 
 **テーマ:**
@@ -295,15 +314,24 @@ FROM top_scores;
 }
 ```
 
+#### `GET /route/graph`
+
+ルート生成フローの状態遷移を Mermaid 図で返します（デバッグ・ドキュメント用）。LangGraph のグラフ定義に基づきます。
+
+**レスポンス:** テキスト（Mermaid 形式）
+
 ### フォールバック機能
 
-外部APIが失敗した場合でも、簡易ルートを提供します：
+以下のいずれかに該当した場合、簡易ルートやテンプレート文で応答を返します（いずれも `meta.fallback_used` / `meta.fallback_reason` / `meta.fallback_details` に記録）。
 
-- **Maps Routes API失敗**: 開始地点を中心としたダミーポリラインを生成
-- **Ranker API失敗**: 最初のルート候補を選択
-- **Vertex AI失敗**: テンプレートベースの紹介文・タイトルを使用
+| 理由コード | 発生条件 | 動作 |
+|-----------|----------|------|
+| **maps_routes_failed** | Maps Routes API が失敗・タイムアウト | 開始〜終了（または開始付近）のダミーポリラインを生成し、距離は目標値に合わせる |
+| **ranker_failed** | Ranker API が失敗・タイムアウト | 全候補をヒューリスティック（距離乖離等）でスコア付けし、その中から最良の1本を選択（「最初の1本」ではない） |
+| **vertex_llm_failed** | Vertex AI で紹介文・タイトルの生成に失敗 | テンプレートベースの紹介文・タイトルを使用。ルートとスポットはそのまま |
+| **invalid_route_detected** | 選択されたルートが無効（距離が極小、または polyline が空/不正） | そのルートを破棄し、開始〜終了のダミーポリラインに差し替え |
 
-フォールバック情報は`meta.fallback_used`と`meta.fallback_reason`に記録されます。
+- 複数が同時に発生した場合、`fallback_reason` はカンマ区切りで並び、`fallback_details` に各理由の `reason` / `description` / `impact` が入ります（UIでの説明表示用）。
 
 ## テスト
 
@@ -407,25 +435,41 @@ resource.type="cloud_run_revision"
 jsonPayload.request_id="your-request-id"
 ```
 
-### BigQuery へのログ保存
+### BigQuery テーブル定義と用途
 
-以下のテーブルにログが保存されます：
+**データセット:** `firstdown_mvp`（`BQ_DATASET` で変更可能）
 
-- `route_request`: リクエストログ（テーマ、距離、開始地点など）
-- `route_candidate`: 候補ログ（特徴量、順位、フォールバック情報など）
-- `route_proposal`: 提案ログ（選択されたルート、使用ツール、フォールバック情報など）
-- `route_feedback`: フィードバックログ（評価、リクエストIDなど）
+| テーブル / ビュー | 書き込み元 | 用途・主なカラム |
+|------------------|------------|------------------|
+| **route_request** | Agent API（`log_request_bq`） | リクエストごと1行。`request_id`, `theme`, `distance_km_target`, `start_lat/lng`, `round_trip`, `debug` など。ルート生成の入口ログ。 |
+| **route_candidate** | Agent API（`store_candidates_bq`） | 1リクエストあたり複数行（候補数分）。`request_id`, `route_id`, `chosen_flag`, `shown_rank`, 特徴量（`distance_km`, `distance_error_ratio`, `loop_closure_m`, `poi_density` 等）。ランキング結果・採用候補の記録。 |
+| **route_proposal** | Agent API（`store_proposal_bq`） | 1リクエスト1行。採用ルート `chosen_route_id`, `fallback_used`, `fallback_reason`, `tools_used`, `summary_type`, `total_latency_ms`。提案結果の要約。 |
+| **route_feedback** | Agent API（`POST /route/feedback`） | ユーザー評価1件1行。`request_id`, `route_id`, `rating`, `note`。ランカー学習の正解ラベル元。 |
+| **rank_result** | Ranker API | 1リクエストあたり候補数分。`request_id`, `route_id`, `rule_score`, `model_score`, `model_latency_ms`, `rule_version`, `model_version`。シャドウ推論・A/B比較用。DDL は `ml/ranker/bq/rank_result_shadow.sql`。 |
+| **route_proposal_polyline** | （未使用） | 採用ルートの polyline 保存用。DDL のみ `ml/agent/bq/route_proposal_polyline.sql`。必要に応じて別ジョブで投入可能。 |
 
-**SQL定義:** `ml/agent/bq/` に各種SQL（テーブル/ビュー定義）を配置
+**ビュー**
 
-学習用ビュー:
+| 名前 | 定義ファイル | 用途 |
+|------|--------------|------|
+| **training_view** | `ml/agent/bq/training_view.sql` | `route_candidate` と `route_feedback` を `request_id` + `route_id` で結合。高評価（rating 4–5）を正例、同リクエスト内の非採用候補の一部を弱い負例として `label` / `label_type` / `label_weight` を付与。Ranker の学習入力（`SELECT * FROM training_view`）。`chosen_flag` / `shown_rank` はビューから除外しリーク防止。 |
 
-- `training_view`: `route_candidate` と `route_feedback` を `request_id` + `route_id` でJOINした学習入力
-  - ビュー定義: `ml/agent/bq/training_view.sql`
-  - 学習入力は `SELECT * FROM training_view`
-  - リーク対策として `chosen_flag` / `shown_rank` など結果依存列は除外
+**運用・学習開始の目安**
 
-**データセット:** `firstdown_mvp`（デフォルト）
+- `ml/agent/bq/training_gate.sql`: `route_feedback` 件数と `training_view` のラベル付き件数を集計し、`feedback_count >= 1000` かつ `labeled_count >= 1000` で `training_ready` を判定。学習を開始してよいかどうかのゲート用。
+
+**DDL の実行例**
+
+```bash
+# データセット名を変える場合は SQL 内の firstdown_mvp を編集
+bq query --use_legacy_sql=false < ml/agent/bq/route_request.sql
+bq query --use_legacy_sql=false < ml/agent/bq/route_candidate.sql
+bq query --use_legacy_sql=false < ml/agent/bq/route_proposal.sql
+bq query --use_legacy_sql=false < ml/agent/bq/route_feedback.sql
+bq query --use_legacy_sql=false < ml/agent/bq/training_view.sql
+# Ranker 用
+bq query --use_legacy_sql=false < ml/ranker/bq/rank_result_shadow.sql
+```
 
 ## デプロイ
 
@@ -456,12 +500,20 @@ Cloud Runにデプロイされます。設定は`.github/workflows/deploy-agent.
 
 ## コード構造
 
+ルート生成は **LangGraph**（`app/graph.py`）でオーケストレーションされています。各ステップがノードとして定義され、状態に応じて分岐・フォールバックします。
+
 ```
 ml/agent/
 ├── app/
-│   ├── main.py              # FastAPIアプリケーション、ルート生成ロジック
+│   ├── main.py              # FastAPIアプリケーション、エンドポイント定義
+│   ├── graph.py             # ルート生成オーケストレーション（LangGraph）
 │   ├── schemas.py           # データスキーマ（Pydantic）
 │   ├── settings.py          # 設定管理
+│   ├── utils.py             # ユーティリティ（例: スポットタイプの日本語化）
+│   ├── prompts/             # Vertex AI用Jinjaテンプレート
+│   │   ├── description.jinja
+│   │   ├── title.jinja
+│   │   └── title_description.jinja
 │   └── services/
 │       ├── maps_routes_client.py  # Maps Routes APIクライアント
 │       ├── places_client.py       # Places APIクライアント（日本語対応）
@@ -470,7 +522,9 @@ ml/agent/
 │       ├── feature_calc.py        # 特徴量計算
 │       ├── fallback.py            # フォールバック処理
 │       ├── polyline.py            # Polyline処理
-│       └── bq_writer.py           # BigQuery書き込み
+│       ├── bq_writer.py           # BigQuery書き込み
+│       ├── http_client.py         # 共通HTTPクライアント
+│       └── __init__.py
 ├── bq/                       # BigQuery用SQL定義
 ├── Dockerfile
 ├── requirements.txt
@@ -480,26 +534,17 @@ ml/agent/
 
 ## 主要な機能
 
-### スポット検索（日本語対応）
+### スポット検索（見どころ抽出・日本語対応）
 
-- 穴場優先＋補完の二段階検索
-- ルート上の25/50/75%地点から検索
-- 営業時間フィルタ（屋外スポットは補完時のみ例外）
-- 重複排除（place_id優先、name/latlng補助）
-- 最大5件まで取得（緯度経度つき）
-- `name`と`type`を日本語で返却
-  - `name`: Places APIから取得（`languageCode: "ja"`で日本語化）
-  - `type`: 英語タイプを日本語に変換（例: "park" → "公園"）
+- **二段階検索**: 第1段階で穴場キーワード検索、第2段階でテーマに合った場所タイプ（classic types）で検索。いずれも結果が空の場合はタイプ指定なしで再検索（Places API がキーワードを拒否した場合もキーワードなしで再試行）
+- **サンプル点**: ルート上の 25% / 50% / 75% 地点をサンプル点とする。検索に使う点数は `PLACES_SAMPLE_POINTS_MAX` で上限（デフォルト1）。各点から `PLACES_RADIUS_M`（300m）以内を検索、1点あたり最大 `PLACES_MAX_RESULTS`（2件）まで取得
+- **重複排除**: 候補の一意性は `place_id` 優先、なければ `name`、なければ `latlng` で判定
+- **タイプ多様性**: 集めた候補から「タイプが被らないものを優先して選択」し、まだ余裕があれば同タイプも追加して最大5件にする（`_select_unique_types`）
+- **ルート近傍フィルタ**: ルートからの距離が `SPOT_MAX_DISTANCE_M`（30m）以内のスポットのみ採用。**3件未満**のときは距離を緩和（60m → 120m）して再フィルタし、緩和時はタイプ多様化前の候補リストを再評価して最大5件を確保
+- **ブロックリスト**: 名前（`PLACES_NAME_BLOCKLIST`）・タイプ（`PLACES_TYPE_BLOCKLIST`）でコンビニ・ファストフード等を除外
+- **出力**: 最大5件、緯度経度つき。`name` と `type` は日本語（Places API の `languageCode: "ja"` と、英語タイプの日本語変換）
 
-### フォールバック機能
-
-外部APIが失敗した場合のフォールバック処理：
-
-1. **Maps Routes API失敗**: ダミーポリラインを生成
-2. **Ranker API失敗**: 最初のルート候補を選択
-3. **Vertex AI失敗**: テンプレートベースの紹介文を使用
-
-フォールバック情報は`meta.fallback_used`と`meta.fallback_reason`に記録されます。
+フォールバック機能の詳細は、上記 [フォールバック機能](#フォールバック機能) を参照してください。
 
 ## トラブルシューティング
 
@@ -535,17 +580,20 @@ ml/agent/
 
 **症状**: `fallback_used: true` が返される
 
-**原因**:
-- Maps Routes APIの失敗
-- Ranker APIの失敗
-- Vertex AIの失敗
+**原因**（`meta.fallback_reason` / `meta.fallback_details` の理由コード）:
+- `maps_routes_failed`: Maps Routes API の失敗
+- `ranker_failed`: Ranker API の失敗・タイムアウト
+- `vertex_llm_failed`: Vertex AI の失敗（紹介文・タイトルのみテンプレートに差し替え）
+- `invalid_route_detected`: 選択されたルートが無効（距離極小や polyline 不正）だったためダミーに差し替え
 
 **確認方法**:
-- ログで `fallback_reason` を確認
+- レスポンスの `meta.fallback_reason` および `meta.fallback_details` で理由を確認
+- ログで `fallback_reason` を検索
 - 各サービスのヘルスチェックを実行
 
 ## リンク
 
+- [インフラ（IaC）README](../../infra/README.md)
 - [ML Services README](../README.md)
 - [Ranker API README](../ranker/README.md)
 - [プロジェクト全体のREADME](../../README.md)
