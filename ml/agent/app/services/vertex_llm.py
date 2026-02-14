@@ -327,17 +327,15 @@ async def generate_title_and_description(
             forbidden_words=forbidden_words,
         )
         try:
-            result = await _invoke_raw(
+            # 構造化出力を使うと空返しになりにくく、スキーマ通りの返却になる
+            parsed = await _invoke_structured(
                 prompt,
                 temperature=attempt["temperature"],
                 max_output_tokens=attempt["max_out"],
+                schema=TitleDescriptionResponse,
             )
-            if hasattr(result, "content"):
-                result = result.content
-            if result is None or (isinstance(result, str) and not result.strip()):
-                logger.warning("[Vertex LLM Title+Summary] empty response from model")
-                raise ValueError("LLM returned empty response")
-            parsed = _coerce_structured(result, TitleDescriptionResponse)
+            if not isinstance(parsed, TitleDescriptionResponse):
+                parsed = _coerce_structured(parsed, TitleDescriptionResponse)
             title = parsed.title
             description = parsed.description
             banned = _contains_forbidden(title, forbidden_words) or _contains_forbidden(description, forbidden_words)
