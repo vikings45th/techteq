@@ -5,7 +5,7 @@ useHead({
   htmlAttrs: {
     lang: "ja",
   },
-  title: "てくてく | 今の気分に合う散歩ルートを一つだけ提案",
+  title: "てくてく",
   meta: [
     { name: "viewport", content: "width=device-width, initial-scale=1" },
     {
