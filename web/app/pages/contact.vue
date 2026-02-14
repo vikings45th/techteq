@@ -2,11 +2,6 @@
   <UPage>
     <UPageHeader title="お問い合わせ" />
 
-		<p>
-      以下メールアドレスにご連絡ください。
-    </p>
-		<p>
-      example@mail.com
-    </p>
+    <p>準備中です。</p>
   </UPage>
 </template>

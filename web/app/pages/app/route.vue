@@ -70,10 +70,6 @@ const initMap = async () => {
     return;
   }
 
-  // Dynamic Library Importを使用して必要なライブラリを読み込む
-  const { Map, InfoWindow } = await (window as any).google.maps.importLibrary(
-    "maps",
-  );
   const { AdvancedMarkerElement, PinElement } = await (
     window as any
   ).google.maps.importLibrary("marker");
@@ -479,14 +475,19 @@ onBeforeUnmount(() => {
 
 <style scoped>
 :deep(.name-tag) {
-  background-color: #507956;
+  background-color: var(--color-breeze-50);
   border-radius: 8px;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: bold;
+  font-size: 12px;
   padding: 6px 9px;
   position: relative;
   transform: translateY(-8px);
+  border: 1px solid var(--color-amulet-500);
+}
+
+@media (prefers-color-scheme: dark) {
+  :deep(.name-tag) {
+    background-color: var(--color-breeze-800);
+  }
 }
 
 :deep(.name-tag::after) {
@@ -499,6 +500,6 @@ onBeforeUnmount(() => {
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-top: 8px solid #507956;
+  border-top: 8px solid var(--color-amulet-500);
 }
 </style>

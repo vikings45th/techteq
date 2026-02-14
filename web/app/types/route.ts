@@ -55,3 +55,9 @@ export interface ChatMessage {
   role: "assistant" | "user" | "system";
   parts: { type: string; text: string }[];
 }
+
+export interface QuickSearch {
+  quick_search: boolean;
+  theme: string;
+  distance_km: number;
+}

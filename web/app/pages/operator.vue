@@ -2,8 +2,6 @@
   <UPage>
     <UPageHeader title="運営者情報" />
 
-		<p>
-      運営者情報です
-    </p>
+    <p>準備中です。</p>
   </UPage>
 </template>
