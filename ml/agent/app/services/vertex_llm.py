@@ -36,12 +36,13 @@ def _get_llm(*, temperature: float, max_output_tokens: int) -> Optional[ChatVert
     if key in _LLM_CACHE:
         return _LLM_CACHE[key]
 
+    # langchain-google-vertexai の ChatVertexAI は max_tokens を受け取る（max_output_tokens は無視される）
     llm = ChatVertexAI(
         project=settings.VERTEX_PROJECT,
         location=settings.VERTEX_LOCATION,
         model_name=model_name,
         temperature=temperature,
-        max_output_tokens=max_output_tokens,
+        max_tokens=max_output_tokens,
         top_p=float(getattr(settings, "VERTEX_TOP_P", 0.95)),
         top_k=int(getattr(settings, "VERTEX_TOP_K", 40)),
     )
