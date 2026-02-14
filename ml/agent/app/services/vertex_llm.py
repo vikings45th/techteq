@@ -355,10 +355,16 @@ async def generate_title_and_description(
         )
         try:
             # 構造化出力(with_structured_output)だと毎回空返しになるため、生テキストで呼びプロンプト通りの1行JSONを返させる
+            max_tokens = attempt["max_out"]
+            logger.info(
+                "[Vertex LLM Title+Summary] invoke max_output_tokens=%s temperature=%s",
+                max_tokens,
+                attempt["temperature"],
+            )
             raw_from_sdk = await _invoke_raw(
                 prompt,
                 temperature=attempt["temperature"],
-                max_output_tokens=attempt["max_out"],
+                max_output_tokens=max_tokens,
             )
             # 空なのが「モデル出力」か「SDK取り出し」か切り分けるため、生レスポンスを保持
             result = raw_from_sdk
