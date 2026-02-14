@@ -22,7 +22,17 @@ const bottomNavItems: NavigationMenuItem[] = [
 </script>
 
 <template>
-  <UHeader title="てくてく" :toggle="false" />
+  <UHeader :toggle="false">
+    <template #title>
+      <div class="flex items-center gap-2">
+        <UIcon
+          name="material-symbols-light:footprint"
+          class="size-8 text-primary"
+        />
+        <p>てくてく</p>
+      </div>
+    </template>
+  </UHeader>
   <UMain>
     <UContainer>
       <slot />

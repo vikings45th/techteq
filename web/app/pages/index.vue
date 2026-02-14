@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { SuggestedRoute, ChatMessage } from "~/types/route";
+import { useQuickSearch } from "~/composables/states";
 
 const geminiStatus = ref("ready");
 const isModalOpen = ref(false);
+const quickSearchState = useQuickSearch();
 
 const messages = ref<ChatMessage[]>([]);
 const suggestedRoute = ref<SuggestedRoute>({
@@ -89,7 +91,7 @@ const resuggest = async () => {
     ],
   });
 
-  const route = await $fetch<SuggestedRoute>("/api/gemini", {
+  const res = await $fetch<SuggestedRoute>("/api/gemini", {
     method: "POST",
     body: {
       prevTheme: suggestedRoute.value.theme,
@@ -100,7 +102,7 @@ const resuggest = async () => {
 
   geminiStatus.value = "ready";
 
-  suggestedRoute.value = route;
+  suggestedRoute.value = res;
 
   messages.value.push({
     id: crypto.randomUUID(),
@@ -108,11 +110,12 @@ const resuggest = async () => {
     parts: [
       {
         type: "text",
-        text: route.message,
+        text: res.message,
       },
     ],
   });
 };
+
 const handleSearch = async () => {
   messages.value.push({
     id: crypto.randomUUID(),
@@ -127,12 +130,16 @@ const handleSearch = async () => {
 
   geminiStatus.value = "submitted";
 
+  quickSearchState.value = {
+    quick_search: true,
+    theme: suggestedRoute.value.theme,
+    distance_km: suggestedRoute.value.distance_km,
+  };
+
   // 0.5秒待機
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  navigateTo(
-    `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
-  );
+  navigateTo("/app/search");
 };
 
 // モーダルが開いたときに自動的に提案を取得
@@ -159,7 +166,12 @@ watch(isModalOpen, (newValue) => {
     title="散歩を提案してもらう"
     description="チャットでいくつか答えるだけです。"
   >
-    <UDrawer direction="bottom" handle-only>
+    <UDrawer
+      title="散歩提案チャット"
+      description="いくつか答えるだけで散歩を提案"
+      direction="bottom"
+      handle-only
+    >
       <UButton
         color="primary"
         icon="i-lucide-message-circle"
@@ -178,7 +190,7 @@ watch(isModalOpen, (newValue) => {
                 :messages="messages"
                 :assistant="{
                   avatar: {
-                    icon: 'i-lucide-bot',
+                    icon: 'material-symbols-light:footprint',
                   },
                 }"
                 :ui="{

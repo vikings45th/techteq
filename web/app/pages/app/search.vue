@@ -2,7 +2,11 @@
 import type { ApiRequest } from "~/types/route";
 import { useRouteApi } from "~/composables/useRouteApi";
 import { useGenerateRequestid } from "~/composables/useGenerateRequestid";
-import { useSearchParams, useCurrentRoute } from "~/composables/states";
+import {
+  useSearchParams,
+  useCurrentRoute,
+  useQuickSearch,
+} from "~/composables/states";
 
 definePageMeta({
   layout: "app",
@@ -10,11 +14,6 @@ definePageMeta({
 
 const { generateRequestid } = useGenerateRequestid();
 const { fetchRoute } = useRouteApi();
-
-const route = useRoute();
-const themeParam = route.query.theme as string | undefined;
-const distanceParam = route.query.distance_km as string | undefined;
-const quicksearch = route.query.quicksearch === "true";
 
 const themeItems = ref([
   {
@@ -52,6 +51,7 @@ const loadingApi = ref<boolean>(false);
 
 const searchParamsState = useSearchParams();
 const routeState = useCurrentRoute();
+const quickSearchState = useQuickSearch();
 
 // 現在地を保存する変数
 const currentLocation = ref<{ lat: number; lng: number }>({
@@ -284,25 +284,13 @@ const initMap = async () => {
 
 onMounted(async () => {
   initMap();
-  // quicksearch=trueの場合は自動的に検索を実行
-  if (quicksearch) {
+  // quick_search=trueの場合は自動的に検索を実行
+  if (quickSearchState.value.quick_search) {
     loadingApi.value = true;
-    searchParams.value.theme =
-      themeParam && themeItems.value.some((item) => item.value === themeParam)
-        ? themeParam
-        : searchParams.value.theme;
-
-    const parsedDistance = distanceParam ? Number(distanceParam) : NaN;
-    if (
-      !Number.isNaN(parsedDistance) &&
-      parsedDistance > 0 &&
-      parsedDistance <= 30
-    ) {
-      searchParams.value.distance_km = parsedDistance;
-    }
+    searchParams.value.theme = quickSearchState.value.theme;
+    searchParams.value.distance_km = quickSearchState.value.distance_km;
 
     await fetchCurrentLocation();
-    // 地図を初期化せずに直接APIを呼び出す（quicksearchの場合は地図を表示しない）
     await callApi();
   } else {
     // 保存されている検索条件があれば、searchParamsに代入
@@ -328,9 +316,15 @@ onMounted(async () => {
   }
 });
 
-// コンポーネントがアンマウントされる時にマップを破棄
 onBeforeUnmount(() => {
+  // コンポーネントがアンマウントされる時にマップを破棄
   destroyMap();
+  // quickSearchStateを初期値に戻す
+  quickSearchState.value = {
+    quick_search: false,
+    theme: "think",
+    distance_km: 2,
+  };
 });
 </script>
 <template>
