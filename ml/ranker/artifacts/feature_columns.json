@@ -15,9 +15,6 @@
   "distance_error_ratio",
   "relaxation_step",
   "candidate_rank_in_theme",
-  "has_stairs",
-  "elevation_gain_m",
-  "elevation_density",
   "poi_density",
   "park_poi_ratio"
 ]

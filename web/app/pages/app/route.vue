@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import { useRouteApi } from "~/composables/useRouteApi";
-import { useGenerateRequestid } from "~/composables/useGenerateRequestid";
 import { useSearchParams, useCurrentRoute } from "~/composables/states";
 
 definePageMeta({
   layout: "app",
 });
 
-const { fetchRoute, submitRouteFeedback } = useRouteApi();
-const { generateRequestid } = useGenerateRequestid();
+const { submitRouteFeedback } = useRouteApi();
 
 const searchParamsState = useSearchParams();
 const routeState = useCurrentRoute();
 
-const loadingRegenerate = ref(false);
 const showRatingModal = ref(false);
 const rating = ref(0);
 const submittingFeedback = ref(false);

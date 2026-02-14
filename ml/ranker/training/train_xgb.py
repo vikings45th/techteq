@@ -28,9 +28,6 @@ DEFAULT_FEATURE_COLUMNS: List[str] = [
     "distance_error_ratio",
     "relaxation_step",
     "candidate_rank_in_theme",
-    "has_stairs",
-    "elevation_gain_m",
-    "elevation_density",
     "poi_density",
     "park_poi_ratio",
 ]
@@ -63,11 +60,12 @@ def load_feature_columns(path: Optional[str]) -> List[str]:
 
 def build_query(table_id: str, feature_columns: Iterable[str]) -> str:
     features_sql = ", ".join(feature_columns)
+    # split がビューにない場合は NULL で補う（全件を train として使用）
     return f"""
     SELECT
         {features_sql},
         feedback_rating,
-        split
+        CAST(NULL AS STRING) AS split
     FROM `{table_id}`
     WHERE feedback_rating IS NOT NULL
     """

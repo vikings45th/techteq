@@ -109,3 +109,34 @@ variable "ranker_env_ranker_version" {
   default     = "rule_v1"
   description = "Ranker の RANKER_VERSION"
 }
+
+# Vertex AI で推論する場合に設定（未設定時は Ranker は xgb ローカル or disabled）
+variable "ranker_env_model_inference_mode" {
+  type        = string
+  default     = ""
+  description = "Ranker の MODEL_INFERENCE_MODE（vertex / xgb / stub / disabled）。空なら未設定で Ranker のデフォルトに従う"
+}
+
+variable "ranker_env_vertex_project" {
+  type        = string
+  default     = ""
+  description = "Ranker の VERTEX_PROJECT（Vertex 推論時）。空なら project_id を使用"
+}
+
+variable "ranker_env_vertex_location" {
+  type        = string
+  default     = ""
+  description = "Ranker の VERTEX_LOCATION。空なら region を使用"
+}
+
+variable "ranker_env_vertex_endpoint_id" {
+  type        = string
+  default     = ""
+  description = "Ranker の VERTEX_ENDPOINT_ID（Vertex AI Endpoint の ID）。Vertex 推論時に必須"
+}
+
+variable "ranker_env_vertex_timeout_s" {
+  type        = string
+  default     = "5.0"
+  description = "Ranker の VERTEX_TIMEOUT_S"
+}

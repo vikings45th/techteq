@@ -74,26 +74,9 @@ def _calculate_score(features: Dict[str, Any]) -> tuple[float, Dict[str, float]]
     detour_over_ratio = float(features.get("detour_over_ratio", 0.0))  # 0.0-∞
     detour_penalty = -min(max(detour_over_ratio, 0.0), 1.0) * 0.15
     
-    # 4. Exerciseテーマの場合: 坂道と階段のボーナス
+    # 4. Exerciseテーマ: 階段・標高は特徴量から外したためルールでは加点なし（モデル推論を優先）
     exercise_bonus = 0.0
-    theme_exercise = features.get("theme_exercise", 0)  # 運動テーマフラグ
-    if theme_exercise:
-        # 階段がある場合のボーナス（運動強度が高い）
-        has_stairs = features.get("has_stairs", 0)  # 階段の有無
-        if has_stairs:
-            exercise_bonus += 0.15  # 階段があると運動強度が高い
-        
-        # 標高差密度（m/km）に基づくボーナス
-        elevation_density = float(features.get("elevation_density", 0.0))  # 標高差密度（m/km）
-        # 適度な坂道（10-50m/km）が理想的
-        if 10.0 <= elevation_density <= 50.0:
-            exercise_bonus += 0.2  # 適度な坂道は良い
-        elif 5.0 <= elevation_density < 10.0:
-            exercise_bonus += 0.1  # 軽い坂道も良い
-        elif elevation_density > 50.0:
-            exercise_bonus += 0.1  # 急な坂道も運動強度は高いが、やや減点
-        # 0-5m/kmは平地でボーナスなし
-    
+
     # ベーススコア
     base = 0.5
     

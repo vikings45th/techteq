@@ -22,7 +22,7 @@ const bottomNavItems: NavigationMenuItem[] = [
 </script>
 
 <template>
-  <UHeader title="Seren Walk" :toggle="false" />
+  <UHeader title="てくてく" :toggle="false" />
   <UMain>
     <UContainer>
       <slot />

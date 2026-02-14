@@ -1,6 +1,6 @@
 {
-  "model_version": "shadow_xgb_20260211_since_0201",
-  "trained_at": "2026-02-11T12:20:31.423496+00:00",
+  "model_version": "shadow_xgb_18feat",
+  "trained_at": "2026-02-14T11:54:18.487248+00:00",
   "feature_columns": [
     "distance_km",
     "duration_min",
@@ -18,9 +18,6 @@
     "distance_error_ratio",
     "relaxation_step",
     "candidate_rank_in_theme",
-    "has_stairs",
-    "elevation_gain_m",
-    "elevation_density",
     "poi_density",
     "park_poi_ratio"
   ],

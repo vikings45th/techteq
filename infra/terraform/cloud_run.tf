@@ -124,6 +124,41 @@ resource "google_cloud_run_v2_service" "ranker" {
         name  = "RANKER_VERSION"
         value = var.ranker_env_ranker_version
       }
+      dynamic "env" {
+        for_each = var.ranker_env_model_inference_mode != "" ? [1] : []
+        content {
+          name  = "MODEL_INFERENCE_MODE"
+          value = var.ranker_env_model_inference_mode
+        }
+      }
+      dynamic "env" {
+        for_each = var.ranker_env_vertex_endpoint_id != "" ? [1] : []
+        content {
+          name  = "VERTEX_PROJECT"
+          value = var.ranker_env_vertex_project != "" ? var.ranker_env_vertex_project : var.project_id
+        }
+      }
+      dynamic "env" {
+        for_each = var.ranker_env_vertex_endpoint_id != "" ? [1] : []
+        content {
+          name  = "VERTEX_LOCATION"
+          value = var.ranker_env_vertex_location != "" ? var.ranker_env_vertex_location : var.region
+        }
+      }
+      dynamic "env" {
+        for_each = var.ranker_env_vertex_endpoint_id != "" ? [1] : []
+        content {
+          name  = "VERTEX_ENDPOINT_ID"
+          value = var.ranker_env_vertex_endpoint_id
+        }
+      }
+      dynamic "env" {
+        for_each = var.ranker_env_vertex_endpoint_id != "" ? [1] : []
+        content {
+          name  = "VERTEX_TIMEOUT_S"
+          value = var.ranker_env_vertex_timeout_s
+        }
+      }
     }
   }
 

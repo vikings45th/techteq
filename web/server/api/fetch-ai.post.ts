@@ -35,7 +35,7 @@ function decodePolyline(encoded: string): LatLng[] {
       result |= (b & 0x1f) << shift;
       shift += 5;
     } while (b >= 0x20);
-    const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+    const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
     lat += dlat;
 
     shift = 0;
@@ -45,7 +45,7 @@ function decodePolyline(encoded: string): LatLng[] {
       result |= (b & 0x1f) << shift;
       shift += 5;
     } while (b >= 0x20);
-    const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+    const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
     lng += dlng;
 
     poly.push({ lat: lat * 1e-5, lng: lng * 1e-5 });
@@ -68,15 +68,16 @@ export default defineEventHandler(async (event) => {
     }
   */
 
-  const apiUrl = "https://agent-203786374782.asia-northeast1.run.app/route/generate";
+  const apiUrl =
+    "https://agent-203786374782.asia-northeast1.run.app/route/generate";
   try {
     // POSTリクエスト
     const response = await $fetch<AgentResponse>(apiUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: requestBody
+      body: requestBody,
     });
 
     // polylineをデコードして配列形式に変換
@@ -87,19 +88,18 @@ export default defineEventHandler(async (event) => {
       ...response,
       route: {
         ...response.route,
-        polyline: decodedPolyline
-      }
+        polyline: decodedPolyline,
+      },
     };
-    
+
     return {
       statusCode: 200,
-      body: processedResponse
-    };;
-    
+      body: processedResponse,
+    };
   } catch (error: any) {
     throw createError({
       statusCode: error.statusCode || 500,
-      statusMessage: error.message || 'API呼び出しに失敗しました'
+      statusMessage: error.message || "API呼び出しに失敗しました",
     });
   }
-})
+});

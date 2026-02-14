@@ -13,6 +13,7 @@ from app.services.http_client import get_client
 logger = logging.getLogger(__name__)
 
 
+# 未使用: 特徴量から elevation を外したため呼び出しなし（レイテンシ削減）。再利用時は compute_route_dests / compute_route_candidate の呼び出しを復元すること。
 async def _calculate_elevation_gain(encoded_polyline: str, api_key: str) -> float:
     """
     Elevation APIを使用して標高差を計算
@@ -432,10 +433,8 @@ async def compute_route_candidates(
     
     headers = {
         "X-Goog-Api-Key": api_key,
-        # Include steps for stairway detection and elevation data
-        # Note: routes.legs must be included to access routes.legs.steps
-        # stepType field doesn't exist in Routes API v2, so we request the full steps object
-        "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs,routes.legs.steps,routes.legs.steps.navigationInstruction",
+        # steps / elevation は特徴量から外したため最小限のフィールドのみ要求（レイテンシ削減）
+        "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
     }
 
     client = get_client()
@@ -576,48 +575,15 @@ async def compute_route_candidates(
             )
             continue
 
-        # Extract elevation and stairway information from steps
-        has_stairs = False
-        elevation_gain_m = 0.0
-        legs = r0.get("legs", [])
-        for leg in legs:
-            steps = leg.get("steps", [])
-            for step in steps:
-                # Check for stairs in navigation instruction
-                nav_instruction = step.get("navigationInstruction", {})
-                if nav_instruction:
-                    # Check instructions text
-                    instruction_text = nav_instruction.get("instructions", "").lower()
-                    if "stairs" in instruction_text or "階段" in instruction_text or "stair" in instruction_text:
-                        has_stairs = True
-
-                    # Check maneuver type (if available)
-                    maneuver = nav_instruction.get("maneuver", "")
-                    if isinstance(maneuver, str):
-                        maneuver_lower = maneuver.lower()
-                        if "stairs" in maneuver_lower or "階段" in maneuver_lower or "stair" in maneuver_lower:
-                            has_stairs = True
-
-                # Check stepType for elevation changes
-                step_type = step.get("stepType", "")
-                _ = step_type
-
-        # Calculate elevation gain from Elevation API if polyline is available
-        if encoded:
-            try:
-                elevation_gain_m = await _calculate_elevation_gain(encoded, api_key)
-            except Exception as e:
-                logger.warning(f"[Elevation API] Failed to calculate elevation gain: {e}", exc_info=True)
-                elevation_gain_m = 0.0
-
+        # has_stairs / elevation_gain_m は特徴量から外したため取得しない（BQ・下流互換のためキーは返す）
         if encoded and distance_m is not None:
             results.append({
                 "route_id": f"route_{idx}",
                 "polyline": encoded,
                 "distance_km": float(distance_m) / 1000.0,
                 "duration_min": duration_sec / 60.0 if duration_sec else None,
-                "has_stairs": has_stairs,
-                "elevation_gain_m": elevation_gain_m,  # Will be calculated from elevation data if available
+                "has_stairs": False,
+                "elevation_gain_m": 0.0,
             })
     return results
 
@@ -637,10 +603,8 @@ async def compute_route_candidate(
 
     headers = {
         "X-Goog-Api-Key": api_key,
-        # Include steps for stairway detection and elevation data
-        # Note: routes.legs must be included to access routes.legs.steps
-        # stepType field doesn't exist in Routes API v2, so we request the full steps object
-        "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs,routes.legs.steps,routes.legs.steps.navigationInstruction",
+        # steps / elevation は特徴量から外したため最小限のフィールドのみ要求（レイテンシ削減）
+        "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
     }
 
     client = get_client()
@@ -779,47 +743,14 @@ async def compute_route_candidate(
         )
         return None
 
-    # Extract elevation and stairway information from steps
-    has_stairs = False
-    elevation_gain_m = 0.0
-    legs = r0.get("legs", [])
-    for leg in legs:
-        steps = leg.get("steps", [])
-        for step in steps:
-            # Check for stairs in navigation instruction
-            nav_instruction = step.get("navigationInstruction", {})
-            if nav_instruction:
-                # Check instructions text
-                instruction_text = nav_instruction.get("instructions", "").lower()
-                if "stairs" in instruction_text or "階段" in instruction_text or "stair" in instruction_text:
-                    has_stairs = True
-
-                # Check maneuver type (if available)
-                maneuver = nav_instruction.get("maneuver", "")
-                if isinstance(maneuver, str):
-                    maneuver_lower = maneuver.lower()
-                    if "stairs" in maneuver_lower or "階段" in maneuver_lower or "stair" in maneuver_lower:
-                        has_stairs = True
-
-            # Check stepType for elevation changes
-            step_type = step.get("stepType", "")
-            _ = step_type
-
-    # Calculate elevation gain from Elevation API if polyline is available
-    if encoded:
-        try:
-            elevation_gain_m = await _calculate_elevation_gain(encoded, api_key)
-        except Exception as e:
-            logger.warning(f"[Elevation API] Failed to calculate elevation gain: {e}", exc_info=True)
-            elevation_gain_m = 0.0
-
+    # has_stairs / elevation_gain_m は特徴量から外したため取得しない（BQ・下流互換のためキーは返す）
     if encoded and distance_m is not None:
         return {
             "route_id": f"route_{idx}",
             "polyline": encoded,
             "distance_km": float(distance_m) / 1000.0,
             "duration_min": duration_sec / 60.0 if duration_sec else None,
-            "has_stairs": has_stairs,
-            "elevation_gain_m": elevation_gain_m,
+            "has_stairs": False,
+            "elevation_gain_m": 0.0,
         }
     return None

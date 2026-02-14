@@ -21,7 +21,11 @@ region     = "asia-northeast1"
 # ranker_image = "asia-northeast1-docker.pkg.dev/PROJECT_ID/ranker-repo/ranker:latest"
 # agent_env_features_version = "mvp_v1"
 # agent_env_vertex_text_model = "gemini-2.5-flash"
-# ranker_env_model_version   = "shadow_xgb_v2"
+# ranker_env_model_version   = "shadow_xgb_18feat"
 # ranker_env_ranker_version  = "rule_v1"
+# Vertex AI で推論する場合（18特徴量モデルを Vertex にデプロイ済みなら）
+# ranker_env_model_inference_mode = "vertex"
+# ranker_env_vertex_endpoint_id   = "3135439925533474816"
+# ranker_env_vertex_timeout_s     = "5.0"
 # MAPS_API_KEY は CI で渡す想定。apply 時にここで渡す場合は sensitive のため取り扱い注意
 # agent_env_maps_api_key = ""

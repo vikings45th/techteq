@@ -1,15 +1,5 @@
 <script setup lang="ts">
-type ChatMessage = {
-  id: string;
-  role: "assistant" | "user" | "system";
-  parts: { type: string; text: string }[];
-};
-
-interface SuggestedRoute {
-  message: string;
-  theme: string;
-  distance_km: number;
-}
+import type { SuggestedRoute, ChatMessage } from "~/types/route";
 
 const geminiStatus = ref("ready");
 const isModalOpen = ref(false);
@@ -35,12 +25,10 @@ const features = ref([
   },
 ]);
 
-const chatButtonLabels = ref(["案内してもらう", "ちょっと違う気分"]);
-
 const firstSuggest = async () => {
   messages.value = [
     {
-      id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+      id: crypto.randomUUID(),
       role: "assistant",
       parts: [
         {
@@ -63,7 +51,7 @@ const firstSuggest = async () => {
   suggestedRoute.value = route;
 
   messages.value.push({
-    id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+    id: crypto.randomUUID(),
     role: "assistant",
     parts: [
       {
@@ -76,7 +64,22 @@ const firstSuggest = async () => {
 
 const resuggest = async () => {
   messages.value.push({
-    id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+    id: crypto.randomUUID(),
+    role: "user",
+    parts: [
+      {
+        type: "text",
+        text: "ちょっと違う気分",
+      },
+    ],
+  });
+  geminiStatus.value = "submitted";
+
+  // 0.5秒待機
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  messages.value.push({
+    id: crypto.randomUUID(),
     role: "assistant",
     parts: [
       {
@@ -85,7 +88,7 @@ const resuggest = async () => {
       },
     ],
   });
-  geminiStatus.value = "submitted";
+
   const route = await $fetch<SuggestedRoute>("/api/gemini", {
     method: "POST",
     body: {
@@ -100,7 +103,7 @@ const resuggest = async () => {
   suggestedRoute.value = route;
 
   messages.value.push({
-    id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+    id: crypto.randomUUID(),
     role: "assistant",
     parts: [
       {
@@ -110,29 +113,26 @@ const resuggest = async () => {
     ],
   });
 };
-
-const handleButtonClick = async (label: string) => {
+const handleSearch = async () => {
   messages.value.push({
-    id: "6045235a-a435-46b8-989d-2df38ca2eb47",
+    id: crypto.randomUUID(),
     role: "user",
     parts: [
       {
         type: "text",
-        text: label,
+        text: "案内してもらう",
       },
     ],
   });
 
+  geminiStatus.value = "submitted";
+
   // 0.5秒待機
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  if (label === "案内してもらう") {
-    navigateTo(
-      `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
-    );
-  } else if (label === "ちょっと違う気分") {
-    resuggest();
-  }
+  navigateTo(
+    `/app/search?theme=${suggestedRoute.value.theme}&distance_km=${suggestedRoute.value.distance_km}&quicksearch=true`,
+  );
 };
 
 // モーダルが開いたときに自動的に提案を取得
@@ -155,11 +155,13 @@ watch(isModalOpen, (newValue) => {
       class="rounded-lg shadow-2xl ring ring-default"
     />
   </UPageHero>
-  <UPageCTA title="散歩を提案してもらう">
+  <UPageCTA
+    title="散歩を提案してもらう"
+    description="チャットでいくつか答えるだけです。"
+  >
     <UDrawer direction="bottom" handle-only>
       <UButton
         color="primary"
-        label="チャットでいくつか答えるだけです。"
         icon="i-lucide-message-circle"
         size="xl"
         block
@@ -167,9 +169,9 @@ watch(isModalOpen, (newValue) => {
       />
 
       <template #content>
-        <div class="h-[90dvh] p-4 flex flex-col min-h-0">
-          <UChatPalette class="flex-1 min-h-0 flex flex-col">
-            <div class="overflow-y-auto flex-1 min-h-0">
+        <div class="h-[90vh] flex flex-col min-h-0">
+          <UChatPalette>
+            <div class="flex flex-col flex-1 min-h-0 overflow-y-auto">
               <UChatMessages
                 should-auto-scroll
                 :status="geminiStatus"
@@ -179,19 +181,27 @@ watch(isModalOpen, (newValue) => {
                     icon: 'i-lucide-bot',
                   },
                 }"
+                :ui="{
+                  root: 'w-full flex flex-col gap-1 px-2.5 flex-none [&>article]:last-of-type:min-h-0',
+                }"
               />
               <div
                 v-if="geminiStatus === 'ready'"
-                class="flex flex-wrap gap-2 m-4 justify-end"
+                class="flex flex-wrap gap-2 m-4 justify-end flex-none"
               >
                 <UButton
-                  v-for="(label, index) in chatButtonLabels"
-                  :key="index"
-                  :label="label"
-                  :color="index === 0 ? 'primary' : 'neutral'"
+                  label="案内してもらう"
+                  color="primary"
                   variant="outline"
                   class="rounded-full"
-                  @click="handleButtonClick(label)"
+                  @click="handleSearch"
+                />
+                <UButton
+                  label="ちょっと違う気分"
+                  color="neutral"
+                  variant="outline"
+                  class="rounded-full"
+                  @click="resuggest"
                 />
               </div>
             </div>
@@ -205,6 +215,4 @@ watch(isModalOpen, (newValue) => {
     description="今の気分に沿った散歩ルートを一つだけ提案します。"
     :features="features"
   />
-
-  <!-- モーダル -->
 </template>

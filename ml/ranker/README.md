@@ -11,6 +11,7 @@
 - [実装詳細](#実装詳細)
 - [テスト](#テスト)
 - [学習とモデル配置](#学習とモデル配置)
+- [特徴量重要度とボトルネック](#特徴量重要度とボトルネック)
 - [タイムアウト](#タイムアウト)
 - [デプロイ](#デプロイ)
 - [トラブルシューティング](#トラブルシューティング)
@@ -78,9 +79,7 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
         "poi_density": 0.5,
         "spot_type_diversity": 0.6,
         "detour_over_ratio": 0.1,
-        "theme_exercise": 1,
-        "has_stairs": 1,
-        "elevation_density": 25.0
+        "theme_exercise": 1
       }
     }
   ]
@@ -195,27 +194,12 @@ poi_bonus = park_poi_ratio * 0.15 + min(poi_density, 1.0) * 0.1
 
 #### 4. 運動テーマボーナス
 
-Exerciseテーマの場合、階段と標高差密度を考慮。
+階段・標高は特徴量から外したため、ルールでは加点なし（モデル推論を優先）。
 
 ```python
-if theme_exercise:
-    if has_stairs:
-        exercise_bonus += 0.15  # 階段があると運動強度が高い
-    
-    # 標高差密度（m/km）に基づくボーナス
-    if 10.0 <= elevation_density <= 50.0:
-        exercise_bonus += 0.2  # 適度な坂道は良い
-    elif 5.0 <= elevation_density < 10.0:
-        exercise_bonus += 0.1  # 軽い坂道も良い
-    elif elevation_density > 50.0:
-        exercise_bonus += 0.1  # 急な坂道も運動強度は高い
+# 階段・標高は特徴量から外したためルールでは加点なし（モデル推論を優先）
+exercise_bonus = 0.0
 ```
-
-- `has_stairs`: 階段の有無（1 or 0）
-- `elevation_density`: 標高差密度（m/km）
-  - 10-50m/km: 適度な坂道（+0.2）
-  - 5-10m/km: 軽い坂道（+0.1）
-  - 50m/km以上: 急な坂道（+0.1）
 
 #### 5. スポット多様性（単調さ抑止）
 
@@ -259,10 +243,8 @@ score = max(0.0, min(1.0, score))  # 0.0-1.0の範囲にクリップ
 - `spot_type_diversity`: スポットタイプ多様性（大きいほど良い）
 - `detour_over_ratio`: 寄り道超過比率（小さいほど良い）
 - `theme_exercise`: 運動テーマフラグ（1 or 0）
-- `has_stairs`: 階段の有無（1 or 0）
-- `elevation_density`: 標高差密度（m/km）
 
-**注意:** 現在はVertex AI Endpointのモデルスコアを優先し、ルールはシャドーで残します。
+**注意:** 現在はVertex AI Endpointのモデルスコアを優先し、ルールはシャドーで残します。`has_stairs` / `elevation_*` は特徴量から外済みです。
 
 ## 実装詳細
 
@@ -294,6 +276,7 @@ ml/ranker/
 ├── models/                 # 推論時に参照する成果物
 ├── training/
 │   ├── train_xgb.py         # XGBoost学習スクリプト
+│   ├── feature_importance.py # 特徴量重要度の取得（学習済みモデルから）
 │   └── requirements.txt     # 学習用依存
 ├── Dockerfile
 ├── requirements.txt
@@ -419,6 +402,106 @@ cp artifacts/feature_columns.json models/feature_columns.json
 
 Cloud Run では `models/` をイメージに同梱するか、ボリュームでマウントしてください。
 
+### 特徴量重要度の確認
+
+学習済みモデルから特徴量重要度（gain）を取得するスクリプトがあります。
+
+```bash
+cd ml/ranker/training
+python feature_importance.py
+# オプション: --model ../artifacts/model.xgb.json --features ../artifacts/feature_columns.json --out importance.json
+```
+
+`feature_importance.py` は XGBoost の `get_score(importance_type='gain')` で各特徴量の寄与度を出し、elevation/steps 関連の重要度を一覧します。性能改善の検討時に参照してください。
+
+## 特徴量重要度とボトルネック
+
+### 調査結果（2026年2月時点のモデル）
+
+カスタムモデル（XGBoost）の特徴量重要度を `training/feature_importance.py` で取得した結果、**elevation / steps 関連の特徴量はすべて重要度 0%** でした。
+
+| 特徴量 | gain | gain_% | 備考 |
+|--------|------|--------|------|
+| elevation_gain_m | 0.0000 | 0.00% | 累積標高差（上り） |
+| elevation_density | 0.0000 | 0.00% | 標高差密度（m/km） |
+| has_stairs | 0.0000 | 0.00% | 階段の有無 |
+
+いずれも木の分割に一度も使われていません。一方で、重要度が高い特徴量は以下の通りです（上位のみ）。
+
+- theme_think / theme_refresh / theme_exercise / theme_nature
+- duration_min / distance_km
+- turn_count / turn_density
+- distance_error_ratio / candidate_rank_in_theme
+
+### ボトルネックになっている箇所
+
+これらの特徴量を取得するために、Agent 側で以下のコストがかかっています。
+
+1. **Routes API の FieldMask**
+   - `routes.legs`, `routes.legs.steps`, `routes.legs.steps.navigationInstruction` を要求しており、**steps 情報の取得でレスポンスが重くなる**。
+   - 取得元: `ml/agent/app/services/maps_routes_client.py` の `X-Goog-FieldMask`（`compute_route_dests` と `compute_route_candidate` の両方）。
+
+2. **Elevation API の呼び出し**
+   - ルートごとに **1回ずつ** `_calculate_elevation_gain(encoded, api_key)` が呼ばれ、**別途 HTTP で Elevation API にリクエスト**している。
+   - 候補が N 本あると **N 回** Elevation API が呼ばれるため、レイテンシのボトルネックになりやすい。
+
+### 推奨対応
+
+重要度が 0% であるため、**elevation_gain_m / elevation_density / has_stairs を特徴量から外し、取得処理をスキップする**ことでレイテンシを削減できます。
+
+- **Agent**: FieldMask から `routes.legs.steps` 系を外す。Elevation API の呼び出しをやめる。特徴量計算で elevation / has_stairs を 0 または定数で埋める。
+- **Ranker**: 学習・推論時の特徴量リストから `elevation_gain_m`, `elevation_density`, `has_stairs` を削除し、**新しいモデルを再学習**してからデプロイする（既存モデルはこれらのキーを無視している可能性はあるが、入力スキーマを揃えるため再学習を推奨）。
+
+特徴量を外したうえで再度 `feature_importance.py` を実行し、他特徴量の重要度がどう変わるか確認することを推奨します。
+
+### 対応済み: 再学習とデプロイ手順
+
+ソースコード上では **has_stairs / elevation_gain_m / elevation_density** を特徴量から外してあります。**既存の model.xgb.json は 21 特徴量で学習されているため、18 特徴量に減らしたあとは必ず再学習し、新しいモデルをデプロイしてください。**
+
+#### 1. 再学習（BigQuery から）
+
+```bash
+cd ml/ranker
+pip install -r training/requirements.txt
+
+# プロジェクト・データセット・テーブルは環境に合わせて変更
+python training/train_xgb.py \
+  --project YOUR_PROJECT \
+  --dataset firstdown_mvp \
+  --table training_view_poc_aug_v2 \
+  --model-version shadow_xgb_no_elevation \
+  --output-dir artifacts
+```
+
+#### 2. 推論用成果物の配置
+
+```bash
+cp artifacts/model.xgb.json models/model.xgb.json
+cp artifacts/feature_columns.json models/feature_columns.json
+cp artifacts/metadata.json models/metadata.json
+```
+
+#### 3. デプロイ
+
+- **Cloud Run（Ranker を直接デプロイする場合）**: 上記 `models/` をイメージに同梱してビルド・デプロイする。
+- **Vertex AI Endpoint を使う場合**: `ml/ranker/scripts/deploy_vertex.sh` を実行するか、下記「2) モデル成果物をGCSに配置」のとおり手動で GCS にアップロードし、Predictor コンテナをビルド・Vertex にデプロイする。`VERSION` を再学習時の `--model-version` に合わせること。
+  - GCS バケットには、Vertex の予測用コンテナがモデルを読めるよう **デフォルト Compute 用サービスアカウント**（`PROJECT_NUMBER-compute@developer.gserviceaccount.com`）に `roles/storage.objectViewer` を付与すること。`deploy_vertex.sh` 内で付与処理を実行している。
+
+再学習後は `python training/feature_importance.py` で重要度を確認することを推奨します。
+
+#### 4. Ranker を Vertex 推論にする（Terraform）
+
+18特徴量モデルを Vertex AI Endpoint にデプロイしたあと、Ranker のスコアリングをそのエンドポイントで行うには、Terraform の `terraform.tfvars` で以下を設定して `terraform apply` する。
+
+```hcl
+ranker_env_model_version         = "shadow_xgb_18feat"
+ranker_env_model_inference_mode  = "vertex"
+ranker_env_vertex_endpoint_id    = "3135439925533474816"  # デプロイ先の Endpoint ID
+ranker_env_vertex_timeout_s      = "5.0"
+```
+
+Cloud Run の Ranker を再デプロイすると、`MODEL_INFERENCE_MODE=vertex` と `VERTEX_ENDPOINT_ID` が渡り、推論が Vertex AI の新モデルで行われます。
+
 ### Vertex AI Online Prediction（カスタムコンテナ）
 
 **Vertex AI にデプロイしたカスタムモデル（学習済みXGBoost）のエンドポイント**にリクエストを送って推論する構成に切替える手順です。Ranker はこのエンドポイントから返るスコアを本番のランキングに利用します。
@@ -526,10 +609,13 @@ gcloud ai endpoints create \
 
 #### 7) EndpointにModelをデプロイ
 
+コンテナが GCS からモデルを読むため、**デフォルト Compute 用サービスアカウント**を `--service-account` で指定する（当該 SA にバケットの `roles/storage.objectViewer` を付与しておくこと）。
+
 ```bash
 PROJECT=firstdown-482704
 ENDPOINT_ID=<上記で取得したENDPOINT_ID>
 MODEL_ID=<上記で取得したMODEL_ID>
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT} --format="value(projectNumber)")
 
 gcloud ai endpoints deploy-model ${ENDPOINT_ID} \
   --region=asia-northeast1 \
@@ -538,7 +624,8 @@ gcloud ai endpoints deploy-model ${ENDPOINT_ID} \
   --display-name=ranker-xgb-deploy \
   --machine-type=n1-standard-2 \
   --min-replica-count=1 \
-  --max-replica-count=2
+  --max-replica-count=2 \
+  --service-account=${PROJECT_NUMBER}-compute@developer.gserviceaccount.com
 ```
 
 #### 8) Ranker側の環境変数設定
