@@ -77,6 +77,8 @@ def _coerce_structured(result: object, schema: type) -> object:
         return schema.model_validate(result)
     if isinstance(result, str):
         text = result.strip()
+        if not text:
+            raise ValueError("empty string cannot be parsed as structured response")
         try:
             return schema.model_validate(json.loads(text))
         except Exception:
@@ -332,6 +334,9 @@ async def generate_title_and_description(
             )
             if hasattr(result, "content"):
                 result = result.content
+            if result is None or (isinstance(result, str) and not result.strip()):
+                logger.warning("[Vertex LLM Title+Summary] empty response from model")
+                raise ValueError("LLM returned empty response")
             parsed = _coerce_structured(result, TitleDescriptionResponse)
             title = parsed.title
             description = parsed.description
