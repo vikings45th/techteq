@@ -352,7 +352,7 @@ onBeforeUnmount(() => {
           :loading="loadingLocation"
           @click="fetchCurrentLocation"
           variant="outline"
-          class="absolute !bg-white bottom-6 right-6 p-3 shadow-lg z-10"
+          class="absolute bg-white bottom-6 right-6 p-3 shadow-lg z-10"
         />
       </div>
       <p class="text-xs text-gray-500 px-2 py-1">

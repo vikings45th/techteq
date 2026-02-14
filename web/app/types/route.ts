@@ -43,3 +43,15 @@ export interface RouteFeedbackResponse {
   request_id: string;
   status: string;
 }
+
+export interface SuggestedRoute {
+  message: string;
+  theme: string;
+  distance_km: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "assistant" | "user" | "system";
+  parts: { type: string; text: string }[];
+}

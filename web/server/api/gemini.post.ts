@@ -99,8 +99,6 @@ const weatherData = async () => {
     \n風速: ${weatherData.current.wind_speed_10m},
     \n雨量: ${weatherData.current.rain}`;
 
-  console.log(res);
-
   return res;
 };
 
