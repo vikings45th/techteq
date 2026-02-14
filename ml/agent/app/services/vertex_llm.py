@@ -327,15 +327,19 @@ async def generate_title_and_description(
             forbidden_words=forbidden_words,
         )
         try:
-            # 構造化出力を使うと空返しになりにくく、スキーマ通りの返却になる
-            parsed = await _invoke_structured(
+            # 構造化出力(with_structured_output)だと毎回空返しになるため、生テキストで呼びプロンプト通りの1行JSONを返させる
+            result = await _invoke_raw(
                 prompt,
                 temperature=attempt["temperature"],
                 max_output_tokens=attempt["max_out"],
-                schema=TitleDescriptionResponse,
             )
-            if not isinstance(parsed, TitleDescriptionResponse):
-                parsed = _coerce_structured(parsed, TitleDescriptionResponse)
+            if hasattr(result, "content"):
+                result = result.content
+            text = (result or "").strip()
+            if not text:
+                logger.warning("[Vertex LLM Title+Summary] empty response from model (raw invoke)")
+                continue
+            parsed = _coerce_structured(text, TitleDescriptionResponse)
             title = parsed.title
             description = parsed.description
             banned = _contains_forbidden(title, forbidden_words) or _contains_forbidden(description, forbidden_words)
