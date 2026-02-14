@@ -1,0 +1,10 @@
+# 本番用: 状態を GCS に保存する場合
+# コピーして backend.tf にリネームし、bucket を実際のバケット名に変更してください。
+# バケットは別途作成するか、別の Terraform で管理してください。
+
+# terraform {
+#   backend "gcs" {
+#     bucket = "YOUR_PROJECT_ID-tfstate"
+#     prefix = "firstdown/infra"
+#   }
+# }

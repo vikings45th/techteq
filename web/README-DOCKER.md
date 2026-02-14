@@ -38,3 +38,6 @@ docker run -p 3000:3000 firstdown-web
 ## アクセス
 アプリケーションは http://localhost:3000 でアクセスできます。
 
+## 関連
+本番の GCP リソース（Cloud Run 等）の定義は [infra/README.md](../infra/README.md) を参照してください。
+
