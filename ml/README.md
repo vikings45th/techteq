@@ -1,6 +1,6 @@
 # ML Services
 
-このディレクトリには、firstdownのML関連サービスが含まれています。
+このディレクトリには、tekuteqのML関連サービスが含まれています。
 
 ## 📋 目次
 
@@ -11,6 +11,9 @@
 - [テスト](#テスト)
 - [ログ](#ログ)
 - [デプロイ](#デプロイ)
+- [開発ガイド](#開発ガイド)
+- [トラブルシューティング](#トラブルシューティング)
+- [リンク](#リンク)
 
 ## サービス一覧
 
@@ -19,12 +22,13 @@
 ルート生成を統括するメインAPIサービス。Maps Routes API、Places API、Ranker、Vertex AIを組み合わせて最適な散歩ルートを提案します。
 
 **主な機能:**
-- テーマ別ルート生成（exercise, think, refresh, nature）
+- 気分・モードに応じたルート生成（exercise, think, refresh, nature の4モード）
 - 片道/周回ルート対応（片道は`end_location`必須）
-- ルート上のスポット検索（日本語対応、二段階検索+営業時間フィルタ+近傍フィルタ）
-- AIによる紹介文・タイトル生成（Vertex AI）
+- ルート上のスポット検索（日本語対応、二段階検索（穴場→テーマ別タイプ）+ ルート近傍フィルタ）
+- AIによる紹介文・タイトル生成（Vertex AI、Jinjaテンプレート + 構造化出力 / title_description 一括生成）
 - ナビ用代表点`nav_waypoints`の生成（polyline由来の代表点のみ、周回時は始終点を一致）
 - フォールバック機能（外部API障害時も簡易ルートを提供）
+- ルート生成フローは LangGraph でオーケストレーション（`GET /route/graph` で Mermaid 図を取得可能）
 
 詳細は [Agent README](./agent/README.md) を参照してください。
 
@@ -48,12 +52,12 @@
 │  (Orchestrator) │
 └──────┬──────────┘
        │
-       ├──► Maps Routes API ──► ルート候補生成
+       ├──► Maps Routes API ──► ルート候補の蓄積的生成（閾値・最低本数で早期終了）
        │
        ├──► Places API ──────► スポット検索（日本語対応）
-       │                        - 穴場優先＋補完の二段階検索
-       │                        - 営業時間フィルタ（屋外は補完時のみ例外）
+       │                        - 二段階検索（穴場キーワード → テーマ別場所タイプ、空なら再検索）
        │                        - 重複排除（place_id優先、name/latlng補助）
+       │                        - ルート近傍フィルタ（30m→60m→120mで緩和、3件未満のとき）
        │                        - 最大5件まで取得（緯度経度つき）
        │
        ├──► Ranker API ──────► ルート評価・ランキング
@@ -77,15 +81,14 @@
 
 ### 処理フロー
 
-1. **ルート候補生成**: Maps Routes APIで複数のルート候補を生成（形状バリエーション）
-2. **特徴量抽出**: 各ルート候補から特徴量を計算
-3. **ルート評価**: Ranker APIでスコアリング
+1. **ルート候補の蓄積的生成**: 目的地を形状・方位で多様化（周回は円/三角/アウト&バック/蛇行、片道は終点 or 回り道 waypoints）し、1本ずつ Maps Routes API で取得。目標距離との誤差比率（`ROUTE_DISTANCE_ERROR_RATIO_MAX`）でフィルタし、短距離時は誤差厳格化・目標の事前補正・再試行時の目標再計算を行う。ヒューリスティックで閾値・最低本数に達したら打ち切り。最大 MAX_ROUTES 本まで。詳細は [Agent README](./agent/README.md#ルート候補生成の詳細maps-routes-api-まわり) を参照。
+2. **特徴量抽出**: 揃った候補それぞれから特徴量を計算
+3. **ルート評価**: 候補を一括で Ranker API に送り、モデルスコアでスコアリング
 4. **最適ルート選択**: スコアが最も高いルートを選択
-5. **スポット検索**: ルート上の25/50/75%地点から二段階検索（営業時間フィルタ）
-6. **近傍フィルタ**: ルートから近いスポットに絞り込み
-7. **紹介文・タイトル生成**: Jinjaテンプレート + 構造化出力で生成
-8. **nav_waypoints生成**: polyline簡略化のみ → 最大10点
-9. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
+5. **スポット検索**: ルート上の25/50/75%地点から二段階検索（穴場→テーマ別タイプ）+ ルート近傍フィルタ
+6. **紹介文・タイトル生成**: Jinjaテンプレート + 構造化出力で生成
+7. **nav_waypoints生成**: polyline簡略化のみ → 最大10点
+8. **レスポンス返却**: ルート情報、スポット、紹介文、タイトルを返却
 
 ### フォールバック機能
 
@@ -227,21 +230,31 @@ resource.type="cloud_run_revision"
 jsonPayload.request_id="your-request-id"
 ```
 
-### BigQuery へのログ保存
+長期保存する場合は、ログシンクで GCS にエクスポートし、バケットのライフサイクルでストレージクラスを落とすと料金を抑えられる（必要時は [infra/README.md](../infra/README.md) を参照し、Terraform でシンク・バケットを追加可）。
 
-以下のテーブルにログが保存されます：
-
-- `route_request`: リクエストログ（テーマ、距離、開始地点など）
-- `route_proposal`: 提案ログ（選択されたルート、使用ツール、フォールバック情報など）
-- `route_feedback`: フィードバックログ（評価、リクエストIDなど）
+### BigQuery テーブル定義と用途
 
 **データセット:** `firstdown_mvp`（デフォルト）
 
-**SQL定義:** `ml/agent/bq/` に各種SQL（テーブル/ビュー定義）を配置
+| テーブル / ビュー | 書き込み元 | 用途 |
+|------------------|------------|------|
+| **route_request** | Agent API | リクエスト1件1行（テーマ、目標距離、開始点、周回フラグなど） |
+| **route_candidate** | Agent API | 候補ルートごと1行（特徴量、採用フラグ、表示順位など）。ランカー学習の入力元 |
+| **route_proposal** | Agent API | 提案1件1行（採用ルートID、フォールバック理由、使用ツール、レイテンシなど） |
+| **route_feedback** | Agent API（`POST /route/feedback`） | ユーザー評価1件1行（request_id, route_id, rating）。ランカー学習のラベル元 |
+| **rank_result** | Ranker API | 候補ごとに rule_score / model_score / model_latency_ms を記録。シャドウ推論・分析用 |
+| **training_view**（ビュー） | — | `route_candidate` と `route_feedback` を結合した学習用ビュー。正例・弱い負例と label_weight を付与 |
+
+**DDL・ビュー定義の配置**
+
+- Agent 用: `ml/agent/bq/`（`route_request.sql`, `route_candidate.sql`, `route_proposal.sql`, `route_feedback.sql`, `training_view.sql`, `training_gate.sql`, `route_proposal_polyline.sql`）
+- Ranker 用: `ml/ranker/bq/rank_result_shadow.sql`
+
+テーブルごとのカラム説明・運用メモは [Agent README の BigQuery セクション](./agent/README.md#bigquery-テーブル定義と用途) を参照。
 
 ## デプロイ
 
-各サービスはCloud Runにデプロイされます。設定は`.github/workflows/`を参照してください。
+Agent API と Ranker API は Cloud Run にデプロイされます。設定は `.github/workflows/` を参照してください。Web App のデプロイは別途です。
 
 ### デプロイトリガー
 
@@ -272,10 +285,12 @@ jsonPayload.request_id="your-request-id"
 
 ### 必要なGCPリソース
 
+API 有効化・Artifact Registry・BigQuery データセット・サービスアカウントと IAM は [infra/terraform/](../infra/README.md) で Terraform 定義済み。Cloud Run へのデプロイは GitHub Actions のまま。
+
 1. **Cloud Run**: サービス実行環境
-2. **Artifact Registry**: Dockerイメージ保存
+2. **Artifact Registry**: Docker イメージ保存
 3. **BigQuery**: ログ・分析データ保存
-4. **サービスアカウント**: Vertex AI認証用
+4. **サービスアカウント**: Vertex AI 認証用
 
 ## 開発ガイド
 
@@ -305,12 +320,17 @@ uvicorn app.main:app --reload --port 8080
 
 #### Agent API
 
+ルート生成は `app/graph.py`（LangGraph）でオーケストレーションされています。
+
 ```
 ml/agent/
 ├── app/
-│   ├── main.py              # FastAPIアプリケーション、ルート生成ロジック
+│   ├── main.py              # FastAPIアプリケーション、エンドポイント定義
+│   ├── graph.py             # ルート生成オーケストレーション（LangGraph）
 │   ├── schemas.py           # データスキーマ（Pydantic）
-│   ├── settings.py          # 設定管理
+│   ├── settings.py         # 設定管理
+│   ├── utils.py             # ユーティリティ
+│   ├── prompts/             # Vertex AI用Jinja（description, title, title_description）
 │   └── services/
 │       ├── maps_routes_client.py  # Maps Routes APIクライアント
 │       ├── places_client.py       # Places APIクライアント（日本語対応）
@@ -319,7 +339,9 @@ ml/agent/
 │       ├── feature_calc.py        # 特徴量計算
 │       ├── fallback.py            # フォールバック処理
 │       ├── polyline.py            # Polyline処理
-│       └── bq_writer.py           # BigQuery書き込み
+│       ├── bq_writer.py           # BigQuery書き込み
+│       └── http_client.py         # 共通HTTPクライアント
+├── bq/                       # BigQuery用SQL定義
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
@@ -332,8 +354,14 @@ ml/agent/
 ml/ranker/
 ├── app/
 │   ├── main.py              # FastAPIアプリケーション、スコアリングロジック
+│   ├── model_scoring.py     # モデル推論インターフェース（Vertex/XGB/スタブ）
+│   ├── bq_logger.py         # BigQueryログ書き込み
 │   ├── schemas.py           # データスキーマ（Pydantic）
 │   └── settings.py          # 設定管理
+├── bq/                      # rank_result_shadow.sql（DDL）
+├── training/                # train_xgb.py（XGBoost学習スクリプト）
+├── artifacts/               # 学習成果物の出力先
+├── models/                  # 推論時に参照する成果物（model.xgb.json 等）
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
@@ -342,24 +370,24 @@ ml/ranker/
 
 ### 主要な機能
 
-#### スポット検索（日本語対応）
+#### スポット検索（見どころ抽出・日本語対応）
 
-- テーマに応じた場所タイプで検索
-- ルート上の25/50/75%地点から検索
-- 重複排除（place_id優先、なければnameで判定）
-- 最大5件まで取得
-- ルート近傍でフィルタ（50m → 100m → 250mの順で緩和）
-- `name`と`type`を日本語で返却
+- 二段階検索（穴場キーワード → テーマ別場所タイプ）、結果が空ならタイプ指定なしで再検索
+- ルート上の25/50/75%をサンプル点とする（検索点数は `PLACES_SAMPLE_POINTS_MAX` で上限、デフォルト1）
+- 重複排除（place_id 優先、name / latlng 補助）。タイプ多様性を優先して最大5件を選択
+- ルート近傍フィルタ（30m → 3件未満なら60m → さらに3件未満なら120mで緩和）。ブロックリストでコンビニ・ファストフード等を除外
+- `name`と`type`を日本語で返却。詳細は [Agent README](./agent/README.md#スポット検索見どころ抽出日本語対応) を参照
 
 #### フォールバック機能
 
-外部APIが失敗した場合のフォールバック処理：
+次の4種類のフォールバックがあり、いずれも `meta.fallback_used` / `meta.fallback_reason` / `meta.fallback_details` に記録されます。
 
-1. **Maps Routes API失敗**: ダミーポリラインを生成
-2. **Ranker API失敗**: 最初のルート候補を選択
-3. **Vertex AI失敗**: テンプレートベースの紹介文を使用
+1. **maps_routes_failed**: Routes API 失敗時 → 開始〜終了のダミーポリラインを生成
+2. **ranker_failed**: Ranker API 失敗時 → 全候補をヒューリスティックでスコア付けし、最良の1本を選択
+3. **vertex_llm_failed**: Vertex AI 失敗時 → テンプレートベースの紹介文・タイトルを使用（ルートはそのまま）
+4. **invalid_route_detected**: 選択ルートが無効（距離極小や polyline 不正）時 → ダミーポリラインに差し替え
 
-フォールバック情報は`meta.fallback_used`と`meta.fallback_reason`に記録されます。
+詳細は [Agent README](./agent/README.md#フォールバック機能) を参照してください。
 
 ## トラブルシューティング
 
@@ -396,18 +424,21 @@ ml/ranker/
 **症状**: `fallback_used: true` が返される
 
 **原因**:
-- Maps Routes APIの失敗
-- Ranker APIの失敗
-- Vertex AIの失敗
+- Maps Routes API の失敗（maps_routes_failed）
+- Ranker API の失敗・タイムアウト（ranker_failed）
+- Vertex AI の失敗（vertex_llm_failed）
+- 選択ルートの無効検出（invalid_route_detected）
 
 **確認方法**:
-- ログで `fallback_reason` を確認
+- レスポンスの `meta.fallback_reason` または `meta.fallback_details` で理由を確認
+- ログで `fallback_reason` を検索
 - 各サービスのヘルスチェックを実行
 
 詳細は各サービスのREADMEを参照してください。
 
 ## リンク
 
+- [インフラ（IaC）README](../infra/README.md)
 - [Agent API README](./agent/README.md)
 - [Ranker API README](./ranker/README.md)
 - [プロジェクト全体のREADME](../README.md)

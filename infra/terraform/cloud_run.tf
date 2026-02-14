@@ -1,0 +1,145 @@
+# -----------------------------------------------------------------------------
+# Cloud Run サービス定義（実環境のパラメータをコード化）
+# デプロイは GitHub Actions の gcloud run deploy で実施。この定義は「設定の参照・テンプレート」。
+# イメージを変数で渡して apply すると、Terraform でサービスを作成・更新することも可能。
+# -----------------------------------------------------------------------------
+
+locals {
+  # イメージを渡したときだけ Terraform で Cloud Run を管理（空なら CI デプロイのみでこの定義はテンプレートとして参照用）
+  create_agent_service  = var.agent_image != ""
+  create_ranker_service = var.ranker_image != ""
+}
+
+# ---------- Agent ----------
+resource "google_cloud_run_v2_service" "agent" {
+  count    = local.create_agent_service ? 1 : 0
+  name     = var.agent_service_name
+  location = var.region
+  project  = var.project_id
+
+  template {
+    timeout                         = "300s"
+    max_instance_request_concurrency = 10
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 10
+    }
+    containers {
+      image = var.agent_image
+      resources {
+        limits = {
+          cpu    = "2"
+          memory = "2Gi"
+        }
+        cpu_idle = true
+      }
+      env {
+        name  = "RANKER_URL"
+        value = var.ranker_service_url
+      }
+      env {
+        name  = "RANKER_TIMEOUT_SEC"
+        value = "10"
+      }
+      env {
+        name  = "REQUEST_TIMEOUT_SEC"
+        value = "10"
+      }
+      env {
+        name  = "BQ_DATASET"
+        value = var.bq_dataset_id
+      }
+      env {
+        name  = "FEATURES_VERSION"
+        value = var.agent_env_features_version
+      }
+      env {
+        name  = "VERTEX_PROJECT"
+        value = var.project_id
+      }
+      env {
+        name  = "VERTEX_LOCATION"
+        value = var.region
+      }
+      env {
+        name  = "VERTEX_TEXT_MODEL"
+        value = var.agent_env_vertex_text_model
+      }
+      dynamic "env" {
+        for_each = var.agent_env_maps_api_key != "" ? [1] : []
+        content {
+          name  = "MAPS_API_KEY"
+          value = var.agent_env_maps_api_key
+        }
+      }
+    }
+    service_account = local.agent_runtime_sa_email
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "agent_public" {
+  count    = local.create_agent_service ? 1 : 0
+  name     = google_cloud_run_v2_service.agent[0].name
+  location = google_cloud_run_v2_service.agent[0].location
+  project  = var.project_id
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# ---------- Ranker ----------
+resource "google_cloud_run_v2_service" "ranker" {
+  count    = local.create_ranker_service ? 1 : 0
+  name     = var.ranker_service_name
+  location = var.region
+  project  = var.project_id
+
+  template {
+    timeout                         = "30s"
+    max_instance_request_concurrency = 10
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 10
+    }
+    containers {
+      image = var.ranker_image
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+        cpu_idle = true
+      }
+      env {
+        name  = "MODEL_VERSION"
+        value = var.ranker_env_model_version
+      }
+      env {
+        name  = "RANKER_VERSION"
+        value = var.ranker_env_ranker_version
+      }
+    }
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "ranker_public" {
+  count    = local.create_ranker_service ? 1 : 0
+  name     = google_cloud_run_v2_service.ranker[0].name
+  location = google_cloud_run_v2_service.ranker[0].location
+  project  = var.project_id
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
