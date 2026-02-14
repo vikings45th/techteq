@@ -28,7 +28,7 @@ Google Cloud のリソースを Terraform でコード管理します。この�
 
 ## 本サービスで利用する Google Cloud サービスと IaC の対応
 
-firstdown で利用している Google Cloud のサービス一覧と、この IaC（Terraform）で管理するかどうかの対応です。
+tekuteq で利用している Google Cloud のサービス一覧と、この IaC（Terraform）で管理するかどうかの対応です。
 
 | Google Cloud サービス | 本サービスでの用途 | IaC で管理 | 備考 |
 |------------------------|-------------------|------------|------|
