@@ -88,6 +88,33 @@ def _coerce_structured(result: object, schema: type) -> object:
     return schema.model_validate(result)
 
 
+def _log_raw_response(raw: object) -> None:
+    """空判定時にモデル/SDKの生レスポンスを丸ごとログ出しし、原因切り分けする。"""
+    cap = 2000
+    ty = type(raw).__name__
+    logger.warning("[Vertex LLM Title+Summary] raw response type=%s", ty)
+    logger.warning("[Vertex LLM Title+Summary] raw repr=%s", repr(raw)[:cap])
+    if raw is None:
+        return
+    if hasattr(raw, "content"):
+        c = getattr(raw, "content", None)
+        logger.warning("[Vertex LLM Title+Summary] raw.content=%s", repr(c)[:cap])
+    if hasattr(raw, "response_metadata"):
+        m = getattr(raw, "response_metadata", None)
+        logger.warning("[Vertex LLM Title+Summary] raw.response_metadata=%s", repr(m)[:cap])
+    if hasattr(raw, "additional_kwargs"):
+        a = getattr(raw, "additional_kwargs", None)
+        if a:
+            logger.warning("[Vertex LLM Title+Summary] raw.additional_kwargs=%s", repr(a)[:cap])
+    if isinstance(raw, dict):
+        logger.warning("[Vertex LLM Title+Summary] raw keys=%s", list(raw.keys()))
+        if "candidates" in raw:
+            cands = raw["candidates"]
+            logger.warning("[Vertex LLM Title+Summary] raw.candidates len=%s", len(cands) if cands else 0)
+            if cands:
+                logger.warning("[Vertex LLM Title+Summary] raw.candidates[0]=%s", repr(cands[0])[:cap])
+
+
 def _spot_names(spots: Optional[list]) -> list[str]:
     if not spots:
         return []
@@ -328,16 +355,20 @@ async def generate_title_and_description(
         )
         try:
             # 構造化出力(with_structured_output)だと毎回空返しになるため、生テキストで呼びプロンプト通りの1行JSONを返させる
-            result = await _invoke_raw(
+            raw_from_sdk = await _invoke_raw(
                 prompt,
                 temperature=attempt["temperature"],
                 max_output_tokens=attempt["max_out"],
             )
+            # 空なのが「モデル出力」か「SDK取り出し」か切り分けるため、生レスポンスを保持
+            result = raw_from_sdk
             if hasattr(result, "content"):
                 result = result.content
             text = (result or "").strip()
             if not text:
-                logger.warning("[Vertex LLM Title+Summary] empty response from model (raw invoke)")
+                # 丸ごとログ出し: 型・repr・content の有無、candidates 等の別取り出し候補
+                _log_raw_response(raw_from_sdk)
+                logger.warning("[Vertex LLM Title+Summary] empty response (raw invoke)")
                 continue
             parsed = _coerce_structured(text, TitleDescriptionResponse)
             title = parsed.title
