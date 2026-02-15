@@ -15,6 +15,8 @@ region     = "asia-northeast1"
 # --- Cloud Run（変更したいものだけここで上書き。サービス名・URL・キー・バージョンなど）
 # agent_service_name = "agent"
 # ranker_service_name = "ranker"
+# Agent の run.invoker を付与する SA（Web を Cloud Run で動かす場合は Web の Cloud Run 用 SA のメール）。空なら Terraform で invoker を付与しない
+# agent_invoker_sa_email = "123456789-compute@developer.gserviceaccount.com"
 # Agent 利用時は Ranker の URL を必ず設定（他環境では自分の Cloud Run URL に変更）
 # ranker_service_url = "https://ranker-203786374782.asia-northeast1.run.app"
 # agent_image  = "asia-northeast1-docker.pkg.dev/PROJECT_ID/agent-repo/agent:latest"

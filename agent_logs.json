@@ -1,0 +1,3117 @@
+﻿[
+  {
+    "insertId": "69919a9d000d9f5ff14d8302",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-15T10:06:21.897338418Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "INFO:     169.254.169.126:52764 - \"POST /route/generate HTTP/1.1\" 200 OK",
+    "timestamp": "2026-02-15T10:06:21.892767Z"
+  },
+  {
+    "insertId": "69919a9d000d93e77381c198",
+    "jsonPayload": {
+      "candidates_count": 2,
+      "debug": false,
+      "fallback": false,
+      "fallback_reason": null,
+      "message": "route_generate_summary",
+      "path": "/route/generate",
+      "places_status": "ok",
+      "ranker_status": "ok",
+      "request_id": "bdc3bb47-58ab-4901-bd55-5bbeb661fcee",
+      "routes_api_status": "ok",
+      "service": "agent",
+      "total_latency_ms": 11899,
+      "trace_id": "5202d2451d83fbf182ad6770f1e28d5f"
+    },
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:22.017678689Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "timestamp": "2026-02-15T10:06:21.889831Z"
+  },
+  {
+    "insertId": "69919a9d000d9386ed7c3cba",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:22.017678689Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Latency Summary] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee total_ms=11899 steps={'validate_request': 0, 'log_request_bq': 65, 'generate_candidates_routes': 226, 'compute_features': 654, 'score_by_ranker': 10187, 'select_best_route': 0, 'sample_points_from_polyline': 0, 'parallel_postprocess': 534, 'fetch_places': 475, 'vertex_title_description': 533, 'simplify_polyline_to_waypoints': 0, 'compute_quality': 0, 'build_fallback_details': 0, 'store_candidates_bq': 70, 'store_proposal_bq': 107, 'build_response': 0}",
+    "timestamp": "2026-02-15T10:06:21.889734Z"
+  },
+  {
+    "insertId": "69919a9d000aad7929aac03b",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:22.017678689Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Latency Breakdown] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee total_ms=11709 steps={'validate_request': 0, 'log_request_bq': 65, 'generate_candidates_routes': 226, 'compute_features': 654, 'score_by_ranker': 10187, 'select_best_route': 0, 'sample_points_from_polyline': 0, 'parallel_postprocess': 534, 'fetch_places': 475, 'vertex_title_description': 533, 'simplify_polyline_to_waypoints': 0, 'compute_quality': 0}",
+    "timestamp": "2026-02-15T10:06:21.699769Z"
+  },
+  {
+    "insertId": "69919a9d000aad1bdc04d7e3",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:22.017678689Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Total Latency] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee elapsed_ms=11709",
+    "timestamp": "2026-02-15T10:06:21.699675Z"
+  },
+  {
+    "insertId": "69919a9d000a928eddfd14e9",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:22.017678689Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Postprocess Latency] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee elapsed_ms=534",
+    "timestamp": "2026-02-15T10:06:21.692878Z"
+  },
+  {
+    "insertId": "69919a9d000a92813646dc9d",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:22.017678689Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Vertex Title+Summary Latency] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee elapsed_ms=533",
+    "timestamp": "2026-02-15T10:06:21.692865Z"
+  },
+  {
+    "insertId": "69919a9d000a91c8e716b751",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:22.017678689Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[LLM_RESULT] raw_length=36 normalized_length=70 fallback=false",
+    "timestamp": "2026-02-15T10:06:21.692680Z"
+  },
+  {
+    "insertId": "69919a9d0009ac64c05e5a1e",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places Latency] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee spots=1 elapsed_ms=475",
+    "timestamp": "2026-02-15T10:06:21.633956Z"
+  },
+  {
+    "insertId": "69919a9d0009a96aae6e0343",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee phase=classic found 2 places at (35.721220, 139.792890): ['????', '????']",
+    "timestamp": "2026-02-15T10:06:21.633194Z"
+  },
+  {
+    "insertId": "69919a9d0009a935a2998412",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722254, 139.793016) theme=think",
+    "timestamp": "2026-02-15T10:06:21.633141Z"
+  },
+  {
+    "insertId": "69919a9d0009a2d13bd2c1d2",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:21.631505Z"
+  },
+  {
+    "insertId": "69919a9d0006c03ab7053729",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee phase=hidden found 2 places at (35.721220, 139.792890): ['????', '????']",
+    "timestamp": "2026-02-15T10:06:21.442426Z"
+  },
+  {
+    "insertId": "69919a9d0006c0296a34fdb9",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722254, 139.793016) theme=think",
+    "timestamp": "2026-02-15T10:06:21.442409Z"
+  },
+  {
+    "insertId": "69919a9d0006b9ba175133e7",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:21.440762Z"
+  },
+  {
+    "insertId": "69919a9d0005d74ee020a078",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=??",
+    "timestamp": "2026-02-15T10:06:21.382798Z"
+  },
+  {
+    "insertId": "69919a9d0005d21152341a65",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.684490308Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T10:06:21.381457Z"
+  },
+  {
+    "insertId": "69919a9d000270d47f0d18bf",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.349882676Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Vertex LLM Title+Summary] invoke max_output_tokens=256 temperature=0.3",
+    "timestamp": "2026-02-15T10:06:21.159956Z"
+  },
+  {
+    "insertId": "69919a9d0002304387dc0c7f",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.349882676Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Ranker Latency] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee routes=2 elapsed_ms=10186",
+    "timestamp": "2026-02-15T10:06:21.143427Z"
+  },
+  {
+    "insertId": "69919a9d000229689ad5c236",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:21.349882676Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://ranker-203786374782.asia-northeast1.run.app/rank \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:21.141672Z"
+  },
+  {
+    "insertId": "69919a92000e8c21717d0850",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee phase=classic found 2 places at (35.722220, 139.792690): ['????', '????????']",
+    "timestamp": "2026-02-15T10:06:10.953377Z"
+  },
+  {
+    "insertId": "69919a92000e8bf1bdc14f33",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=think",
+    "timestamp": "2026-02-15T10:06:10.953329Z"
+  },
+  {
+    "insertId": "69919a92000e85bb15f60226",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:10.951739Z"
+  },
+  {
+    "insertId": "69919a92000d7a32a2c44488",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee phase=hidden found 2 places at (35.722220, 139.792690): ['????', '????????']",
+    "timestamp": "2026-02-15T10:06:10.883250Z"
+  },
+  {
+    "insertId": "69919a92000d79d253364d6c",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=think",
+    "timestamp": "2026-02-15T10:06:10.883154Z"
+  },
+  {
+    "insertId": "69919a92000d7204aa9b589b",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:10.881156Z"
+  },
+  {
+    "insertId": "69919a92000c62c0d26d1560",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=??",
+    "timestamp": "2026-02-15T10:06:10.811712Z"
+  },
+  {
+    "insertId": "69919a92000c5b6e67b809d6",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T10:06:10.809838Z"
+  },
+  {
+    "insertId": "69919a92000bb7913d1e9b18",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee phase=classic found 2 places at (35.721220, 139.792890): ['????', '????']",
+    "timestamp": "2026-02-15T10:06:10.767889Z"
+  },
+  {
+    "insertId": "69919a92000bb755a8f2eb04",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722254, 139.793016) theme=think",
+    "timestamp": "2026-02-15T10:06:10.767829Z"
+  },
+  {
+    "insertId": "69919a92000bb04640b33444",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:11.026139540Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:10.766022Z"
+  },
+  {
+    "insertId": "69919a9200095fd2b01634d6",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.695279386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee phase=hidden found 2 places at (35.721220, 139.792890): ['????', '????']",
+    "timestamp": "2026-02-15T10:06:10.614354Z"
+  },
+  {
+    "insertId": "69919a9200095f76943feab6",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.695279386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722254, 139.793016) theme=think",
+    "timestamp": "2026-02-15T10:06:10.614262Z"
+  },
+  {
+    "insertId": "69919a92000955ff9f8f20ee",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.695279386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:10.611839Z"
+  },
+  {
+    "insertId": "69919a9200081d0bbcb3345b",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.695279386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=????",
+    "timestamp": "2026-02-15T10:06:10.531723Z"
+  },
+  {
+    "insertId": "69919a92000815740d4a35a7",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.695279386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T10:06:10.529780Z"
+  },
+  {
+    "insertId": "69919a9200047d80adbe0499",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.357967157Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Latency] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee candidates=2 elapsed_ms=226 attempt=1/2",
+    "timestamp": "2026-02-15T10:06:10.294272Z"
+  },
+  {
+    "insertId": "69919a9200047d2eb3c0bfd4",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.357967157Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Early Exit] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee candidates=2 best_score=1.107 threshold=0.600",
+    "timestamp": "2026-02-15T10:06:10.294190Z"
+  },
+  {
+    "insertId": "69919a92000474ad2c446690",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.357967157Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://routes.googleapis.com/directions/v2:computeRoutes \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:10.292013Z"
+  },
+  {
+    "insertId": "69919a920002c9064334e94a",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.357967157Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://routes.googleapis.com/directions/v2:computeRoutes \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:06:10.182534Z"
+  },
+  {
+    "insertId": "69919a920001089b2ff13067",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.357967157Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Target PreAdjust] request_id=bdc3bb47-58ab-4901-bd55-5bbeb661fcee target=1.500 adjusted=1.050 ratio=0.70",
+    "timestamp": "2026-02-15T10:06:10.067739Z"
+  },
+  {
+    "insertId": "69919a91000f1ac6bcf02f32",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:10.028728614Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "cache_miss generate key=f8f7cd8d req=bdc3bb47-58ab-4901-bd55-5bbeb661fcee",
+    "timestamp": "2026-02-15T10:06:09.989894Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "11.906373963s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.226.34",
+      "requestMethod": "POST",
+      "requestSize": "1444",
+      "requestUrl": "https://agent-203786374782.asia-northeast1.run.app/route/generate",
+      "responseSize": "1328",
+      "serverIp": "34.143.72.2",
+      "status": 200,
+      "userAgent": "node"
+    },
+    "insertId": "69919a9d000da48d17c9d5aa",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-15T10:06:21.898726387Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "70859a665ed7632a",
+    "timestamp": "2026-02-15T10:06:09.983715Z",
+    "trace": "projects/firstdown-482704/traces/5202d2451d83fbf182ad6770f1e28d5f"
+  },
+  {
+    "insertId": "69919a8c0000700069d64c7e",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-15T10:06:04.033012567Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "INFO:     169.254.169.126:37450 - \"POST /route/generate HTTP/1.1\" 200 OK",
+    "timestamp": "2026-02-15T10:06:04.028672Z"
+  },
+  {
+    "insertId": "69919a8c00006def9d412e1d",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:06:04.031032681Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "cache_hit generate key=1405504a req=38deb5aa-1319-4fff-91a9-2d8997d94052",
+    "timestamp": "2026-02-15T10:06:04.028143Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.004756794s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.226.34",
+      "requestMethod": "POST",
+      "requestSize": "1444",
+      "requestUrl": "https://agent-203786374782.asia-northeast1.run.app/route/generate",
+      "responseSize": "1481",
+      "serverIp": "34.143.77.2",
+      "status": 200,
+      "userAgent": "node"
+    },
+    "insertId": "69919a8c00007433f5f7d1e5",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-15T10:06:04.034319686Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "59f3d66e07a2a754",
+    "timestamp": "2026-02-15T10:06:04.001754Z",
+    "trace": "projects/firstdown-482704/traces/4a65c08229fefaa7e56b522fdd9bcf33",
+    "traceSampled": true
+  },
+  {
+    "insertId": "69919a690007acdd10b6744b",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-15T10:05:29.506947566Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "INFO:     169.254.169.126:50546 - \"POST /route/generate HTTP/1.1\" 200 OK",
+    "timestamp": "2026-02-15T10:05:29.503005Z"
+  },
+  {
+    "insertId": "69919a6900079c21c25a8c14",
+    "jsonPayload": {
+      "candidates_count": 2,
+      "debug": false,
+      "fallback": false,
+      "fallback_reason": null,
+      "message": "route_generate_summary",
+      "path": "/route/generate",
+      "places_status": "ok",
+      "ranker_status": "ok",
+      "request_id": "f528ce37-3a58-483d-aab3-a1fbc3c019b8",
+      "routes_api_status": "ok",
+      "service": "agent",
+      "total_latency_ms": 12783,
+      "trace_id": "61266ab83163eec693fb5131acc3794e"
+    },
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:29.708284914Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "timestamp": "2026-02-15T10:05:29.498721Z"
+  },
+  {
+    "insertId": "69919a6900079bf59404cdea",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:29.708284914Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Latency Summary] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 total_ms=12783 steps={'validate_request': 0, 'log_request_bq': 97, 'generate_candidates_routes': 320, 'compute_features': 737, 'score_by_ranker': 10303, 'select_best_route': 0, 'sample_points_from_polyline': 0, 'parallel_postprocess': 1152, 'fetch_places': 490, 'vertex_title_description': 1151, 'simplify_polyline_to_waypoints': 0, 'compute_quality': 0, 'build_fallback_details': 0, 'store_candidates_bq': 51, 'store_proposal_bq': 77, 'build_response': 0}",
+    "timestamp": "2026-02-15T10:05:29.498677Z"
+  },
+  {
+    "insertId": "69919a6900057aad29c1abff",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:29.374306048Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Latency Breakdown] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 total_ms=12643 steps={'validate_request': 0, 'log_request_bq': 97, 'generate_candidates_routes': 320, 'compute_features': 737, 'score_by_ranker': 10303, 'select_best_route': 0, 'sample_points_from_polyline': 0, 'parallel_postprocess': 1152, 'fetch_places': 490, 'vertex_title_description': 1151, 'simplify_polyline_to_waypoints': 0, 'compute_quality': 0}",
+    "timestamp": "2026-02-15T10:05:29.359085Z"
+  },
+  {
+    "insertId": "69919a6900057929b7ae5f02",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:29.374306048Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Total Latency] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 elapsed_ms=12643",
+    "timestamp": "2026-02-15T10:05:29.358697Z"
+  },
+  {
+    "insertId": "69919a690005649efe7b3beb",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:29.374306048Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Postprocess Latency] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 elapsed_ms=1152",
+    "timestamp": "2026-02-15T10:05:29.353438Z"
+  },
+  {
+    "insertId": "69919a690005645178925be5",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:29.374306048Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Vertex Title+Summary Latency] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 elapsed_ms=1151",
+    "timestamp": "2026-02-15T10:05:29.353361Z"
+  },
+  {
+    "insertId": "69919a6900056422dffeec0d",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:29.374306048Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[LLM_RESULT] raw_length=60 normalized_length=94 fallback=false",
+    "timestamp": "2026-02-15T10:05:29.353314Z"
+  },
+  {
+    "insertId": "69919a68000a8e6d1137ee46",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places Latency] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 spots=1 elapsed_ms=490",
+    "timestamp": "2026-02-15T10:05:28.691821Z"
+  },
+  {
+    "insertId": "69919a68000a8b79628e2dcb",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 phase=classic found 2 places at (35.722260, 139.793100): ['????', '????????']",
+    "timestamp": "2026-02-15T10:05:28.691065Z"
+  },
+  {
+    "insertId": "69919a68000a8b696f860075",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=nature",
+    "timestamp": "2026-02-15T10:05:28.691049Z"
+  },
+  {
+    "insertId": "69919a68000a84cee79b9231",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:28.689358Z"
+  },
+  {
+    "insertId": "69919a680007b0ef414ada39",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 phase=hidden found 2 places at (35.722260, 139.793100): ['????', '????????']",
+    "timestamp": "2026-02-15T10:05:28.504047Z"
+  },
+  {
+    "insertId": "69919a680007b0a7e30c8cd6",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=nature",
+    "timestamp": "2026-02-15T10:05:28.503975Z"
+  },
+  {
+    "insertId": "69919a680007ab213b562e44",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:28.502561Z"
+  },
+  {
+    "insertId": "69919a6800068e9c0f5de76b",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=???",
+    "timestamp": "2026-02-15T10:05:28.429724Z"
+  },
+  {
+    "insertId": "69919a68000687f845ded45b",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.708135115Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T10:05:28.428024Z"
+  },
+  {
+    "insertId": "69919a68000317649a261a39",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.376080806Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Vertex LLM Title+Summary] invoke max_output_tokens=256 temperature=0.3",
+    "timestamp": "2026-02-15T10:05:28.202596Z"
+  },
+  {
+    "insertId": "69919a680002e860bd509e0e",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.376080806Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Ranker Latency] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 routes=2 elapsed_ms=10302",
+    "timestamp": "2026-02-15T10:05:28.190560Z"
+  },
+  {
+    "insertId": "69919a680002de8827948ddd",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:28.376080806Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://ranker-203786374782.asia-northeast1.run.app/rank \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:28.188040Z"
+  },
+  {
+    "insertId": "69919a5d000d7f6973c2bf0c",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:18.049543690Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 phase=classic found 2 places at (35.724050, 139.792200): ['????????', '????']",
+    "timestamp": "2026-02-15T10:05:17.884585Z"
+  },
+  {
+    "insertId": "69919a5d000d7eb647126af5",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:18.049543690Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722254, 139.793016) theme=nature",
+    "timestamp": "2026-02-15T10:05:17.884406Z"
+  },
+  {
+    "insertId": "69919a5d000d78d201ea73ae",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:18.049543690Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:17.882898Z"
+  },
+  {
+    "insertId": "69919a5d000c5cfdd7744e4f",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:18.049543690Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 phase=hidden found 2 places at (35.724050, 139.792200): ['????????', '????']",
+    "timestamp": "2026-02-15T10:05:17.810237Z"
+  },
+  {
+    "insertId": "69919a5d000c5cc933de5feb",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:18.049543690Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722254, 139.793016) theme=nature",
+    "timestamp": "2026-02-15T10:05:17.810185Z"
+  },
+  {
+    "insertId": "69919a5d000c52499a77b0cd",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:18.049543690Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:17.807497Z"
+  },
+  {
+    "insertId": "69919a5d000adc5f6dd3f9cf",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.716076166Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=?",
+    "timestamp": "2026-02-15T10:05:17.711775Z"
+  },
+  {
+    "insertId": "69919a5d000a8ab3ce03367f",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.716076166Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T10:05:17.690867Z"
+  },
+  {
+    "insertId": "69919a5d0009cc0405758abc",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.716076166Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 phase=classic found 2 places at (35.722260, 139.793100): ['????', '????????']",
+    "timestamp": "2026-02-15T10:05:17.642052Z"
+  },
+  {
+    "insertId": "69919a5d0009cba7bd600023",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.716076166Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=nature",
+    "timestamp": "2026-02-15T10:05:17.641959Z"
+  },
+  {
+    "insertId": "69919a5d0009c55f33d5788f",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.716076166Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:17.640351Z"
+  },
+  {
+    "insertId": "69919a5d00073e2bf12030cd",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.716076166Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 phase=hidden found 2 places at (35.722260, 139.793100): ['????', '????????']",
+    "timestamp": "2026-02-15T10:05:17.474667Z"
+  },
+  {
+    "insertId": "69919a5d00073dd046b17145",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.716076166Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=nature",
+    "timestamp": "2026-02-15T10:05:17.474576Z"
+  },
+  {
+    "insertId": "69919a5d000738cc2d6221b7",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.716076166Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:17.473292Z"
+  },
+  {
+    "insertId": "69919a5d0005c5a8ab9e8383",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.385171268Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=?",
+    "timestamp": "2026-02-15T10:05:17.378280Z"
+  },
+  {
+    "insertId": "69919a5d0005bed377a6edca",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.385171268Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T10:05:17.376531Z"
+  },
+  {
+    "insertId": "69919a5d000231c99fa167a1",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.385171268Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Latency] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 candidates=2 elapsed_ms=320 attempt=1/2",
+    "timestamp": "2026-02-15T10:05:17.143817Z"
+  },
+  {
+    "insertId": "69919a5d000231b5321e3eea",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.385171268Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Early Exit] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 candidates=2 best_score=1.145 threshold=0.600",
+    "timestamp": "2026-02-15T10:05:17.143797Z"
+  },
+  {
+    "insertId": "69919a5d00022b74bf05e2b3",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.385171268Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://routes.googleapis.com/directions/v2:computeRoutes \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:17.142196Z"
+  },
+  {
+    "insertId": "69919a5d00004566ae84fec1",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.051248630Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://routes.googleapis.com/directions/v2:computeRoutes \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T10:05:17.017766Z"
+  },
+  {
+    "insertId": "69919a5c000c905d750ea7bf",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:17.051248630Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Target PreAdjust] request_id=f528ce37-3a58-483d-aab3-a1fbc3c019b8 target=2.000 adjusted=1.400 ratio=0.70",
+    "timestamp": "2026-02-15T10:05:16.823389Z"
+  },
+  {
+    "insertId": "69919a5c000ae6c66f094851",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T10:05:16.716700055Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "cache_miss generate key=1405504a req=f528ce37-3a58-483d-aab3-a1fbc3c019b8",
+    "timestamp": "2026-02-15T10:05:16.714438Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "12.791663762s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.226.34",
+      "requestMethod": "POST",
+      "requestSize": "1443",
+      "requestUrl": "https://agent-203786374782.asia-northeast1.run.app/route/generate",
+      "responseSize": "1481",
+      "serverIp": "34.143.79.2",
+      "status": 200,
+      "userAgent": "node"
+    },
+    "insertId": "69919a690007c1aa3b26911e",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-15T10:05:29.512008060Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "6d5e0b478966722e",
+    "timestamp": "2026-02-15T10:05:16.691185Z",
+    "trace": "projects/firstdown-482704/traces/61266ab83163eec693fb5131acc3794e",
+    "traceSampled": true
+  },
+  {
+    "insertId": "699199160009086c866bd445",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-15T09:59:50.598531685Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "INFO:     169.254.169.126:54522 - \"POST /route/generate HTTP/1.1\" 200 OK",
+    "timestamp": "2026-02-15T09:59:50.591980Z"
+  },
+  {
+    "insertId": "699199160008fa49c5749311",
+    "jsonPayload": {
+      "candidates_count": 2,
+      "debug": false,
+      "fallback": false,
+      "fallback_reason": null,
+      "message": "route_generate_summary",
+      "path": "/route/generate",
+      "places_status": "ok",
+      "ranker_status": "ok",
+      "request_id": "d7fcd6ba-c495-4da4-93ef-2138c32d4fa8",
+      "routes_api_status": "ok",
+      "service": "agent",
+      "total_latency_ms": 20870,
+      "trace_id": "ef45b7408faa1ecc185fc2f379032fb2"
+    },
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:50.713174387Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "timestamp": "2026-02-15T09:59:50.588361Z"
+  },
+  {
+    "insertId": "699199160008f9dbf2a01c57",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:50.713174387Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Latency Summary] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 total_ms=20870 steps={'validate_request': 0, 'log_request_bq': 262, 'generate_candidates_routes': 260, 'compute_features': 559, 'score_by_ranker': 18334, 'select_best_route': 0, 'sample_points_from_polyline': 0, 'parallel_postprocess': 1101, 'fetch_places': 242, 'vertex_title_description': 1099, 'simplify_polyline_to_waypoints': 0, 'compute_quality': 0, 'build_fallback_details': 0, 'store_candidates_bq': 146, 'store_proposal_bq': 161, 'build_response': 0}",
+    "timestamp": "2026-02-15T09:59:50.588251Z"
+  },
+  {
+    "insertId": "6991991600041dda29903539",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:50.373450037Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Latency Breakdown] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 total_ms=20551 steps={'validate_request': 0, 'log_request_bq': 262, 'generate_candidates_routes': 260, 'compute_features': 559, 'score_by_ranker': 18334, 'select_best_route': 0, 'sample_points_from_polyline': 0, 'parallel_postprocess': 1101, 'fetch_places': 242, 'vertex_title_description': 1099, 'simplify_polyline_to_waypoints': 0, 'compute_quality': 0}",
+    "timestamp": "2026-02-15T09:59:50.269786Z"
+  },
+  {
+    "insertId": "6991991600041dc884efcc72",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:50.373450037Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Total Latency] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 elapsed_ms=20551",
+    "timestamp": "2026-02-15T09:59:50.269768Z"
+  },
+  {
+    "insertId": "69919916000405762ead316a",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:50.373450037Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Postprocess Latency] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 elapsed_ms=1101",
+    "timestamp": "2026-02-15T09:59:50.263542Z"
+  },
+  {
+    "insertId": "699199160004050a2aacbebd",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:50.373450037Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Vertex Title+Summary Latency] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 elapsed_ms=1099",
+    "timestamp": "2026-02-15T09:59:50.263434Z"
+  },
+  {
+    "insertId": "69919916000404f070221d6e",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:50.373450037Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[LLM_RESULT] raw_length=76 normalized_length=76 fallback=false",
+    "timestamp": "2026-02-15T09:59:50.263408Z"
+  },
+  {
+    "insertId": "6991991500062e9cba6d667e",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.707371243Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places Latency] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 spots=3 elapsed_ms=242",
+    "timestamp": "2026-02-15T09:59:49.405148Z"
+  },
+  {
+    "insertId": "6991991500062ab2d5d8a58f",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.707371243Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 phase=classic found 2 places at (35.722230, 139.792730): ['????', '????????']",
+    "timestamp": "2026-02-15T09:59:49.404146Z"
+  },
+  {
+    "insertId": "6991991500062a74af849f60",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.707371243Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=refresh",
+    "timestamp": "2026-02-15T09:59:49.404084Z"
+  },
+  {
+    "insertId": "699199150006230718657a24",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.707371243Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:49.402183Z"
+  },
+  {
+    "insertId": "69919915000502c59355c6a8",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.373970386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 phase=hidden found 2 places at (35.722230, 139.792730): ['????', '???']",
+    "timestamp": "2026-02-15T09:59:49.328389Z"
+  },
+  {
+    "insertId": "69919915000502b4a2b2e09e",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.373970386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.723023, 139.792006) theme=refresh",
+    "timestamp": "2026-02-15T09:59:49.328372Z"
+  },
+  {
+    "insertId": "699199150004fa11edc6af0d",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.373970386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:49.326161Z"
+  },
+  {
+    "insertId": "6991991500037a7007925ac0",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.373970386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=??",
+    "timestamp": "2026-02-15T09:59:49.227952Z"
+  },
+  {
+    "insertId": "69919915000373f1ccb93289",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.373970386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T09:59:49.226289Z"
+  },
+  {
+    "insertId": "69919915000281097fe438e6",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.373970386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Vertex LLM Title+Summary] invoke max_output_tokens=256 temperature=0.3",
+    "timestamp": "2026-02-15T09:59:49.164105Z"
+  },
+  {
+    "insertId": "69919915000252013f973737",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.373970386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Ranker Latency] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 routes=2 elapsed_ms=18334",
+    "timestamp": "2026-02-15T09:59:49.152065Z"
+  },
+  {
+    "insertId": "6991991500024bece7bde6cd",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:49.373970386Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://ranker-203786374782.asia-northeast1.run.app/rank \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:49.150508Z"
+  },
+  {
+    "insertId": "69919902000c71ab6cce18fc",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:31.052049214Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 phase=classic found 2 places at (35.724010, 139.792200): ['????????', '????']",
+    "timestamp": "2026-02-15T09:59:30.815531Z"
+  },
+  {
+    "insertId": "69919902000c7167dbe453dc",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:31.052049214Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722254, 139.793016) theme=refresh",
+    "timestamp": "2026-02-15T09:59:30.815463Z"
+  },
+  {
+    "insertId": "69919902000c6b22d2453725",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:31.052049214Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:30.813858Z"
+  },
+  {
+    "insertId": "69919902000b32db1c89e23d",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:31.052049214Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 phase=hidden found 2 places at (35.724010, 139.792200): ['????', '????????']",
+    "timestamp": "2026-02-15T09:59:30.733915Z"
+  },
+  {
+    "insertId": "69919902000b329d1660b686",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:31.052049214Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.724887, 139.795290) theme=refresh",
+    "timestamp": "2026-02-15T09:59:30.733853Z"
+  },
+  {
+    "insertId": "69919902000b2b278615ed60",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:31.052049214Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:30.731943Z"
+  },
+  {
+    "insertId": "6991990200099aa7769f00ee",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.721706860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=???",
+    "timestamp": "2026-02-15T09:59:30.629415Z"
+  },
+  {
+    "insertId": "699199020009942626f2fb20",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.721706860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T09:59:30.627750Z"
+  },
+  {
+    "insertId": "699199020008c13f19bbf62b",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.721706860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 phase=classic found 2 places at (35.722230, 139.792730): ['????', '????????']",
+    "timestamp": "2026-02-15T09:59:30.573759Z"
+  },
+  {
+    "insertId": "699199020008c11a2b5d1677",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.721706860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=refresh",
+    "timestamp": "2026-02-15T09:59:30.573722Z"
+  },
+  {
+    "insertId": "699199020008b9d863d541ef",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.721706860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:30.571864Z"
+  },
+  {
+    "insertId": "699199020007398f8c04b8d0",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.721706860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 phase=hidden found 2 places at (35.722230, 139.792730): ['????', '???']",
+    "timestamp": "2026-02-15T09:59:30.473487Z"
+  },
+  {
+    "insertId": "69919902000739403ce5baf8",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.721706860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.723023, 139.792006) theme=refresh",
+    "timestamp": "2026-02-15T09:59:30.473408Z"
+  },
+  {
+    "insertId": "6991990200073254ceb440e7",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.721706860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:30.471636Z"
+  },
+  {
+    "insertId": "699199020004f89b651f347e",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.386080502Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=??",
+    "timestamp": "2026-02-15T09:59:30.325787Z"
+  },
+  {
+    "insertId": "699199020004f21a53685ab3",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.386080502Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T09:59:30.324122Z"
+  },
+  {
+    "insertId": "699199020003d9cd9730a230",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.386080502Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Latency] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 candidates=2 elapsed_ms=259 attempt=1/2",
+    "timestamp": "2026-02-15T09:59:30.252365Z"
+  },
+  {
+    "insertId": "699199020003d97758f7bedf",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.386080502Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Early Exit] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 candidates=2 best_score=1.131 threshold=0.600",
+    "timestamp": "2026-02-15T09:59:30.252279Z"
+  },
+  {
+    "insertId": "699199020003d2f11278feab",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.386080502Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://routes.googleapis.com/directions/v2:computeRoutes \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:30.250609Z"
+  },
+  {
+    "insertId": "6991990200024940cabb3915",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.386080502Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://routes.googleapis.com/directions/v2:computeRoutes \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:59:30.149824Z"
+  },
+  {
+    "insertId": "69919901000f2578d6c55926",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:30.054955499Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Routes Target PreAdjust] request_id=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8 target=1.500 adjusted=1.050 ratio=0.70",
+    "timestamp": "2026-02-15T09:59:29.992632Z"
+  },
+  {
+    "insertId": "69919901000af2b3198f4eaf",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:59:29.722705549Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "cache_miss generate key=2a2eb931 req=d7fcd6ba-c495-4da4-93ef-2138c32d4fa8",
+    "timestamp": "2026-02-15T09:59:29.717491Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "20.876887687s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.226.34",
+      "requestMethod": "POST",
+      "requestSize": "1446",
+      "requestUrl": "https://agent-203786374782.asia-northeast1.run.app/route/generate",
+      "responseSize": "1566",
+      "serverIp": "34.143.78.2",
+      "status": 200,
+      "userAgent": "node"
+    },
+    "insertId": "6991991600090c02d0898ad4",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-02-15T09:59:50.597257492Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "e9a9ab4e557523bd",
+    "timestamp": "2026-02-15T09:59:29.693179Z",
+    "trace": "projects/firstdown-482704/traces/ef45b7408faa1ecc185fc2f379032fb2",
+    "traceSampled": true
+  },
+  {
+    "insertId": "69919515000e083fb6454a42",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-02-15T09:42:45.924407744Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "INFO:     169.254.169.126:48038 - \"POST /route/generate HTTP/1.1\" 200 OK",
+    "timestamp": "2026-02-15T09:42:45.919615Z"
+  },
+  {
+    "insertId": "69919515000dfe0160cbed14",
+    "jsonPayload": {
+      "candidates_count": 2,
+      "debug": false,
+      "fallback": false,
+      "fallback_reason": null,
+      "message": "route_generate_summary",
+      "path": "/route/generate",
+      "places_status": "ok",
+      "ranker_status": "ok",
+      "request_id": "abb26cd4-3910-4091-adff-f1794c613bc8",
+      "routes_api_status": "ok",
+      "service": "agent",
+      "total_latency_ms": 13379,
+      "trace_id": "d18b97d800c9d0450371deae430748d3"
+    },
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:46.194245120Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "timestamp": "2026-02-15T09:42:45.916993Z"
+  },
+  {
+    "insertId": "69919515000dfd9724e3cdd8",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:46.194245120Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Latency Summary] request_id=abb26cd4-3910-4091-adff-f1794c613bc8 total_ms=13379 steps={'validate_request': 0, 'log_request_bq': 242, 'generate_candidates_routes': 239, 'compute_features': 730, 'score_by_ranker': 10597, 'select_best_route': 0, 'sample_points_from_polyline': 0, 'parallel_postprocess': 1197, 'fetch_places': 241, 'vertex_title_description': 1196, 'simplify_polyline_to_waypoints': 0, 'compute_quality': 0, 'build_fallback_details': 0, 'store_candidates_bq': 122, 'store_proposal_bq': 209, 'build_response': 0}",
+    "timestamp": "2026-02-15T09:42:45.916887Z"
+  },
+  {
+    "insertId": "699195150008c4b9a63ccff1",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:45.861245511Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Latency Breakdown] request_id=abb26cd4-3910-4091-adff-f1794c613bc8 total_ms=13037 steps={'validate_request': 0, 'log_request_bq': 242, 'generate_candidates_routes': 239, 'compute_features': 730, 'score_by_ranker': 10597, 'select_best_route': 0, 'sample_points_from_polyline': 0, 'parallel_postprocess': 1197, 'fetch_places': 241, 'vertex_title_description': 1196, 'simplify_polyline_to_waypoints': 0, 'compute_quality': 0}",
+    "timestamp": "2026-02-15T09:42:45.574649Z"
+  },
+  {
+    "insertId": "699195150008c4aa7c171f77",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:45.861245511Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Total Latency] request_id=abb26cd4-3910-4091-adff-f1794c613bc8 elapsed_ms=13037",
+    "timestamp": "2026-02-15T09:42:45.574634Z"
+  },
+  {
+    "insertId": "699195150008b00665d3f64c",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:45.861245511Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Postprocess Latency] request_id=abb26cd4-3910-4091-adff-f1794c613bc8 elapsed_ms=1197",
+    "timestamp": "2026-02-15T09:42:45.569350Z"
+  },
+  {
+    "insertId": "699195150008afb55b310604",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:45.861245511Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Vertex Title+Summary Latency] request_id=abb26cd4-3910-4091-adff-f1794c613bc8 elapsed_ms=1196",
+    "timestamp": "2026-02-15T09:42:45.569269Z"
+  },
+  {
+    "insertId": "699195150008af7d61d08e58",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:45.861245511Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[LLM_RESULT] raw_length=48 normalized_length=80 fallback=false",
+    "timestamp": "2026-02-15T09:42:45.569213Z"
+  },
+  {
+    "insertId": "6991951400095a4875f84aeb",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.861954517Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places Latency] request_id=abb26cd4-3910-4091-adff-f1794c613bc8 spots=1 elapsed_ms=240",
+    "timestamp": "2026-02-15T09:42:44.612936Z"
+  },
+  {
+    "insertId": "69919514000956952d67d3e1",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.861954517Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=abb26cd4-3910-4091-adff-f1794c613bc8 phase=classic found 2 places at (35.722420, 139.793040): ['????', '????????']",
+    "timestamp": "2026-02-15T09:42:44.611989Z"
+  },
+  {
+    "insertId": "699195140009564d6433071b",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.861954517Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=think",
+    "timestamp": "2026-02-15T09:42:44.611917Z"
+  },
+  {
+    "insertId": "699195140009521703b22150",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.861954517Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:42:44.610839Z"
+  },
+  {
+    "insertId": "69919514000867b1e32b454f",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.861954517Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places] request_id=abb26cd4-3910-4091-adff-f1794c613bc8 phase=hidden found 2 places at (35.722420, 139.793040): ['????', '????????']",
+    "timestamp": "2026-02-15T09:42:44.550833Z"
+  },
+  {
+    "insertId": "699195140008679f4beb6866",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.861954517Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Found 2 places near (35.722195, 139.794738) theme=think",
+    "timestamp": "2026-02-15T09:42:44.550815Z"
+  },
+  {
+    "insertId": "69919514000860bafefdd50a",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.861954517Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 200 OK\"",
+    "timestamp": "2026-02-15T09:42:44.549050Z"
+  },
+  {
+    "insertId": "699195140006c7f0afba3b79",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.530435604Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Places API] Keyword rejected, retrying without keyword. keyword=????",
+    "timestamp": "2026-02-15T09:42:44.444400Z"
+  },
+  {
+    "insertId": "699195140006c1fac78d26aa",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.530435604Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "HTTP Request: POST https://places.googleapis.com/v1/places:searchNearby \"HTTP/1.1 400 Bad Request\"",
+    "timestamp": "2026-02-15T09:42:44.442874Z"
+  },
+  {
+    "insertId": "699195140005b28a2e2a28d2",
+    "labels": {
+      "instanceId": "00da6cd2c4a2ebf6d6e8996bba099fad1a34f170912af30281b4005c4c3dd25c7624640b4dd04b3ccdd81964bd9429fcad49d6cda3ec30a0d999e999e529986652fdd7974654c65e0a3b4490dfa7a65a69df"
+    },
+    "logName": "projects/firstdown-482704/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-02-15T09:42:44.530435604Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "agent",
+        "location": "asia-northeast1",
+        "project_id": "firstdown-482704",
+        "revision_name": "agent-00119-bjg",
+        "service_name": "agent"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "[Vertex LLM Title+Summary] invoke max_output_tokens=256 temperature=0.3",
+    "timestamp": "2026-02-15T09:42:44.373386Z"
+  }
+]

@@ -11,6 +11,7 @@ Google Cloud のリソースを Terraform でコード管理します。この�
 - [構成](#構成)
 - [使い方](#使い方)
 - [管理対象と未管理](#管理対象と未管理)
+- [認証（OIDC）と run.invoker](#認証oidc-と-runinvoker)
 - [変数の扱い（テンプレート利用時）](#変数の扱いテンプレート利用時)
 - [Cloud Run の定義とデプロイ](#cloud-run-の定義とデプロイ)
 
@@ -41,7 +42,7 @@ tekuteq で利用している Google Cloud のサービス一覧と、この IaC
 | **Vertex AI（LLM）** | 紹介文・タイトル生成（Gemini 等のフルマネージド LLM） | API 有効化のみ | モデルは API 経由で利用するだけ。Terraform でリソース作成は不要 |
 | **Vertex AI（カスタムモデル）** | ランカー用カスタム推論エンドポイント（XGBoost 等） | しない | エンドポイント・デプロイ済みモデルは未管理（実環境の例: `ranker-xgb-endpoint-20260211-0201`）。必要なら別モジュールで追加可 |
 | **Google Maps Platform**（Routes API, Places API, Maps JavaScript API） | ルート生成・スポット検索・地図表示 | API 有効化のみ（maps-backend） | API キーは手動または CI の環境変数で設定。Terraform では持たない |
-| **IAM（サービスアカウント・ロール）** | Agent Cloud Run の実行 ID、Vertex AI・BigQuery への権限付与 | ✅ する | Agent 用 SA の作成または既存参照＋ロール付与を Terraform で実施（`iam.tf`） |
+| **IAM（サービスアカウント・ロール）** | Agent Cloud Run の実行 ID、Vertex AI・BigQuery への権限付与。Cloud Run の run.invoker（呼び出し許可） | ✅ する | Agent 用 SA（`agent-runtime-sa`）の作成または既存参照＋ロール付与を `iam.tf` で実施。Agent の invoker は `agent_invoker_sa_email`（Web 用 SA）に、Ranker の invoker は Agent 実行用 SA に付与（未認証は許可しない）。[認証（OIDC）と run.invoker](#認証oidc-と-runinvoker) 参照 |
 | **Cloud Logging** | Cloud Run の標準出力・アプリログの収集・検索 | しない | デフォルトで有効。アラート・シンク・除外フィルタ等は未定義。長期保存は GCS シンクを必要時追加可 |
 | **Cloud Monitoring** | メトリクス・ダッシュボード・アラート | しない | デフォルトでメトリクスは収集される。アラートポリシー・ダッシュボードは未定義。必要時 Terraform で追加可 |
 
@@ -91,7 +92,7 @@ flowchart LR
 ```
 
 - **フロント（カスタムドメイン）**: ユーザー → 外部 DNS → Global LB → Cloud Armor → Cloud CDN → NEG → Cloud Run **web**
-- **API 連携**: **web** が **agent** を呼び出し、**agent** が Ranker / Vertex AI（LLM）/ BigQuery / Maps API を利用。**ranker** が Vertex AI カスタムエンドポイントで推論。
+- **API 連携**: **web** が **agent** を呼び出し、**agent** が Ranker / Vertex AI（LLM）/ BigQuery / Maps API を利用。**ranker** が Vertex AI カスタムエンドポイントで推論。サービス間の Cloud Run 呼び出しは OIDC ID トークン対応（[ルート README の「Cloud Run の認証」](../README.md#cloud-run-の認証oidc-id-トークン) 参照）。
 
 ## 構成
 
@@ -152,6 +153,15 @@ terraform apply  # 適用（yes で確定）
 | サービスアカウント・IAM | ✅ | Agent 実行用 SA など |
 | Cloud Run サービス | 定義のみ（任意で apply 可） | 実環境のパラメータを `cloud_run.tf` に定義。デプロイは GitHub Actions の gcloud のまま。[下記](#cloud-run-を-terraform-で管理する場合) 参照 |
 | Vertex AI Endpoint | 任意 | ランカー用カスタムモデル。必要なら別モジュールで追加 |
+
+## 認証（OIDC）と run.invoker
+
+- **方針**: 未認証アクセスは許可しない。Agent / Ranker とも呼び出しには **OIDC ID トークン**が必要。
+- **Terraform**（`cloud_run.tf`）:
+  - **Agent**: `roles/run.invoker` を変数 `agent_invoker_sa_email` で指定した SA（例: Web の Cloud Run 用 SA）に付与。変数が空のときは Terraform では invoker を付与しない。
+  - **Ranker**: `roles/run.invoker` を **Agent の実行用サービスアカウント**（`agent-runtime-sa`）に付与。
+- **GitHub Actions**: デプロイ時に `--no-allow-unauthenticated` を使用。デプロイ後に `gcloud run services add-iam-policy-binding` で上記と同様の invoker を付与。Agent の invoker 付与には GitHub Secrets の `AGENT_INVOKER_SA`（Web の Cloud Run 用 SA のメール）が必要。未設定だとそのステップはスキップされる。
+- **サービスアカウントの役割**: Terraform で管理しているのは **Agent 実行用**（`agent-runtime-sa`）のみ。Vertex AI・BigQuery の権限をこの SA に付与。Ranker の Cloud Run は実行 SA を未指定（デフォルト）。Web の Cloud Run は本 IaC では未定義。
 
 ## 変数の扱い（テンプレート利用時）
 

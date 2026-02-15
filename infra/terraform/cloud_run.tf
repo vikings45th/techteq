@@ -84,13 +84,14 @@ resource "google_cloud_run_v2_service" "agent" {
   depends_on = [google_project_service.apis]
 }
 
-resource "google_cloud_run_v2_service_iam_member" "agent_public" {
-  count    = local.create_agent_service ? 1 : 0
+# Agent の呼び出し許可（認証必須）。Web の Cloud Run 用 SA など、agent_invoker_sa_email に指定した SA にのみ付与。
+resource "google_cloud_run_v2_service_iam_member" "agent_invoker" {
+  count    = local.create_agent_service && var.agent_invoker_sa_email != "" ? 1 : 0
   name     = google_cloud_run_v2_service.agent[0].name
   location = google_cloud_run_v2_service.agent[0].location
   project  = var.project_id
   role     = "roles/run.invoker"
-  member   = "allUsers"
+  member   = "serviceAccount:${var.agent_invoker_sa_email}"
 }
 
 # ---------- Ranker ----------
@@ -170,11 +171,12 @@ resource "google_cloud_run_v2_service" "ranker" {
   depends_on = [google_project_service.apis]
 }
 
-resource "google_cloud_run_v2_service_iam_member" "ranker_public" {
+# Ranker の呼び出し許可（認証必須）。Agent の実行用 SA にのみ付与。
+resource "google_cloud_run_v2_service_iam_member" "ranker_invoker_agent" {
   count    = local.create_ranker_service ? 1 : 0
   name     = google_cloud_run_v2_service.ranker[0].name
   location = google_cloud_run_v2_service.ranker[0].location
   project  = var.project_id
   role     = "roles/run.invoker"
-  member   = "allUsers"
+  member   = "serviceAccount:${local.agent_runtime_sa_email}"
 }

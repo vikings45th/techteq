@@ -46,18 +46,27 @@ jobs:
         run: |
           docker push asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA}
 
-      # ⑦ Deploy
+      # ⑦ Deploy（認証必須。未認証アクセスは許可しない）
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy agent \
             --image asia-northeast1-docker.pkg.dev/firstdown-482704/agent-repo/agent:${GITHUB_SHA} \
             --region asia-northeast1 \
             --platform managed \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --timeout=300 \
             --memory=2Gi \
             --cpu=2 \
             --concurrency=10 \
             --set-env-vars=RANKER_URL=https://ranker-203786374782.asia-northeast1.run.app,RANKER_TIMEOUT_SEC=20,REQUEST_TIMEOUT_SEC=10,BQ_DATASET=firstdown_mvp,FEATURES_VERSION=mvp_v1,MAPS_API_KEY=${{ secrets.MAPS_API_KEY }},VERTEX_PROJECT=firstdown-482704,VERTEX_LOCATION=us-central1,VERTEX_TEXT_MODEL=gemini-2.5-flash-lite \
             --service-account=agent-runtime-sa@firstdown-482704.iam.gserviceaccount.com
+
+      # ⑧ Agent の run.invoker を Web の Cloud Run 用 SA に付与（OIDC で Web→Agent が呼べるようにする）
+      - name: Grant Agent invoker to Web service account
+        if: ${{ secrets.AGENT_INVOKER_SA != '' }}
+        run: |
+          gcloud run services add-iam-policy-binding agent \
+            --region=asia-northeast1 \
+            --member="serviceAccount:${{ secrets.AGENT_INVOKER_SA }}" \
+            --role="roles/run.invoker"
 
