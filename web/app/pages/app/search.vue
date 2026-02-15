@@ -210,8 +210,6 @@ const initMap = async () => {
     return;
   }
 
-  // Dynamic Library Importを使用して必要なライブラリを読み込む
-  const { Map } = await (window as any).google.maps.importLibrary("maps");
   const { AdvancedMarkerElement, PinElement } = await (
     window as any
   ).google.maps.importLibrary("marker");
