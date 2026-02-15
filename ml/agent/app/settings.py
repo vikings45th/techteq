@@ -5,8 +5,8 @@ class Settings(BaseSettings):
     """アプリケーション設定クラス（環境変数から読み込み）"""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Ranker内部URL（Cloud Run内部イングレスサービスURL）
-    RANKER_URL: str = "http://ranker:8080"  # RankerサービスのURL
+    # Ranker ベースURL（パス無し）。Cloud Run IAM の audience 兼リクエスト先。
+    RANKER_URL: str = "https://ranker-203786374782.asia-northeast1.run.app"
     REQUEST_TIMEOUT_SEC: float = 10.0  # 一般的なリクエストのタイムアウト（秒）
     RANKER_TIMEOUT_SEC: float = 10.0  # Ranker APIのタイムアウト（秒）
     LOG_LEVEL: str = "INFO"  # ログレベル（INFO/DEBUG/WARNING）

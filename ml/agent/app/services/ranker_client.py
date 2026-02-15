@@ -1,11 +1,20 @@
 from typing import Any, Dict, List, Tuple
 import logging
+from urllib.parse import urlparse
+
 import httpx
 
 from app.settings import settings
 from app.services.http_client import get_client
+from app.services.id_token import get_token
 
 logger = logging.getLogger(__name__)
+
+
+def _ranker_base_url(url: str) -> str:
+    """RANKER_URL からパスを除いたベースURL（audience 用）を返す。"""
+    p = urlparse(url)
+    return f"{p.scheme}://{p.netloc}"
 
 
 async def rank_routes(
@@ -25,12 +34,16 @@ async def rank_routes(
         (スコアリスト, 失敗したルートIDのリスト) のタプル
     """
     payload = {"request_id": request_id, "routes": routes}
+    ranker_base = _ranker_base_url(settings.RANKER_URL)
+    token = await get_token(ranker_base)
+    headers = {"Authorization": f"Bearer {token}"}
 
     try:
         client = get_client()
         r = await client.post(
             f"{settings.RANKER_URL}/rank",
             json=payload,
+            headers=headers,
             timeout=httpx.Timeout(settings.RANKER_TIMEOUT_SEC),
         )
     except httpx.TimeoutException as e:
@@ -51,6 +64,16 @@ async def rank_routes(
         # 成功: スコアと失敗したルートIDを返す
         data = r.json()
         return data.get("scores", []), data.get("failed_route_ids", [])
+
+    if r.status_code in (401, 403):
+        logger.warning(
+            "[Ranker IAM Auth Failed] request_id=%s status_code=%d ranker_url=%s body=%s",
+            request_id,
+            r.status_code,
+            settings.RANKER_URL,
+            (r.text or "")[:500],
+        )
+
     if r.status_code != 200:
         # 200以外のステータスコード
         logger.warning(
