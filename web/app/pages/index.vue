@@ -52,16 +52,28 @@ const firstSuggest = async () => {
 
   suggestedRoute.value = route;
 
-  messages.value.push({
-    id: crypto.randomUUID(),
-    role: "assistant",
-    parts: [
-      {
-        type: "text",
-        text: route.message,
-      },
-    ],
-  });
+  messages.value.push(
+    {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      parts: [
+        {
+          type: "text",
+          text: route.message,
+        },
+      ],
+    },
+    {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      parts: [
+        {
+          type: "text",
+          text: "途中で引き返しても大丈夫。少し歩くだけで心と身体が整います。",
+        },
+      ],
+    },
+  );
 };
 
 const resuggest = async () => {
@@ -181,7 +193,7 @@ watch(isModalOpen, (newValue) => {
       />
 
       <template #content>
-        <div class="h-[90vh] flex flex-col min-h-0">
+        <div class="h-[70dvh] flex flex-col min-h-0">
           <UChatPalette>
             <div class="flex flex-col flex-1 min-h-0 overflow-y-auto">
               <UChatMessages
@@ -223,8 +235,7 @@ watch(isModalOpen, (newValue) => {
     </UDrawer>
   </UPageCTA>
   <UPageSection
-    title="散歩した方がいいと分かっている。でも疲れているとどこを歩くかを考えられない。"
-    description="今の気分に沿った散歩ルートを一つだけ提案します。"
+    title="少し歩くだけ。日の光とリズムが乱れた自律神経を静かに整えます。"
     :features="features"
   />
 </template>
