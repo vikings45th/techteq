@@ -80,21 +80,29 @@ const weatherData = async () => {
   // Process first location. Add a for-loop for multiple locations or weather models
   const response = responses[0];
 
-  const utcOffsetSeconds = response.utcOffsetSeconds();
-
   const current = response.current()!;
 
-  // Note: The order of weather variables in the URL query and the indices below need to match!
+  // current.time() は UTC の Unix 秒。そのまま Date にして表示時に JST でフォーマットする
   const weatherData = {
     current: {
-      time: new Date((Number(current.time()) + utcOffsetSeconds) * 1000),
+      time: new Date(Number(current.time()) * 1000),
       temperature_2m: current.variables(0)!.value(),
       wind_speed_10m: current.variables(1)!.value(),
       rain: current.variables(2)!.value(),
     },
   };
 
-  const res = `\n時間: ${weatherData.current.time},
+  const timeStr = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(weatherData.current.time);
+
+  const res = `\n時間: ${timeStr},
     \n気温: ${weatherData.current.temperature_2m},
     \n風速: ${weatherData.current.wind_speed_10m},
     \n雨量: ${weatherData.current.rain}`;
