@@ -1,3 +1,5 @@
+import { getAgentRequestHeaders } from "../utils/agentAuth";
+
 interface RouteFeedbackRequest {
   request_id: string;
   route_id: string;
@@ -10,28 +12,45 @@ interface AgentFeedbackResponse {
 }
 
 export default defineEventHandler(async (event) => {
-  const requestBody = await readBody<RouteFeedbackRequest>(event);
-
-  const apiUrl = "https://agent-203786374782.asia-northeast1.run.app/route/feedback";
-  
-  try {
-    const response: AgentFeedbackResponse = await $fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: requestBody
-    });
-    
-    return {
-      statusCode: 200,
-      body: response
-    };
-    
-  } catch (error: any) {
+  const config = useRuntimeConfig();
+  const agentBaseUrl = config.agentBaseUrl as string | undefined;
+  if (!agentBaseUrl) {
     throw createError({
-      statusCode: error.statusCode || 500,
-      statusMessage: error.message || 'フィードバック送信に失敗しました'
+      statusCode: 500,
+      statusMessage: "AGENT_BASE_URL is not configured",
     });
   }
-})
+
+  const requestBody = await readBody<RouteFeedbackRequest>(event);
+  const apiUrl = `${agentBaseUrl}/route/feedback`;
+
+  try {
+    const idTokenHeaders = await getAgentRequestHeaders(agentBaseUrl);
+    const response: AgentFeedbackResponse = await $fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        ...idTokenHeaders,
+        "Content-Type": "application/json",
+      },
+      body: requestBody,
+    });
+
+    return {
+      statusCode: 200,
+      body: response,
+    };
+  } catch (error: any) {
+    const status = error?.statusCode ?? error?.response?.status ?? 500;
+    if (status === 401 || status === 403) {
+      console.error(
+        "Agent IAM auth failed (audience/権限不足の可能性):",
+        agentBaseUrl,
+        status
+      );
+    }
+    throw createError({
+      statusCode: status,
+      statusMessage: error.message || "フィードバック送信に失敗しました",
+    });
+  }
+});
