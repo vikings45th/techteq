@@ -11,6 +11,7 @@
 - [使用方法](#使用方法)
 - [API仕様](#api仕様)
 - [デプロイ](#デプロイ)
+- [観測可能性（Observability）](#観測可能性observability)
 - [開発ガイド](#開発ガイド)
 - [トラブルシューティング](#トラブルシューティング)
 - [ライセンス](#ライセンス)
@@ -367,6 +368,33 @@ GitHub Secretsに以下を設定してください：
 
 - `GCP_SA_KEY`: GCPサービスアカウントキー（JSON）
 - `MAPS_API_KEY`: Google Maps Platform API Key
+
+## 観測可能性（Observability）
+
+運用の可視化と障害検知のため、以下を導入しています。
+
+### Cloud Logging
+
+- **アプリケーションログ**: Agent および Ranker のログは Cloud Logging に出力されます。
+- **構造化ログ（JSON）**: 重要なイベントは JSON で出力し、`jsonPayload` として検索・フィルタ可能にしています。
+  - **route_generate_summary**: ルート生成完了時に `message: "route_generate_summary"` で出力。`request_id`・`trace_id`・`total_latency_ms`・各 API の状態（`routes_api_status`, `places_status`, `ranker_status`）などを含み、ログベースのメトリクスやアラートに利用できます。
+  - **otel_enabled / otel_init_failed**: Agent 起動時にトレーシングの有効/失敗を `message: "otel_enabled"` または `"otel_init_failed"` で出力します。
+- **追跡**: `request_id` に加え、分散トレーシング用の `trace_id` を summary ログに含めているため、ログとトレースの相互参照が可能です。
+
+### Cloud Monitoring
+
+- **ダッシュボード**: 主要なメトリクス（リクエスト数、レイテンシ、エラー率など）を可視化するダッシュボードを用意しています。
+- **アラート**: 閾値超過やエラー率の上昇などを検知するアラートを設定し、運用時の異常検知に利用します。
+
+### OpenTelemetry（分散トレーシング）
+
+- **導入目的**: リクエストの処理フローと外部 API 呼び出しの遅延を可視化し、障害調査やパフォーマンス改善に役立てるため、分散トレーシングを導入しています。
+- **対象**: Agent API（FastAPI + httpx）。トレースは **Google Cloud Trace** にエクスポートされます。
+- **計装内容**:
+  - **自動計装**: FastAPI（HTTP リクエスト）、httpx（Maps Routes / Places / Ranker / Vertex 等の外向き HTTP 呼び出し）を OpenTelemetry で自動計装。
+  - **手動スパン**: オーケストレーション（`graph.py`）内の主要ステップ（候補生成、Maps 呼び出し、Places 呼び出し、Ranker 呼び出し、レスポンス組み立て）にカスタムスパンを付与し、Trace Explorer 上で処理の流れを確認できます。
+- **ログとの連携**: 各ルート生成完了ログ（`route_generate_summary`）に `trace_id` を含めているため、Cloud Logging で `trace_id` を検索し、該当トレースを Trace Explorer で開いて詳細を確認できます。
+- **設定**: サンプリング率は環境変数 `OTEL_TRACES_SAMPLER_ARG`（デフォルト `0.1`）で指定。Resource の `service.name` は `"agent"`、`service.version` には Cloud Run の `K_REVISION` を利用します。詳細は [ml/agent/README.md](./ml/agent/README.md) を参照してください。
 
 ## 開発ガイド
 
