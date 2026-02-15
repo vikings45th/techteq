@@ -1,4 +1,4 @@
-import { getAgentRequestHeaders } from "../utils/agentAuth";
+import { getAgentAuthHeaders } from "../utils/agentClient";
 
 interface RouteFeedbackRequest {
   request_id: string;
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const apiUrl = `${agentBaseUrl}/route/feedback`;
 
   try {
-    const idTokenHeaders = await getAgentRequestHeaders(agentBaseUrl);
+    const idTokenHeaders = await getAgentAuthHeaders(agentBaseUrl);
     const response: AgentFeedbackResponse = await $fetch(apiUrl, {
       method: "POST",
       headers: {
@@ -42,11 +42,7 @@ export default defineEventHandler(async (event) => {
   } catch (error: any) {
     const status = error?.statusCode ?? error?.response?.status ?? 500;
     if (status === 401 || status === 403) {
-      console.error(
-        "Agent IAM auth failed (audience/権限不足の可能性):",
-        agentBaseUrl,
-        status
-      );
+      console.error("Agent IAM auth failed", { agentBaseUrl, status });
     }
     throw createError({
       statusCode: status,

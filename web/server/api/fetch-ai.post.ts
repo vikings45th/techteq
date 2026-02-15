@@ -1,4 +1,4 @@
-import { getAgentRequestHeaders } from "../utils/agentAuth";
+import { getAgentAuthHeaders } from "../utils/agentClient";
 
 interface LatLng {
   lat: number;
@@ -58,19 +58,14 @@ function decodePolyline(encoded: string): LatLng[] {
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
-  const agentBaseUrl = config.agentBaseUrl as string | undefined;
-  if (!agentBaseUrl) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: "AGENT_BASE_URL is not configured",
-    });
-  }
+  const agentBaseUrl = config.agentBaseUrl;
 
   const requestBody = await readBody(event); //requestBody: ApiRequest,
 
   const apiUrl = `${agentBaseUrl}/route/generate`;
+
   try {
-    const idTokenHeaders = await getAgentRequestHeaders(agentBaseUrl);
+    const idTokenHeaders = await getAgentAuthHeaders(agentBaseUrl);
     const response = await $fetch<AgentResponse>(apiUrl, {
       method: "POST",
       headers: {
@@ -97,13 +92,10 @@ export default defineEventHandler(async (event) => {
       body: processedResponse,
     };
   } catch (error: any) {
+    console.log(error);
     const status = error?.statusCode ?? error?.response?.status ?? 500;
     if (status === 401 || status === 403) {
-      console.error(
-        "Agent IAM auth failed (audience/権限不足の可能性):",
-        agentBaseUrl,
-        status,
-      );
+      console.error("Agent IAM auth failed", { agentBaseUrl, status });
     }
     throw createError({
       statusCode: status,
