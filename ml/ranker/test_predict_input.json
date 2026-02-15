@@ -1,0 +1,24 @@
+{
+  "instances": [
+    {
+      "distance_km": 5.2,
+      "duration_min": 60.0,
+      "loop_closure_m": 500.0,
+      "bbox_area": 0.001,
+      "path_length_ratio": 1.05,
+      "turn_count": 12.0,
+      "turn_density": 2.3,
+      "theme_exercise": 1.0,
+      "theme_think": 0.0,
+      "theme_refresh": 1.0,
+      "theme_nature": 1.0,
+      "round_trip_req": 1.0,
+      "round_trip_fit": 1.0,
+      "distance_error_ratio": 0.1,
+      "relaxation_step": 0.5,
+      "candidate_rank_in_theme": 1.0,
+      "poi_density": 0.5,
+      "park_poi_ratio": 0.3
+    }
+  ]
+}

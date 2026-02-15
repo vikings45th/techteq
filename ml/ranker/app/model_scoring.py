@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 import xgboost as xgb
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Value
@@ -69,7 +72,8 @@ class ModelScorer:
             vector = self._vectorize_features(features)
             pred = float(self._model.predict(vector)[0])
             return pred, self._elapsed_ms(start), "ok"
-        except Exception:
+        except Exception as e:
+            logger.exception("[Vertex predict error] %r", e)
             return None, self._elapsed_ms(start), "model_error"
 
     def _load_model(self) -> None:
@@ -89,6 +93,7 @@ class ModelScorer:
         self._model = model
 
     def _init_vertex(self) -> None:
+        from google.api_core import client_options as client_options_lib
         from google.cloud.aiplatform_v1 import PredictionServiceClient
 
         project = settings.VERTEX_PROJECT or ""
@@ -104,7 +109,11 @@ class ModelScorer:
                 raise ValueError("VERTEX_PROJECT is empty.")
             endpoint = f"projects/{project}/locations/{location}/endpoints/{endpoint_id}"
 
-        self._vertex_client = PredictionServiceClient()
+        # リージョン付きエンドポイントを明示（gcloud と同様、NotFound 回避のため）
+        client_options = client_options_lib.ClientOptions(
+            api_endpoint=f"{location}-aiplatform.googleapis.com"
+        )
+        self._vertex_client = PredictionServiceClient(client_options=client_options)
         self._vertex_endpoint = endpoint
 
     def _vertex_score(self, features: Dict[str, Any]) -> float:
