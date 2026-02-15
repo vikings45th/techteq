@@ -47,7 +47,7 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
 | `VERTEX_PROJECT` | なし | Vertex AIのプロジェクトID |
 | `VERTEX_LOCATION` | `asia-northeast1` | Vertex AIのリージョン |
 | `VERTEX_ENDPOINT_ID` | なし | Vertex AI Endpoint ID |
-| `VERTEX_TIMEOUT_S` | `5.0` | Vertex AI推論タイムアウト（秒） |
+| `VERTEX_TIMEOUT_S` | `10.0` | Vertex AI推論タイムアウト（秒） |
 | `BQ_PROJECT` | なし | BigQueryプロジェクトID |
 | `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
 | `BQ_RANK_RESULT_TABLE` | `rank_result` | BigQueryテーブル名 |

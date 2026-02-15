@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     VERTEX_PROJECT: str = ""
     VERTEX_LOCATION: str = "asia-northeast1"
     VERTEX_ENDPOINT_ID: str = ""
-    VERTEX_TIMEOUT_S: float = 5.0
+    VERTEX_TIMEOUT_S: float = 10.0  # Vertex predict タイムアウト。5秒でタイムアウトしていたため延長
 
     BQ_PROJECT: str | None = None
     BQ_DATASET: str = "firstdown_mvp"
