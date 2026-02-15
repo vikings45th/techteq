@@ -93,6 +93,7 @@ class ModelScorer:
         self._model = model
 
     def _init_vertex(self) -> None:
+        from google.api_core import client_options as client_options_lib
         from google.cloud.aiplatform_v1 import PredictionServiceClient
 
         project = settings.VERTEX_PROJECT or ""
@@ -108,7 +109,11 @@ class ModelScorer:
                 raise ValueError("VERTEX_PROJECT is empty.")
             endpoint = f"projects/{project}/locations/{location}/endpoints/{endpoint_id}"
 
-        self._vertex_client = PredictionServiceClient()
+        # リージョン付きエンドポイントを明示（gcloud と同様、NotFound 回避のため）
+        client_options = client_options_lib.ClientOptions(
+            api_endpoint=f"{location}-aiplatform.googleapis.com"
+        )
+        self._vertex_client = PredictionServiceClient(client_options=client_options)
         self._vertex_endpoint = endpoint
 
     def _vertex_score(self, features: Dict[str, Any]) -> float:
