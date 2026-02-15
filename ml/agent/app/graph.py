@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
@@ -1678,6 +1679,21 @@ async def build_response(state: AgentState) -> Dict[str, Any]:
         total_latency_ms,
         latency_ms,
     )
+    summary = {
+        "message": "route_generate_summary",
+        "service": "agent",
+        "request_id": req.request_id,
+        "path": "/route/generate",
+        "fallback": bool(state.get("is_fallback_used")),
+        "fallback_reason": state.get("fallback_reason_str"),
+        "routes_api_status": state.get("routes_api_status"),
+        "places_status": state.get("places_status"),
+        "ranker_status": state.get("ranker_status"),
+        "candidates_count": len(state.get("candidates") or []),
+        "total_latency_ms": total_latency_ms,
+        "debug": bool(getattr(req, "debug", False)),
+    }
+    logger.info(json.dumps(summary, ensure_ascii=False))
     return {"response": response, "latency_ms": latency_ms}
 
 

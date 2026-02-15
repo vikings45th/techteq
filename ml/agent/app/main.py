@@ -28,7 +28,11 @@ from app.graph import get_route_graph_mermaid, run_generate_graph
 
 def _configure_logging() -> None:
     level = str(getattr(settings, "LOG_LEVEL", "INFO")).upper()
-    logging.basicConfig(level=getattr(logging, level, logging.INFO))
+    logging.basicConfig(
+        level=getattr(logging, level, logging.INFO),
+        format="%(message)s",
+        force=True,
+    )
 
 
 _configure_logging()
