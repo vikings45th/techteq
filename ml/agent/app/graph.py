@@ -1779,10 +1779,11 @@ async def build_response(state: AgentState) -> Dict[str, Any]:
             "total_latency_ms": total_latency_ms,
             "debug": bool(getattr(req, "debug", False)),
         }
-        current_span = _get_current_span()
-        ctx = current_span.get_span_context()
-        trace_id_hex = format(ctx.trace_id, "032x") if ctx and getattr(ctx, "trace_id", 0) else None
-        summary["trace_id"] = trace_id_hex
+        ctx = _get_current_span().get_span_context()
+        trace_id = format(ctx.trace_id, "032x") if ctx and getattr(ctx, "trace_id", None) else None
+        if trace_id == "0" * 32:
+            trace_id = None
+        summary["trace_id"] = trace_id
         logger.info(json.dumps(summary, ensure_ascii=False))
         return {"response": response, "latency_ms": latency_ms}
 
