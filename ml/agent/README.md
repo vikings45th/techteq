@@ -5,14 +5,15 @@
 ## 📋 目次
 
 - [概要](#概要)
+- [主要な機能](#主要な機能)
+- [ローカル開発・テスト](#ローカル開発・テスト)
+- [API仕様](#api仕様)
 - [環境変数](#環境変数)
 - [API Key 管理](#api-key-管理)
-- [API仕様](#api仕様)
-- [テスト](#テスト)
+- [外部連携](#外部連携)
 - [ログ](#ログ)
 - [デプロイ](#デプロイ)
 - [コード構造](#コード構造)
-- [主要な機能](#主要な機能)
 - [トラブルシューティング](#トラブルシューティング)
 - [リンク](#リンク)
 
@@ -24,7 +25,7 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 
 - **気分・モードに応じたルート生成**: ユーザーが選んだ4モード（exercise / think / refresh / nature）に合わせてルートを提案（内部ではテーマ別にルート・スポットを最適化）
 - **片道/周回ルート**: `round_trip`で周回/片道を切り替え（片道は`end_location`必須）
-- **ルート最適化**: 蓄積的ルート生成（1本ずつ生成し、閾値・最低本数で早期終了）ののち、候補を一括で Ranker API に送ってモデルスコアでランキング（ルールはシャドー）
+- **ルート最適化**: 逐次的ルート生成（1本ずつ生成し、閾値・最低本数で早期終了）ののち、候補を一括で Ranker API に送ってモデルスコアでランキング（ルールはシャドー）
 - **スポット検索**: 二段階検索（穴場キーワード → テーマに合った場所タイプ、結果なし時はタイプ指定なしで再検索）+ ルート近傍フィルタ（距離で絞り込み・緩和）
 - **AI紹介文・タイトル生成**: Jinjaテンプレート + 構造化出力で安定生成
 - **ナビ用代表点**: polyline由来の代表点のみで最大10点の`nav_waypoints`（周回時は始終点一致）
@@ -33,7 +34,7 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 
 ### 処理フロー
 
-1. **ルート候補の蓄積的生成**: 候補を1本ずつ Maps Routes API で生成。各ルートをヒューリスティック（距離乖離など）で簡易評価し、**閾値（SCORE_THRESHOLD）を超えていて**かつ**最低本数（MIN_ROUTES）に達した**時点で打ち切り（早期終了）。最大 MAX_ROUTES 本まで（従来の「5本一括生成→一括スコアリング」から、蓄積的生成に変更）
+1. **ルート候補の逐次的生成**: 候補を1本ずつ Maps Routes API で生成。各ルートをヒューリスティック（距離乖離など）で簡易評価し、**閾値（SCORE_THRESHOLD）を超えていて**かつ**最低本数（MIN_ROUTES）に達した**時点で打ち切り（早期終了）。最大 MAX_ROUTES 本まで（従来の「5本一括生成→一括スコアリング」から、逐次的生成に変更）
 2. **特徴量抽出**: 揃った候補それぞれから特徴量を計算
 3. **ルート評価**: 候補を一括で Ranker API に送り、モデルスコアでスコアリング
 4. **最適ルート選択**: スコアが最も高いルートを選択
@@ -58,114 +59,104 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 - `app/prompts/title.jinja`: タイトルの制約（JSON形式、文字数、使用記号）
 - `app/prompts/title_description.jinja`: タイトルと紹介文を一括生成するテンプレート（Vertex 呼び出しで使用）
 
-## 環境変数
+### ルートのタイトル・説明文のプロンプト
 
-### 必須環境変数
+- **一括生成**: タイトルと説明文は `title_description.jinja` で 1 回の呼び出しのみ。JSON 壊れ時はフォールバック。
+- **出力**: JSON のみ（`{"title":"...","description":"..."}`）。制約をプロンプトに書き、崩れはポストプロセスで補正。
+- **禁止**: 励まし・おすすめ・感嘆符・AI主体・「〜しましょう」。**許可**: タイトルは名詞句・動詞禁止。説明文は「状況→理由→許可」・120文字以内。トーンは優しく寄り添う・無理強いしない。
+- **禁止語**: `VERTEX_FORBIDDEN_WORDS` でブロック。短い／不正は `microcopy_postprocess` で補正。
 
-| 変数名 | 説明 | 例 |
-|--------|------|-----|
-| `MAPS_API_KEY` | Google Maps Platform API Key（Routes API / Places API共通） | `AIza...` |
-| `VERTEX_PROJECT` | Google Cloud Project ID（Vertex AI使用時） | `firstdown-482704` |
-| `VERTEX_LOCATION` | Vertex AI リージョン（gemini-2.5-flash-lite 安定動作のため us-central1 推奨） | `us-central1` |
+## 主要な機能
 
-### オプション環境変数
+### スポット検索（見どころ抽出・日本語対応）
 
-| 変数名 | デフォルト値 | 説明 |
-|--------|------------|------|
-| `RANKER_URL` | `http://ranker:8080` | Ranker APIの内部URL |
-| `REQUEST_TIMEOUT_SEC` | `10.0` | 外部API呼び出しのタイムアウト（秒） |
-| `RANKER_TIMEOUT_SEC` | `10.0` | Ranker API呼び出しのタイムアウト（秒） |
-| `VERTEX_TEXT_MODEL` | `gemini-2.5-flash-lite` | Vertex AIで使用するモデル名 |
-| `VERTEX_TEMPERATURE` | `0.3` | Vertex AIの温度パラメータ |
-| `VERTEX_MAX_OUTPUT_TOKENS` | `256` | Vertex AIの最大出力トークン数 |
-| `VERTEX_TOP_P` | `0.95` | Vertex AIのtop_pパラメータ |
-| `VERTEX_TOP_K` | `40` | Vertex AIのtop_kパラメータ |
-| `VERTEX_FORBIDDEN_WORDS` | `""` | 禁止ワード（カンマ区切り） |
-| `PLACES_RADIUS_M` | `300` | Places APIの検索半径（m） |
-| `PLACES_MAX_RESULTS` | `2` | 1地点あたりの最大件数 |
-| `PLACES_SAMPLE_POINTS_MAX` | `1` | 検索地点数（サンプル点の上限） |
-| `MAX_ROUTES` | `5` | 蓄積的生成で作る候補の最大本数 |
-| `MIN_ROUTES` | `2` | 早期終了の下限（この本数に達し、かつ閾値超えで打ち切り） |
-| `SCORE_THRESHOLD` | `0.6` | ヒューリスティックスコアの早期終了閾値（暫定）。この値以上かつ MIN_ROUTES 以上で生成を打ち切る |
-| `ROUTE_DISTANCE_ERROR_RATIO_MAX` | `0.3` | 目標距離との許容誤差比率。実距離が `|実距離−目標|/目標` を超える候補は除外。短距離（≤ SHORT_DISTANCE_MAX_KM）時は 0.2 に厳格化 |
-| `ROUTE_DISTANCE_RETRY_MAX` | `1` | 距離フィルタで候補が0件だった場合の再試行回数。最大試行回数はこの値+1（デフォルト2回） |
-| `SHORT_DISTANCE_MAX_KM` | `3.0` | 短距離とみなす上限（km）。この値以下で誤差比率を厳格化・事前補正の対象にする |
-| `SHORT_DISTANCE_TARGET_RATIO` | `0.7` | 短距離時の事前目標補正。目標距離を (目標 × この比率) に下げて Routes API に渡す（0.5〜1.0）。再試行時は観測した最良距離に合わせて目標を再計算し直す |
-| `CONCURRENCY` | `2` | 外部APIの同時実行数 |
-| `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
-| `BQ_TABLE_REQUEST` | `route_request` | BigQueryリクエストテーブル名 |
-| `BQ_TABLE_CANDIDATE` | `route_candidate` | BigQuery候補テーブル名 |
-| `BQ_TABLE_PROPOSAL` | `route_proposal` | BigQuery提案テーブル名 |
-| `BQ_TABLE_FEEDBACK` | `route_feedback` | BigQueryフィードバックテーブル名 |
-| `FEATURES_VERSION` | `mvp_v1` | 特徴量バージョン |
-| `RANKER_VERSION` | `rule_v1` | Rankerバージョン |
-| `SPOT_MAX_DISTANCE_M` | `30.0` | ルートからの最大距離（m）。この距離以内のスポットを採用 |
-| `SPOT_MAX_DISTANCE_M_RELAXED` | `60.0` | 緩和時の最大距離（m）。30mで3件未満のときに使用 |
-| `SPOT_MAX_DISTANCE_M_FALLBACK` | `120.0` | 追加緩和時の最大距離（m）。60mでも3件未満のときに使用 |
+- **二段階検索**: 第1段階で穴場キーワード検索、第2段階でテーマに合った場所タイプ（classic types）で検索。いずれも結果が空の場合はタイプ指定なしで再検索（Places API がキーワードを拒否した場合もキーワードなしで再試行）
+- **サンプル点**: ルート上の 25% / 50% / 75% 地点をサンプル点とする。検索に使う点数は `PLACES_SAMPLE_POINTS_MAX` で上限（デフォルト1）。各点から `PLACES_RADIUS_M`（300m）以内を検索、1点あたり最大 `PLACES_MAX_RESULTS`（2件）まで取得
+- **重複排除**: 候補の一意性は `place_id` 優先、なければ `name`、なければ `latlng` で判定
+- **タイプ多様性**: 集めた候補から「タイプが被らないものを優先して選択」し、まだ余裕があれば同タイプも追加して最大5件にする（`_select_unique_types`）
+- **ルート近傍フィルタ**: ルートからの距離が `SPOT_MAX_DISTANCE_M`（30m）以内のスポットのみ採用。**3件未満**のときは距離を緩和（60m → 120m）して再フィルタし、緩和時はタイプ多様化前の候補リストを再評価して最大5件を確保
+- **ブロックリスト**: 名前（`PLACES_NAME_BLOCKLIST`）・タイプ（`PLACES_TYPE_BLOCKLIST`）でコンビニ・ファストフード等を除外
+- **出力**: 最大5件、緯度経度つき。`name` と `type` は日本語（Places API の `languageCode: "ja"` と、英語タイプの日本語変換）
 
-### SCORE_THRESHOLD の決め方（暫定）
+フォールバック機能の詳細は、[フォールバック機能](#フォールバック機能) を参照してください。
 
-既存の BigQuery ログから「1リクエスト内の最高 rule_score」を抽出して分布を見る。
-`rank_result` テーブルに `rule_score` が保存されている前提です。
+## ローカル開発・テスト
 
-```sql
--- 1リクエスト内の最高 rule_score 分布
-WITH top_scores AS (
-  SELECT
-    request_id,
-    MAX(rule_score) AS best_rule_score
-  FROM `firstdown_mvp.rank_result`
-  WHERE rule_score IS NOT NULL
-  GROUP BY request_id
-)
-SELECT
-  APPROX_QUANTILES(best_rule_score, 20) AS best_score_quantiles,
-  AVG(best_rule_score) AS avg_best_score
-FROM top_scores;
+### ローカル開発
+
+```bash
+# 依存関係のインストール
+pip install -r requirements.txt
+
+# 環境変数の設定
+export MAPS_API_KEY="your-api-key"
+export VERTEX_PROJECT="your-project-id"
+export VERTEX_LOCATION="us-central1"
+export RANKER_URL="http://localhost:8080"
+
+# サーバー起動
+uvicorn app.main:app --reload --port 8000
 ```
 
-上記の分布を見て `SCORE_THRESHOLD` を仮決定し、早期終了の命中率と品質を観察しながら調整する。
+### APIテストスクリプト
 
-## API Key 管理
+`test_generate_api.sh`スクリプトを使用して、4つのテーマでルート生成をテストできます。
 
-### Google Maps Platform API Key
+```bash
+# 環境変数を設定
+export AGENT_URL="http://localhost:8000"
+# または本番環境
+export AGENT_URL="https://agent-203786374782.asia-northeast1.run.app"
 
-**用途:**
-- **Routes API**: ルート候補の生成
-- **Places API**: ルート上のスポット検索（日本語対応）
+# テスト実行
+bash test_generate_api.sh
+```
 
-**取得方法:**
-1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
-2. 「APIとサービス」→「認証情報」→「認証情報を作成」→「APIキー」
-3. 必要なAPIを有効化:
-   - Routes API (Directions API v2)
-   - Places API (New)
+**テスト内容:**
+- 4つのテーマ（exercise, think, refresh, nature）でテスト
+- ランダムな開始地点（東京周辺）と距離（1.0-5.0km）でリクエスト
+- `round_trip: true`, `debug: false` で固定
+- フィードバック評価は`FEEDBACK_RATING`未指定時に1〜5でランダム
+- 結果をJSON形式で出力（`jq`で整形）
 
-**セキュリティ:**
-- Cloud Runの環境変数として設定（GitHub Secrets経由）
-- APIキー制限を設定（HTTPリファラー、IPアドレスなど）
+**前提条件:**
+- `curl`: HTTPリクエスト用
+- `jq`: JSON整形用（オプション）
 
-**Places APIの言語設定:**
-- リクエストに`languageCode: "ja"`を指定して日本語レスポンスを取得
-- スポットの`name`と`type`は日本語で返されます
+**出力例:**
+```
+🚀 Generate API テストスクリプト
+API URL: http://localhost:8000
+テスト対象テーマ: exercise think refresh nature
 
-### Vertex AI 認証
+============================================================
+テーマ: exercise
+開始地点: (35.681234, 139.767123)
+距離: 3.2km
+往復ルート: true
+リクエストID: test-1234567890-12345
+============================================================
+✅ 成功 (HTTP 200)
 
-**用途:**
-- Vertex AI: ルート紹介文の生成
+{
+  "request_id": "test-1234567890-12345",
+  "route": {
+    "polyline": "...",
+    "distance_km": 3.2,
+    "duration_min": 45,
+    "summary": "...",
+    "spots": [
+      {
+        "name": "代々木公園",
+        "type": "公園"
+      }
+    ]
+  },
+  ...
+}
+```
 
-**認証方法:**
-- サービスアカウントを使用（Cloud RunのサービスアカウントにVertex AI権限を付与）
-- `VERTEX_PROJECT`と`VERTEX_LOCATION`を環境変数で指定
 
-**必要な権限:**
-- `aiplatform.endpoints.predict`
-- `aiplatform.models.predict`
-
-**使用モデル:**
-- デフォルト: `gemini-2.5-flash-lite`
-- 温度パラメータ: `0.3`
-- 最大出力トークン: `256`
 
 ## API仕様
 
@@ -276,6 +267,12 @@ FROM top_scores;
 - `meta.fallback_details`: フォールバック理由の詳細リスト（UI表示用）。各要素は `reason`（コード）, `description`（説明）, `impact`（影響）
 - `meta.route_quality`: ルート品質情報
 
+**生成キャッシュ:**  
+同一条件（緯度・経度・距離などを丸めたキー）で TTL 内であれば、前回のレスポンスをキャッシュから返します。`debug: true` のときはキャッシュを使わず毎回生成します。同一キーへの並行リクエストは 1 本に集約し、2 本目以降は 1 本目の完了を待ってキャッシュを参照します（スタンピード防止）。環境変数は [環境変数](#環境変数) の `GENERATE_CACHE_*` を参照。
+
+**リクエストの `debug`:**  
+`debug: true` にすると、キャッシュをバイパスして毎回生成し、レスポンスの `meta` に `plan`（処理ステップ一覧）・`retry_policy`・`debug`（内部状態）などのデバッグ情報が含まれます。障害調査時に利用してください。
+
 **テーマ:**
 - `exercise`: 運動やエクササイズに適したルート
 - `think`: 思考や頭の整理に適したルート
@@ -333,81 +330,126 @@ FROM top_scores;
 
 - 複数が同時に発生した場合、`fallback_reason` はカンマ区切りで並び、`fallback_details` に各理由の `reason` / `description` / `impact` が入ります（UIでの説明表示用）。
 
-## テスト
+## 環境変数
 
-### APIテストスクリプト
+### 必須環境変数
 
-`test_generate_api.sh`スクリプトを使用して、4つのテーマでルート生成をテストできます。
+| 変数名 | 説明 | 例 |
+|--------|------|-----|
+| `MAPS_API_KEY` | Google Maps Platform API Key（Routes API / Places API共通） | `AIza...` |
+| `VERTEX_PROJECT` | Google Cloud Project ID（Vertex AI使用時） | `firstdown-482704` |
+| `VERTEX_LOCATION` | Vertex AI リージョン（gemini-2.5-flash-lite 安定動作のため us-central1 推奨） | `us-central1` |
 
-```bash
-# 環境変数を設定
-export AGENT_URL="http://localhost:8000"
-# または本番環境
-export AGENT_URL="https://agent-203786374782.asia-northeast1.run.app"
+### オプション環境変数
 
-# テスト実行
-bash test_generate_api.sh
+| 変数名 | デフォルト値 | 説明 |
+|--------|------------|------|
+| `RANKER_URL` | `http://ranker:8080` | Ranker APIの内部URL |
+| `REQUEST_TIMEOUT_SEC` | `10.0` | 外部API呼び出しのタイムアウト（秒） |
+| `RANKER_TIMEOUT_SEC` | `10.0` | Ranker API呼び出しのタイムアウト（秒） |
+| `VERTEX_TEXT_MODEL` | `gemini-2.5-flash-lite` | Vertex AIで使用するモデル名 |
+| `VERTEX_TEMPERATURE` | `0.3` | Vertex AIの温度パラメータ |
+| `VERTEX_MAX_OUTPUT_TOKENS` | `256` | Vertex AIの最大出力トークン数 |
+| `VERTEX_TOP_P` | `0.95` | Vertex AIのtop_pパラメータ |
+| `VERTEX_TOP_K` | `40` | Vertex AIのtop_kパラメータ |
+| `VERTEX_FORBIDDEN_WORDS` | `""` | 禁止ワード（カンマ区切り） |
+| `PLACES_RADIUS_M` | `300` | Places APIの検索半径（m） |
+| `PLACES_MAX_RESULTS` | `2` | 1地点あたりの最大件数 |
+| `PLACES_SAMPLE_POINTS_MAX` | `1` | 検索地点数（サンプル点の上限） |
+| `MAX_ROUTES` | `5` | 逐次的生成で作る候補の最大本数 |
+| `MIN_ROUTES` | `2` | 早期終了の下限（この本数に達し、かつ閾値超えで打ち切り） |
+| `SCORE_THRESHOLD` | `0.6` | ヒューリスティックスコアの早期終了閾値（暫定）。この値以上かつ MIN_ROUTES 以上で生成を打ち切る |
+| `ROUTE_DISTANCE_ERROR_RATIO_MAX` | `0.3` | 目標距離との許容誤差比率。実距離が `|実距離−目標|/目標` を超える候補は除外。短距離（≤ SHORT_DISTANCE_MAX_KM）時は 0.2 に厳格化 |
+| `ROUTE_DISTANCE_RETRY_MAX` | `1` | 距離フィルタで候補が0件だった場合の再試行回数。最大試行回数はこの値+1（デフォルト2回） |
+| `SHORT_DISTANCE_MAX_KM` | `3.0` | 短距離とみなす上限（km）。この値以下で誤差比率を厳格化・事前補正の対象にする |
+| `SHORT_DISTANCE_TARGET_RATIO` | `0.7` | 短距離時の事前目標補正。目標距離を (目標 × この比率) に下げて Routes API に渡す（0.5〜1.0）。再試行時は観測した最良距離に合わせて目標を再計算し直す |
+| `CONCURRENCY` | `2` | 外部APIの同時実行数 |
+| `BQ_DATASET` | `firstdown_mvp` | BigQueryデータセット名 |
+| `BQ_TABLE_REQUEST` | `route_request` | BigQueryリクエストテーブル名 |
+| `BQ_TABLE_CANDIDATE` | `route_candidate` | BigQuery候補テーブル名 |
+| `BQ_TABLE_PROPOSAL` | `route_proposal` | BigQuery提案テーブル名 |
+| `BQ_TABLE_FEEDBACK` | `route_feedback` | BigQueryフィードバックテーブル名 |
+| `FEATURES_VERSION` | `mvp_v1` | 特徴量バージョン |
+| `RANKER_VERSION` | `rule_v1` | Rankerバージョン |
+| `SPOT_MAX_DISTANCE_M` | `30.0` | ルートからの最大距離（m）。この距離以内のスポットを採用 |
+| `SPOT_MAX_DISTANCE_M_RELAXED` | `60.0` | 緩和時の最大距離（m）。30mで3件未満のときに使用 |
+| `SPOT_MAX_DISTANCE_M_FALLBACK` | `120.0` | 追加緩和時の最大距離（m）。60mでも3件未満のときに使用 |
+| `PLACES_NAME_BLOCKLIST` | （コンビニ・ファストフード等） | スポット名で除外する文字列（カンマ区切り）。詳細は settings.py 参照 |
+| `PLACES_TYPE_BLOCKLIST` | `convenience_store,fast_food_restaurant` | スポットタイプで除外する Places API のタイプ（カンマ区切り） |
+| `LOG_LEVEL` | `INFO` | ログレベル（`DEBUG` / `INFO` / `WARNING` 等） |
+| `GENERATE_CACHE_ENABLED` | `True` | `/route/generate` のインプロセス TTL キャッシュを有効にするか |
+| `GENERATE_CACHE_TTL_SEC` | `120.0` | キャッシュの TTL（秒） |
+| `GENERATE_CACHE_MAXSIZE` | `256` | キャッシュの最大エントリ数 |
+| `GENERATE_CACHE_ROUND_LATLNG_DECIMALS` | `5` | キャッシュキー用の緯度・経度の丸め桁数 |
+| `GENERATE_CACHE_ROUND_DISTANCE_DECIMALS` | `1` | キャッシュキー用の距離（km）の丸め桁数 |
+
+### SCORE_THRESHOLD の決め方（暫定）
+
+既存の BigQuery ログから「1リクエスト内の最高 rule_score」を抽出して分布を見る。
+`rank_result` テーブルに `rule_score` が保存されている前提です。
+
+```sql
+-- 1リクエスト内の最高 rule_score 分布
+WITH top_scores AS (
+  SELECT
+    request_id,
+    MAX(rule_score) AS best_rule_score
+  FROM `firstdown_mvp.rank_result`
+  WHERE rule_score IS NOT NULL
+  GROUP BY request_id
+)
+SELECT
+  APPROX_QUANTILES(best_rule_score, 20) AS best_score_quantiles,
+  AVG(best_rule_score) AS avg_best_score
+FROM top_scores;
 ```
 
-**テスト内容:**
-- 4つのテーマ（exercise, think, refresh, nature）でテスト
-- ランダムな開始地点（東京周辺）と距離（1.0-5.0km）でリクエスト
-- `round_trip: true`, `debug: false` で固定
-- フィードバック評価は`FEEDBACK_RATING`未指定時に1〜5でランダム
-- 結果をJSON形式で出力（`jq`で整形）
+上記の分布を見て `SCORE_THRESHOLD` を仮決定し、早期終了の命中率と品質を観察しながら調整する。
 
-**前提条件:**
-- `curl`: HTTPリクエスト用
-- `jq`: JSON整形用（オプション）
+## API Key 管理
 
-**出力例:**
-```
-🚀 Generate API テストスクリプト
-API URL: http://localhost:8000
-テスト対象テーマ: exercise think refresh nature
+### Google Maps Platform API Key
 
-============================================================
-テーマ: exercise
-開始地点: (35.681234, 139.767123)
-距離: 3.2km
-往復ルート: true
-リクエストID: test-1234567890-12345
-============================================================
-✅ 成功 (HTTP 200)
+**用途:**
+- **Routes API**: ルート候補の生成
+- **Places API**: ルート上のスポット検索（日本語対応）
 
-{
-  "request_id": "test-1234567890-12345",
-  "route": {
-    "polyline": "...",
-    "distance_km": 3.2,
-    "duration_min": 45,
-    "summary": "...",
-    "spots": [
-      {
-        "name": "代々木公園",
-        "type": "公園"
-      }
-    ]
-  },
-  ...
-}
-```
+**取得方法:**
+1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
+2. 「APIとサービス」→「認証情報」→「認証情報を作成」→「APIキー」
+3. 必要なAPIを有効化:
+   - Routes API (Directions API v2)
+   - Places API (New)
 
-### ローカル開発
+**セキュリティ:**
+- Cloud Runの環境変数として設定（GitHub Secrets経由）
+- APIキー制限を設定（HTTPリファラー、IPアドレスなど）
 
-```bash
-# 依存関係のインストール
-pip install -r requirements.txt
+**Places APIの言語設定:**
+- リクエストに`languageCode: "ja"`を指定して日本語レスポンスを取得
+- スポットの`name`と`type`は日本語で返されます
 
-# 環境変数の設定
-export MAPS_API_KEY="your-api-key"
-export VERTEX_PROJECT="your-project-id"
-export VERTEX_LOCATION="us-central1"
-export RANKER_URL="http://localhost:8080"
+### Vertex AI 認証
 
-# サーバー起動
-uvicorn app.main:app --reload --port 8000
-```
+**用途:**
+- Vertex AI: ルート紹介文の生成
+
+**認証方法:**
+- サービスアカウントを使用（Cloud RunのサービスアカウントにVertex AI権限を付与）
+- `VERTEX_PROJECT`と`VERTEX_LOCATION`を環境変数で指定
+
+**必要な権限:**
+- `aiplatform.endpoints.predict`
+- `aiplatform.models.predict`
+
+**使用モデル:**
+- デフォルト: `gemini-2.5-flash-lite`
+- 温度パラメータ: `0.3`
+- 最大出力トークン: `256`
+
+## 外部連携
+
+Ranker は Cloud Run で認証必須にしている場合、呼び出し時に **OIDC ID トークン**が必要です。Agent は `app/services/id_token.py` で `audience=RANKER_URL` の ID トークンを取得し、`ranker_client.py` が `Authorization: Bearer <token>` で Ranker を呼び出します。トークンは TTL キャッシュ（55 分）で再利用します。IAM（run.invoker の付与）は [infra/README.md](../../infra/README.md#認証oidc-と-runinvoker) を参照してください。
 
 ## ログ
 
@@ -538,19 +580,7 @@ ml/agent/
 └── test_generate_api.sh     # APIテストスクリプト
 ```
 
-## 主要な機能
 
-### スポット検索（見どころ抽出・日本語対応）
-
-- **二段階検索**: 第1段階で穴場キーワード検索、第2段階でテーマに合った場所タイプ（classic types）で検索。いずれも結果が空の場合はタイプ指定なしで再検索（Places API がキーワードを拒否した場合もキーワードなしで再試行）
-- **サンプル点**: ルート上の 25% / 50% / 75% 地点をサンプル点とする。検索に使う点数は `PLACES_SAMPLE_POINTS_MAX` で上限（デフォルト1）。各点から `PLACES_RADIUS_M`（300m）以内を検索、1点あたり最大 `PLACES_MAX_RESULTS`（2件）まで取得
-- **重複排除**: 候補の一意性は `place_id` 優先、なければ `name`、なければ `latlng` で判定
-- **タイプ多様性**: 集めた候補から「タイプが被らないものを優先して選択」し、まだ余裕があれば同タイプも追加して最大5件にする（`_select_unique_types`）
-- **ルート近傍フィルタ**: ルートからの距離が `SPOT_MAX_DISTANCE_M`（30m）以内のスポットのみ採用。**3件未満**のときは距離を緩和（60m → 120m）して再フィルタし、緩和時はタイプ多様化前の候補リストを再評価して最大5件を確保
-- **ブロックリスト**: 名前（`PLACES_NAME_BLOCKLIST`）・タイプ（`PLACES_TYPE_BLOCKLIST`）でコンビニ・ファストフード等を除外
-- **出力**: 最大5件、緯度経度つき。`name` と `type` は日本語（Places API の `languageCode: "ja"` と、英語タイプの日本語変換）
-
-フォールバック機能の詳細は、上記 [フォールバック機能](#フォールバック機能) を参照してください。
 
 ## トラブルシューティング
 
@@ -596,6 +626,12 @@ ml/agent/
 - レスポンスの `meta.fallback_reason` および `meta.fallback_details` で理由を確認
 - ログで `fallback_reason` を検索
 - 各サービスのヘルスチェックを実行
+
+#### 5. デバッグモード
+
+**用途:** ルート生成の内部状態やフォールバック理由を確認したいとき
+
+**方法:** リクエストで `debug: true` を指定する。キャッシュをバイパスして毎回生成され、レスポンスの `meta.plan`（処理ステップ一覧）・`meta.retry_policy`・`meta.debug`（内部状態）が返る。
 
 ## リンク
 

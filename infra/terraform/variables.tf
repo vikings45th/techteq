@@ -58,6 +58,13 @@ variable "ranker_service_name" {
   description = "Ranker Cloud Run のサービス名（他プロジェクトでテンプレート利用時に変更）"
 }
 
+# Agent を呼び出す権限（run.invoker）を付与するサービスアカウント（例: Web Cloud Run の実行用 SA）。空のときは Terraform で invoker を付与しない。
+variable "agent_invoker_sa_email" {
+  type        = string
+  default     = ""
+  description = "Agent の run.invoker を付与する SA のメール（例: Web の Cloud Run 用 SA）。認証必須運用時に必須"
+}
+
 variable "agent_image" {
   type        = string
   default     = ""

@@ -11,7 +11,7 @@
 - [実装詳細](#実装詳細)
 - [テスト](#テスト)
 - [学習とモデル配置](#学習とモデル配置)
-- [特徴量重要度とボトルネック](#特徴量重要度とボトルネック)
+- [特徴量重要度と再学習](#特徴量重要度と再学習)
 - [タイムアウト](#タイムアウト)
 - [デプロイ](#デプロイ)
 - [トラブルシューティング](#トラブルシューティング)
@@ -140,125 +140,15 @@ Ranker APIは、Agent APIから送信されたルート候補を評価し、ス�
 
 ## スコアリングロジック
 
-現在はモデルスコアを本番の意思決定に利用します。ルールベーススコアはシャドーとして計算し、レスポンス内の`breakdown.rule_score`とBigQueryログに保存します。モデル推論に失敗した場合はルールスコアにフォールバックします。
-
-### 基本スコア
-
-ベーススコア: `0.5`
-
-### スコア計算要素
-
-#### 1. 距離乖離ペナルティ
-
-目標距離との誤差が小さいほど良い。
-
-```python
-if distance_error_ratio <= 0.1:
-    distance_penalty = 0.0
-elif distance_error_ratio <= 0.2:
-    distance_penalty = -(distance_error_ratio - 0.1) * 1.0
-else:
-    distance_penalty = -0.1 - (distance_error_ratio - 0.2) * 2.0
-    distance_penalty = max(distance_penalty, -0.6)
-```
-
-- `distance_error_ratio`: 目標距離との誤差比率（小さいほど良い）
-
-#### 2. ループ閉鎖ボーナス
-
-往復ルート要求時、ループ閉鎖距離が小さいほど良い。
-
-```python
-if round_trip_req:
-    if loop_closure_m <= 100.0:
-        loop_closure_bonus = 0.2  # 100m以内ならボーナス
-    elif loop_closure_m <= 500.0:
-        loop_closure_bonus = 0.1  # 500m以内なら小さいボーナス
-    if round_trip_fit:
-        loop_closure_bonus = max(loop_closure_bonus, 0.2)
-```
-
-- `loop_closure_m`: ループ閉鎖距離（m、小さいほど良い）
-- `round_trip_fit`: 往復ルート適合度（1 or 0）
-
-#### 3. POIボーナス
-
-公園POI比率とPOI密度が高いほど良い。
-
-```python
-poi_bonus = park_poi_ratio * 0.15 + min(poi_density, 1.0) * 0.1
-```
-
-- `park_poi_ratio`: 公園POI比率（大きいほど良い）
-- `poi_density`: POI密度（大きいほど良い、1.0でクランプ）
-
-#### 4. 運動テーマボーナス
-
-階段・標高は特徴量から外したため、ルールでは加点なし（モデル推論を優先）。
-
-```python
-# 階段・標高は特徴量から外したためルールでは加点なし（モデル推論を優先）
-exercise_bonus = 0.0
-```
-
-#### 5. スポット多様性（単調さ抑止）
-
-スポットのカテゴリが分散しているほど良い。
-
-```python
-diversity = min(max(spot_type_diversity, 0.0), 1.0)
-if diversity < 0.4:
-    diversity_bonus = -(0.4 - diversity) * 0.3  # 0.0で-0.12
-else:
-    diversity_bonus = (diversity - 0.4) * 0.2  # 1.0で+0.12
-diversity_bonus = max(-0.12, min(0.12, diversity_bonus))
-```
-
-- `spot_type_diversity`: スポットタイプ多様性（0.0-1.0）
-
-#### 6. 寄り道超過ペナルティ
-
-許容寄り道距離を超えた分を減点。
-
-```python
-detour_penalty = -min(max(detour_over_ratio, 0.0), 1.0) * 0.15
-```
-
-- `detour_over_ratio`: 逸脱超過比率（0.0-∞、大きいほど悪い）
-
-### 最終スコア
-
-```python
-score = base + distance_penalty + loop_closure_bonus + poi_bonus + diversity_bonus + detour_penalty + exercise_bonus
-score = max(0.0, min(1.0, score))  # 0.0-1.0の範囲にクリップ
-```
-
-**使用している特徴量:**
-- `distance_error_ratio`: 目標距離との誤差比率（小さいほど良い）
-- `round_trip_req`: 往復ルート要求フラグ（1 or 0）
-- `round_trip_fit`: 往復ルート適合度（1 or 0）
-- `loop_closure_m`: ループ閉鎖距離（m、小さいほど良い）
-- `park_poi_ratio`: 公園POI比率（大きいほど良い）
-- `poi_density`: POI密度（大きいほど良い）
-- `spot_type_diversity`: スポットタイプ多様性（大きいほど良い）
-- `detour_over_ratio`: 寄り道超過比率（小さいほど良い）
-- `theme_exercise`: 運動テーマフラグ（1 or 0）
-
-**注意:** 現在はVertex AI Endpointのモデルスコアを優先し、ルールはシャドーで残します。`has_stairs` / `elevation_*` は特徴量から外済みです。
+- **本番**: Vertex AI Endpoint のモデルスコアでランキング。ルールスコアはシャドー（`breakdown.rule_score` と BigQuery に保存）。モデル失敗時はルールスコアにフォールバック。
+- **ルールスコア**: ベース 0.5 ＋ 距離乖離ペナルティ／ループ閉鎖ボーナス／POIボーナス／スポット多様性／寄り道超過ペナルティ（運動・階段・標高は特徴量から外済みのためルールでは加点なし）。0.0–1.0 にクリップ。
+- **使用特徴量**: `distance_error_ratio`, `round_trip_req`/`round_trip_fit`, `loop_closure_m`, `park_poi_ratio`, `poi_density`, `spot_type_diversity`, `detour_over_ratio`, `theme_exercise`。詳細は `app/main.py` のスコア計算を参照。
 
 ## 実装詳細
 
 ### 技術スタック
 
-- **FastAPI**: REST APIフレームワーク
-- **Pydantic**: スキーマ検証
-- **Python 3.11+**: 実行環境
-
-### 特徴
-
-- **部分的な成功を許容**: 一部のルートが失敗してもOK（`failed_route_ids`に記録）
-- **スコア内訳の提供**: デバッグ用のスコア内訳情報（`breakdown`）
-- **スコア順ソート**: レスポンスはスコアが高い順にソート済み
+FastAPI / Pydantic / Python 3.11+。一部ルートのみ失敗時は `failed_route_ids` に記録し、レスポンスはスコア降順・`breakdown` で内訳を返す。
 
 ### コード構造
 
@@ -288,12 +178,7 @@ ml/ranker/
 
 ### テストスクリプト
 
-```bash
-cd ml/ranker
-python test_ranker.py
-```
-
-テストスクリプトは、様々な特徴量の組み合わせでスコアリングをテストします。
+`cd ml/ranker && python test_ranker.py` で各種特徴量のスコアリングを検証。
 
 ### ローカル開発
 
@@ -341,193 +226,35 @@ curl -X POST http://localhost:8080/rank \
   }'
 ```
 
-### BigQuery テーブル
+### BigQuery
 
-`rank_result` テーブルのDDLは `ml/ranker/bq/rank_result_shadow.sql` にあります。  
-モデル推論・BQ書き込みの失敗はレスポンスに影響せず、ログにのみ記録されます。
+`rank_result` の DDL は `ml/ranker/bq/rank_result_shadow.sql`。推論・BQ 書き込み失敗はレスポンスに影響せずログのみ。
 
 ## 学習とモデル配置
 
-### 学習データの作成
+- **学習データ**: BigQuery の `route_feedback` と `route_candidate` を `ml/agent/bq/training_view.sql` で結合。高評価（rating 4–5）を正例、候補内の一部を弱い負例として回帰（rating）を学習。
+- **モデル**: XGBoost 回帰（`reg:pseudohubererror`）。入力は `feature_columns.json`、出力は 0–10 スコア。学習スクリプト: `ml/ranker/training/train_xgb.py`。
 
-学習データはBigQuery上のフィードバックと候補テーブルから作成します。
-
-- **フィードバック収集**: Agent API の `POST /route/feedback` が `route_feedback` に保存
-- **候補特徴量**: `route_candidate` に生成時の特徴量が保存
-- **学習ビュー**: `ml/agent/bq/training_view.sql` で結合・整形
-
-`training_view` の主なルール:
-
-- `rating IN (4, 5)` の高評価のみを正例として採用
-- 低評価は現状ラベルに使わず、**候補内の一部を弱い負例としてサンプリング**
-- 2/1以降のデータに限定（`event_ts >= TIMESTAMP '2026-02-01'`）
-
-これにより、ノイズの少ないラベルで**回帰ターゲット（rating）**を学習します。
-
-### モデル概要
-
-- **モデル**: XGBoost 回帰（`reg:pseudohubererror`）
-- **入力**: ルート特徴量（`feature_columns.json` に定義）
-- **出力**: 0-10スケールのスコア（実データの rating に合わせた回帰値）
-- **学習スクリプト**: `ml/ranker/training/train_xgb.py`
-
-### 学習（BigQueryから取得）
+### 学習コマンド例
 
 ```bash
-cd ml/ranker
-pip install -r training/requirements.txt
-
-# 例: BigQueryの学習用ビューから学習
-python training/train_xgb.py \
-  --project firstdown-482704 \
-  --dataset firstdown_mvp \
-  --table training_view_poc_aug_v2 \
-  --model-version shadow_xgb_v1 \
-  --output-dir artifacts
+cd ml/ranker && pip install -r training/requirements.txt
+python training/train_xgb.py --project PROJECT --dataset firstdown_mvp --table training_view_poc_aug_v2 --model-version shadow_xgb_v1 --output-dir artifacts
 ```
 
-学習後、以下の成果物が生成されます。
+成果物: `artifacts/model.xgb.json`, `feature_columns.json`, `metadata.json`。推論用には `models/` にコピーし、Cloud Run ではイメージに同梱。特徴量重要度は `training/feature_importance.py` で確認可能。
 
-- `artifacts/model.xgb.json`
-- `artifacts/feature_columns.json`
-- `artifacts/metadata.json`
+## 特徴量重要度と再学習
 
-### 推論用成果物の配置
-
-```bash
-# 成果物を推論用ディレクトリへ配置
-cp artifacts/model.xgb.json models/model.xgb.json
-cp artifacts/feature_columns.json models/feature_columns.json
-```
-
-Cloud Run では `models/` をイメージに同梱するか、ボリュームでマウントしてください。
-
-### 特徴量重要度の確認
-
-学習済みモデルから特徴量重要度（gain）を取得するスクリプトがあります。
-
-```bash
-cd ml/ranker/training
-python feature_importance.py
-# オプション: --model ../artifacts/model.xgb.json --features ../artifacts/feature_columns.json --out importance.json
-```
-
-`feature_importance.py` は XGBoost の `get_score(importance_type='gain')` で各特徴量の寄与度を出し、elevation/steps 関連の重要度を一覧します。性能改善の検討時に参照してください。
-
-## 特徴量重要度とボトルネック
-
-### 調査結果（2026年2月時点のモデル）
-
-カスタムモデル（XGBoost）の特徴量重要度を `training/feature_importance.py` で取得した結果、**elevation / steps 関連の特徴量はすべて重要度 0%** でした。
-
-| 特徴量 | gain | gain_% | 備考 |
-|--------|------|--------|------|
-| elevation_gain_m | 0.0000 | 0.00% | 累積標高差（上り） |
-| elevation_density | 0.0000 | 0.00% | 標高差密度（m/km） |
-| has_stairs | 0.0000 | 0.00% | 階段の有無 |
-
-いずれも木の分割に一度も使われていません。一方で、重要度が高い特徴量は以下の通りです（上位のみ）。
-
-- theme_think / theme_refresh / theme_exercise / theme_nature
-- duration_min / distance_km
-- turn_count / turn_density
-- distance_error_ratio / candidate_rank_in_theme
-
-### ボトルネックになっている箇所
-
-これらの特徴量を取得するために、Agent 側で以下のコストがかかっています。
-
-1. **Routes API の FieldMask**
-   - `routes.legs`, `routes.legs.steps`, `routes.legs.steps.navigationInstruction` を要求しており、**steps 情報の取得でレスポンスが重くなる**。
-   - 取得元: `ml/agent/app/services/maps_routes_client.py` の `X-Goog-FieldMask`（`compute_route_dests` と `compute_route_candidate` の両方）。
-
-2. **Elevation API の呼び出し**
-   - ルートごとに **1回ずつ** `_calculate_elevation_gain(encoded, api_key)` が呼ばれ、**別途 HTTP で Elevation API にリクエスト**している。
-   - 候補が N 本あると **N 回** Elevation API が呼ばれるため、レイテンシのボトルネックになりやすい。
-
-### 推奨対応
-
-重要度が 0% であるため、**elevation_gain_m / elevation_density / has_stairs を特徴量から外し、取得処理をスキップする**ことでレイテンシを削減できます。
-
-- **Agent**: FieldMask から `routes.legs.steps` 系を外す。Elevation API の呼び出しをやめる。特徴量計算で elevation / has_stairs を 0 または定数で埋める。
-- **Ranker**: 学習・推論時の特徴量リストから `elevation_gain_m`, `elevation_density`, `has_stairs` を削除し、**新しいモデルを再学習**してからデプロイする（既存モデルはこれらのキーを無視している可能性はあるが、入力スキーマを揃えるため再学習を推奨）。
-
-特徴量を外したうえで再度 `feature_importance.py` を実行し、他特徴量の重要度がどう変わるか確認することを推奨します。
-
-### 対応済み: 再学習とデプロイ手順
-
-ソースコード上では **has_stairs / elevation_gain_m / elevation_density** を特徴量から外してあります。**既存の model.xgb.json は 21 特徴量で学習されているため、18 特徴量に減らしたあとは必ず再学習し、新しいモデルをデプロイしてください。**
-
-#### 1. 再学習（BigQuery から）
-
-```bash
-cd ml/ranker
-pip install -r training/requirements.txt
-
-# プロジェクト・データセット・テーブルは環境に合わせて変更
-python training/train_xgb.py \
-  --project YOUR_PROJECT \
-  --dataset firstdown_mvp \
-  --table training_view_poc_aug_v2 \
-  --model-version shadow_xgb_no_elevation \
-  --output-dir artifacts
-```
-
-#### 2. 推論用成果物の配置
-
-```bash
-cp artifacts/model.xgb.json models/model.xgb.json
-cp artifacts/feature_columns.json models/feature_columns.json
-cp artifacts/metadata.json models/metadata.json
-```
-
-#### 3. デプロイ
-
-- **Cloud Run（Ranker を直接デプロイする場合）**: 上記 `models/` をイメージに同梱してビルド・デプロイする。
-- **Vertex AI Endpoint を使う場合**: `ml/ranker/scripts/deploy_vertex.sh` を実行するか、下記「2) モデル成果物をGCSに配置」のとおり手動で GCS にアップロードし、Predictor コンテナをビルド・Vertex にデプロイする。`VERSION` を再学習時の `--model-version` に合わせること。
-  - GCS バケットには、Vertex の予測用コンテナがモデルを読めるよう **デフォルト Compute 用サービスアカウント**（`PROJECT_NUMBER-compute@developer.gserviceaccount.com`）に `roles/storage.objectViewer` を付与すること。`deploy_vertex.sh` 内で付与処理を実行している。
-
-再学習後は `python training/feature_importance.py` で重要度を確認することを推奨します。
-
-#### 4. Ranker を Vertex 推論にする（Terraform）
-
-18特徴量モデルを Vertex AI Endpoint にデプロイしたあと、Ranker のスコアリングをそのエンドポイントで行うには、Terraform の `terraform.tfvars` で以下を設定して `terraform apply` する。
-
-```hcl
-ranker_env_model_version         = "shadow_xgb_18feat"
-ranker_env_model_inference_mode  = "vertex"
-ranker_env_vertex_endpoint_id    = "3135439925533474816"  # デプロイ先の Endpoint ID
-ranker_env_vertex_timeout_s      = "5.0"
-```
-
-Cloud Run の Ranker を再デプロイすると、`MODEL_INFERENCE_MODE=vertex` と `VERTEX_ENDPOINT_ID` が渡り、推論が Vertex AI の新モデルで行われます。
+- **結論**: `training/feature_importance.py` で確認したところ、`elevation_gain_m` / `elevation_density` / `has_stairs` は重要度 0% のため**特徴量から外済み**。レイテンシ削減のため Agent 側で Elevation API と steps 取得をスキップし、Ranker は **18 特徴量**で再学習・デプロイする構成にしている。
+- **再学習**: `train_xgb.py` で BigQuery の `training_view` から学習。成果物を `models/` に配置し、Cloud Run は同梱でデプロイ。Vertex 利用時は GCS にアップロードして `ml/ranker/scripts/deploy_vertex.sh` または手動で Predictor をデプロイ（GCS には Compute 用 SA の `roles/storage.objectViewer` を付与）。
+- **Vertex に切り替え**: Terraform の `terraform.tfvars` で `ranker_env_model_inference_mode = "vertex"` と `ranker_env_vertex_endpoint_id` を設定して `terraform apply`。再学習後の `--model-version` と `VERSION` を揃えること。
 
 ### Vertex AI Online Prediction（カスタムコンテナ）
 
-**Vertex AI にデプロイしたカスタムモデル（学習済みXGBoost）のエンドポイント**にリクエストを送って推論する構成に切替える手順です。Ranker はこのエンドポイントから返るスコアを本番のランキングに利用します。
+学習済み XGBoost を `ml/vertex/predictor` でラップし Vertex AI Endpoint にデプロイ。Ranker はそのエンドポイントにリクエストしてスコアを取得し本番ランキングに利用。推論 I/O: 入力 `{"instances":[{feature:value,...}]}`、出力 `{"predictions":[score,...]}`。GCS は `MODEL_GCS_URI` / `FEATURES_GCS_URI` / `METADATA_GCS_URI`。
 
-#### 実装概要
-
-- **カスタムモデル**: 自前で学習したXGBoost等をカスタムコンテナ（`ml/vertex/predictor`）でラップし、Vertex AI Endpoint にデプロイ
-- **推論コンテナ**: `ml/vertex/predictor`（FastAPI）。GCSからモデル・特徴量定義を読み込み、`/predict` でスコアを返す
-- **GCSから成果物取得**: `MODEL_GCS_URI` / `FEATURES_GCS_URI` / `METADATA_GCS_URI`
-- **推論I/O**:
-  - 入力: `{"instances":[{feature:value, ...}]}`
-  - 出力: `{"predictions":[score, ...]}`
-
-#### 実装概要
-
-- **推論コンテナ**: `ml/vertex/predictor`（FastAPI）
-- **GCSから成果物取得**: `MODEL_GCS_URI` / `FEATURES_GCS_URI` / `METADATA_GCS_URI`
-- **推論I/O**:
-  - 入力: `{"instances":[{feature:value, ...}]}`
-  - 出力: `{"predictions":[score, ...]}`
-
-#### 前提条件
-
-- GCPプロジェクト: `firstdown-482704`
-- リージョン: `asia-northeast1`
-- Rankerのサービスアカウントに `roles/aiplatform.user` 権限が必要
+**前提**: プロジェクト・リージョンは環境に合わせる。Ranker のサービスアカウントに `roles/aiplatform.user`。
 
 #### 1) GCSバケットの作成（初回のみ）
 
@@ -628,103 +355,25 @@ gcloud ai endpoints deploy-model ${ENDPOINT_ID} \
   --service-account=${PROJECT_NUMBER}-compute@developer.gserviceaccount.com
 ```
 
-#### 8) Ranker側の環境変数設定
+#### 8) Ranker の環境変数
 
-Cloud RunのRankerサービスに以下の環境変数を設定します：
+`MODEL_INFERENCE_MODE=vertex`, `VERTEX_PROJECT`, `VERTEX_LOCATION`, `VERTEX_ENDPOINT_ID`, `VERTEX_TIMEOUT_S`, `MODEL_VERSION` を設定。
 
-```bash
-MODEL_INFERENCE_MODE=vertex
-VERTEX_PROJECT=firstdown-482704
-VERTEX_LOCATION=asia-northeast1
-VERTEX_ENDPOINT_ID=<上記で取得したENDPOINT_ID>
-VERTEX_TIMEOUT_S=5.0
-MODEL_VERSION=${VERSION}  # 例: shadow_xgb_20260211_since_0201
-```
+#### 9) 切り戻し
 
-#### 9) 切り戻し方法
-
-モデル推論に問題が発生した場合、環境変数を変更して即座にルールスコアに切り戻せます：
-
-```bash
-# ルールスコアに切り戻し
-MODEL_INFERENCE_MODE=disabled
-# または
-MODEL_INFERENCE_MODE=xgb  # XGBoostローカル推論に切り戻し
-```
+`MODEL_INFERENCE_MODE=disabled`（ルールのみ）または `xgb`（ローカル XGBoost）に変更即可。
 
 #### 10) 動作確認
 
-```bash
-# ローカルでRankerを起動してVertex AI推論をテスト
-export MODEL_INFERENCE_MODE=vertex
-export VERTEX_PROJECT=firstdown-482704
-export VERTEX_LOCATION=asia-northeast1
-export VERTEX_ENDPOINT_ID=<ENDPOINT_ID>
-export VERTEX_TIMEOUT_S=5.0
-
-cd ml/ranker
-uvicorn app.main:app --reload --port 8080
-
-# 別ターミナルでテストリクエスト
-curl -X POST http://localhost:8080/rank \
-  -H "Content-Type: application/json" \
-  -d '{
-    "request_id": "test-vertex-001",
-    "routes": [
-      {
-        "route_id": "route_001",
-        "features": {
-          "distance_error_ratio": 0.1,
-          "round_trip_req": 1,
-          "round_trip_fit": 1,
-          "loop_closure_m": 50.0,
-          "park_poi_ratio": 0.3,
-          "poi_density": 0.5
-        }
-      }
-    ]
-  }'
-```
-
-レスポンスの`breakdown.model_score`が設定され、`score`がモデルスコアで並び替えられていることを確認します。
-
-### 実行確認（ローカル）
-
-```bash
-export MODEL_SHADOW_MODE=xgb
-export MODEL_VERSION=shadow_xgb_v1
-export MODEL_PATH=models/model.xgb.json
-export MODEL_FEATURES_PATH=models/feature_columns.json
-
-uvicorn app.main:app --reload --port 8080
-```
-
-### 推論の注意点
-
-- 学習データは `split` 列（train/valid/test）を前提としています
-- `request_id` 単位での分割が未整備の場合、データリークの恐れがあるため注意してください
+ローカルで `MODEL_INFERENCE_MODE=vertex` と Vertex 関連変数を設定して `uvicorn app.main:app --reload --port 8080` を起動し、`POST /rank` で `breakdown.model_score` が付与されることを確認。
 
 ## タイムアウト
 
-Agentからの呼び出しにはタイムアウトが設定されています（デフォルト: 10秒）。
-
-タイムアウトが発生した場合、Agent APIはフォールバック処理を行い、最初のルート候補を選択します。
+Agent からの呼び出しにはタイムアウトあり（デフォルト 10 秒）。タイムアウト時は Agent 側でヒューリスティックにより最良候補を 1 本選択（詳細は [Agent README](../agent/README.md) のトラブルシューティング参照）。
 
 ## デプロイ
 
-Cloud Runにデプロイされます。設定は`.github/workflows/deploy-ranker.yml`を参照してください。
-
-### デプロイワークフロー
-
-1. GitHub Actionsが`ml/ranker/**`への変更を検知
-2. Dockerイメージをビルド
-3. Artifact Registryにプッシュ
-4. Cloud Runにデプロイ
-
-### 必要なGCPリソース
-
-1. **Cloud Run**: サービス実行環境
-2. **Artifact Registry**: Dockerイメージ保存
+Cloud Run にデプロイ。`ml/ranker/**` 変更で GitHub Actions がイメージビルド → Artifact Registry プッシュ → Cloud Run デプロイ。設定は `.github/workflows/deploy-ranker.yml` 参照。要 Cloud Run と Artifact Registry。
 
 ## トラブルシューティング
 
