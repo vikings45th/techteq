@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 import xgboost as xgb
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Value
@@ -69,7 +72,8 @@ class ModelScorer:
             vector = self._vectorize_features(features)
             pred = float(self._model.predict(vector)[0])
             return pred, self._elapsed_ms(start), "ok"
-        except Exception:
+        except Exception as e:
+            logger.exception("[Vertex predict error] %r", e)
             return None, self._elapsed_ms(start), "model_error"
 
     def _load_model(self) -> None:
