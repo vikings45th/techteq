@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional, TypedDict
 import polyline as polyline_lib
 from fastapi import HTTPException
 from langgraph.graph import END, StateGraph
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 
 from app.schemas import (
     FallbackDetail,
@@ -36,6 +38,18 @@ from app.settings import settings
 from app.utils import translate_place_type_to_japanese
 
 logger = logging.getLogger(__name__)
+_tracer = trace.get_tracer(__name__, "1.0.0")
+
+
+def _set_span_route_attrs(span: trace.Span, req: GenerateRouteRequest, state: AgentState) -> None:
+    if span.is_recording():
+        span.set_attribute("route.request_id", req.request_id)
+        span.set_attribute("route.theme", req.theme)
+        span.set_attribute("route.distance_km", float(req.distance_km))
+        span.set_attribute("fallback.used", bool(state.get("fallback_used") or state.get("is_fallback_used", False)))
+        fallback_reason = state.get("fallback_reason") or state.get("fallback_reason_str")
+        if fallback_reason:
+            span.set_attribute("fallback.reason", str(fallback_reason))
 
 
 class AgentState(TypedDict, total=False):
@@ -447,165 +461,175 @@ async def generate_candidates_routes(state: AgentState) -> Dict[str, Any]:
     status = "error"
     error: Optional[str] = None
     t_start = time.perf_counter()
-    try:
-        effective_end_location = None if req.round_trip else req.end_location
-        max_routes = max(1, int(settings.MAX_ROUTES))
-        min_routes = max(1, int(settings.MIN_ROUTES))
-        max_error_ratio = float(settings.ROUTE_DISTANCE_ERROR_RATIO_MAX)
-        max_attempts = max(1, int(settings.ROUTE_DISTANCE_RETRY_MAX) + 1)
-        target_distance_km = float(req.distance_km)
-        original_target_km = target_distance_km
-        short_max_km = float(getattr(settings, "SHORT_DISTANCE_MAX_KM", 2.0))
-        short_ratio = float(getattr(settings, "SHORT_DISTANCE_TARGET_RATIO", 0.9))
-        if original_target_km <= short_max_km:
-            max_error_ratio = min(max_error_ratio, 0.2)
-        if target_distance_km <= short_max_km and 0.5 <= short_ratio < 1.0:
-            adjusted = max(0.5, target_distance_km * short_ratio)
-            if adjusted != target_distance_km:
-                logger.info(
-                    "[Routes Target PreAdjust] request_id=%s target=%.3f adjusted=%.3f ratio=%.2f",
-                    req.request_id,
-                    target_distance_km,
-                    adjusted,
-                    short_ratio,
-                )
-                target_distance_km = adjusted
+    with _tracer.start_as_current_span("step.generate_candidates") as span:
+        _set_span_route_attrs(span, req, state)
+        try:
+            effective_end_location = None if req.round_trip else req.end_location
+            max_routes = max(1, int(settings.MAX_ROUTES))
+            min_routes = max(1, int(settings.MIN_ROUTES))
+            max_error_ratio = float(settings.ROUTE_DISTANCE_ERROR_RATIO_MAX)
+            max_attempts = max(1, int(settings.ROUTE_DISTANCE_RETRY_MAX) + 1)
+            target_distance_km = float(req.distance_km)
+            original_target_km = target_distance_km
+            short_max_km = float(getattr(settings, "SHORT_DISTANCE_MAX_KM", 2.0))
+            short_ratio = float(getattr(settings, "SHORT_DISTANCE_TARGET_RATIO", 0.9))
+            if original_target_km <= short_max_km:
+                max_error_ratio = min(max_error_ratio, 0.2)
+            if target_distance_km <= short_max_km and 0.5 <= short_ratio < 1.0:
+                adjusted = max(0.5, target_distance_km * short_ratio)
+                if adjusted != target_distance_km:
+                    logger.info(
+                        "[Routes Target PreAdjust] request_id=%s target=%.3f adjusted=%.3f ratio=%.2f",
+                        req.request_id,
+                        target_distance_km,
+                        adjusted,
+                        short_ratio,
+                    )
+                    target_distance_km = adjusted
 
-        for attempt in range(1, max_attempts + 1):
-            attempt_candidates: List[Dict[str, Any]] = []
-            best_score: Optional[float] = None
-            filtered_out = 0
-            closest_distance_km: Optional[float] = None
-            closest_error_ratio: Optional[float] = None
+            for attempt in range(1, max_attempts + 1):
+                attempt_candidates: List[Dict[str, Any]] = []
+                best_score: Optional[float] = None
+                filtered_out = 0
+                closest_distance_km: Optional[float] = None
+                closest_error_ratio: Optional[float] = None
 
-            dests = maps_routes_client.compute_route_dests(
-                request_id=req.request_id,
-                start_lat=float(req.start_location.lat),
-                start_lng=float(req.start_location.lng),
-                end_lat=float(effective_end_location.lat) if effective_end_location else None,
-                end_lng=float(effective_end_location.lng) if effective_end_location else None,
-                distance_km=target_distance_km,
-                round_trip=bool(req.round_trip),
-            )
-            dests = dests[:max_routes]
-
-            t0 = time.perf_counter()
-            for idx, dest in enumerate(dests, start=1):
-                route = await maps_routes_client.compute_route_candidate(
+                dests = maps_routes_client.compute_route_dests(
                     request_id=req.request_id,
                     start_lat=float(req.start_location.lat),
                     start_lng=float(req.start_location.lng),
-                    dest=dest,
-                    idx=idx,
+                    end_lat=float(effective_end_location.lat) if effective_end_location else None,
+                    end_lng=float(effective_end_location.lng) if effective_end_location else None,
+                    distance_km=target_distance_km,
                     round_trip=bool(req.round_trip),
                 )
-                if not route:
-                    continue
-                
-                # ルートの妥当性チェック
-                route_distance_km = float(route.get("distance_km") or 0.0)
-                route_polyline = route.get("polyline", "").strip()
-                
-                # 距離が0以下、または極端に小さい値（0.01km = 10m以下）の場合は無効
-                if route_distance_km <= 0.01:
-                    filtered_out += 1
-                    logger.warning(
-                        "[Routes Invalid] request_id=%s idx=%d distance too small: %.3fkm",
-                        req.request_id,
-                        idx,
-                        route_distance_km,
-                    )
-                    continue
-                
-                # polylineが空、または無効な値の場合は無効
-                if not route_polyline or route_polyline in ("", "xxxx", "~oia@"):
-                    filtered_out += 1
-                    logger.warning(
-                        "[Routes Invalid] request_id=%s idx=%d invalid polyline: %s",
-                        req.request_id,
-                        idx,
-                        route_polyline[:20] if route_polyline else "empty",
-                    )
-                    continue
-                
-                if target_distance_km > 0 and max_error_ratio >= 0:
-                    error_base_km = original_target_km if original_target_km > 0 else target_distance_km
-                    distance_error_ratio = abs(route_distance_km - error_base_km) / error_base_km
-                    if closest_error_ratio is None or distance_error_ratio < closest_error_ratio:
-                        closest_error_ratio = distance_error_ratio
-                        closest_distance_km = route_distance_km
-                    if distance_error_ratio > max_error_ratio:
-                        filtered_out += 1
-                        logger.info(
-                            "[Routes Filtered] request_id=%s idx=%d error_ratio=%.3f target=%.3f actual=%.3f threshold=%.3f attempt=%d/%d",
-                            req.request_id,
-                            idx,
-                            distance_error_ratio,
-                            target_distance_km,
-                            route_distance_km,
-                            max_error_ratio,
-                            attempt,
-                            max_attempts,
-                        )
-                        continue
-                attempt_candidates.append(route)
-                score = _heuristic_score({"distance_km": route.get("distance_km")}, req)
-                if best_score is None or score > best_score:
-                    best_score = score
-                if len(attempt_candidates) >= min_routes and best_score >= float(settings.SCORE_THRESHOLD):
-                    logger.info(
-                        "[Routes Early Exit] request_id=%s candidates=%d best_score=%.3f threshold=%.3f",
-                        req.request_id,
-                        len(attempt_candidates),
-                        best_score,
-                        float(settings.SCORE_THRESHOLD),
-                    )
-                    break
-            elapsed_ms = int((time.perf_counter() - t0) * 1000)
-            logger.info(
-                "[Routes Latency] request_id=%s candidates=%d elapsed_ms=%d attempt=%d/%d",
-                req.request_id,
-                len(attempt_candidates),
-                elapsed_ms,
-                attempt,
-                max_attempts,
-            )
+                dests = dests[:max_routes]
 
-            if attempt_candidates:
-                candidates = attempt_candidates
-                break
-
-            if attempt < max_attempts:
-                if original_target_km <= short_max_km and closest_distance_km and closest_distance_km > 0:
-                    adjusted = (target_distance_km * target_distance_km) / closest_distance_km
-                    adjusted = max(0.5, min(original_target_km, adjusted))
-                    if adjusted != target_distance_km:
-                        logger.info(
-                            "[Routes Target Adjust] request_id=%s target=%.3f adjusted=%.3f observed=%.3f attempt=%d/%d",
-                            req.request_id,
-                            target_distance_km,
-                            adjusted,
-                            closest_distance_km,
-                            attempt,
-                            max_attempts,
+                t0 = time.perf_counter()
+                with _tracer.start_as_current_span("step.call_maps_routes") as maps_span:
+                    _set_span_route_attrs(maps_span, req, state)
+                    for idx, dest in enumerate(dests, start=1):
+                        route = await maps_routes_client.compute_route_candidate(
+                            request_id=req.request_id,
+                            start_lat=float(req.start_location.lat),
+                            start_lng=float(req.start_location.lng),
+                            dest=dest,
+                            idx=idx,
+                            round_trip=bool(req.round_trip),
                         )
-                        target_distance_km = adjusted
+                        if not route:
+                            continue
+
+                        # ルートの妥当性チェック
+                        route_distance_km = float(route.get("distance_km") or 0.0)
+                        route_polyline = route.get("polyline", "").strip()
+
+                        # 距離が0以下、または極端に小さい値（0.01km = 10m以下）の場合は無効
+                        if route_distance_km <= 0.01:
+                            filtered_out += 1
+                            logger.warning(
+                                "[Routes Invalid] request_id=%s idx=%d distance too small: %.3fkm",
+                                req.request_id,
+                                idx,
+                                route_distance_km,
+                            )
+                            continue
+
+                        # polylineが空、または無効な値の場合は無効
+                        if not route_polyline or route_polyline in ("", "xxxx", "~oia@"):
+                            filtered_out += 1
+                            logger.warning(
+                                "[Routes Invalid] request_id=%s idx=%d invalid polyline: %s",
+                                req.request_id,
+                                idx,
+                                route_polyline[:20] if route_polyline else "empty",
+                            )
+                            continue
+
+                        if target_distance_km > 0 and max_error_ratio >= 0:
+                            error_base_km = original_target_km if original_target_km > 0 else target_distance_km
+                            distance_error_ratio = abs(route_distance_km - error_base_km) / error_base_km
+                            if closest_error_ratio is None or distance_error_ratio < closest_error_ratio:
+                                closest_error_ratio = distance_error_ratio
+                                closest_distance_km = route_distance_km
+                            if distance_error_ratio > max_error_ratio:
+                                filtered_out += 1
+                                logger.info(
+                                    "[Routes Filtered] request_id=%s idx=%d error_ratio=%.3f target=%.3f actual=%.3f threshold=%.3f attempt=%d/%d",
+                                    req.request_id,
+                                    idx,
+                                    distance_error_ratio,
+                                    target_distance_km,
+                                    route_distance_km,
+                                    max_error_ratio,
+                                    attempt,
+                                    max_attempts,
+                                )
+                                continue
+                        attempt_candidates.append(route)
+                        score = _heuristic_score({"distance_km": route.get("distance_km")}, req)
+                        if best_score is None or score > best_score:
+                            best_score = score
+                        if len(attempt_candidates) >= min_routes and best_score >= float(settings.SCORE_THRESHOLD):
+                            logger.info(
+                                "[Routes Early Exit] request_id=%s candidates=%d best_score=%.3f threshold=%.3f",
+                                req.request_id,
+                                len(attempt_candidates),
+                                best_score,
+                                float(settings.SCORE_THRESHOLD),
+                            )
+                            break
+                elapsed_ms = int((time.perf_counter() - t0) * 1000)
                 logger.info(
-                    "[Routes Retry] request_id=%s filtered_out=%d attempt=%d/%d",
+                    "[Routes Latency] request_id=%s candidates=%d elapsed_ms=%d attempt=%d/%d",
                     req.request_id,
-                    filtered_out,
+                    len(attempt_candidates),
+                    elapsed_ms,
                     attempt,
                     max_attempts,
                 )
 
-        if candidates:
-            tools_used = _ensure_tool_used(tools_used, "maps_routes")
-            status = "ok"
-        else:
-            status = "empty"
-    except Exception as e:
-        error = repr(e)
-        logger.warning("[Maps Routes Failed] request_id=%s err=%r", req.request_id, e)
+                if attempt_candidates:
+                    candidates = attempt_candidates
+                    break
+
+                if attempt < max_attempts:
+                    if original_target_km <= short_max_km and closest_distance_km and closest_distance_km > 0:
+                        adjusted = (target_distance_km * target_distance_km) / closest_distance_km
+                        adjusted = max(0.5, min(original_target_km, adjusted))
+                        if adjusted != target_distance_km:
+                            logger.info(
+                                "[Routes Target Adjust] request_id=%s target=%.3f adjusted=%.3f observed=%.3f attempt=%d/%d",
+                                req.request_id,
+                                target_distance_km,
+                                adjusted,
+                                closest_distance_km,
+                                attempt,
+                                max_attempts,
+                            )
+                            target_distance_km = adjusted
+                    logger.info(
+                        "[Routes Retry] request_id=%s filtered_out=%d attempt=%d/%d",
+                        req.request_id,
+                        filtered_out,
+                        attempt,
+                        max_attempts,
+                    )
+
+            if candidates:
+                tools_used = _ensure_tool_used(tools_used, "maps_routes")
+                status = "ok"
+            else:
+                status = "empty"
+        except Exception as e:
+            span.record_exception(e)
+            span.set_status(Status(StatusCode.ERROR))
+            error = repr(e)
+            logger.warning("[Maps Routes Failed] request_id=%s err=%r", req.request_id, e)
+        if span.is_recording():
+            span.set_attribute("fallback.used", status != "ok")
+            if error:
+                span.set_attribute("fallback.reason", error)
 
     elapsed_total_ms = int((time.perf_counter() - t_start) * 1000)
     return {
@@ -778,31 +802,39 @@ async def score_by_ranker(state: AgentState) -> Dict[str, Any]:
     score_map: Dict[str, float] = {}
     t_start = time.perf_counter()
 
-    try:
-        t0 = time.perf_counter()
-        scores_list, _failed_ids = await ranker_client.rank_routes(req.request_id, rep_routes_payload)
-        elapsed_ms = int((time.perf_counter() - t0) * 1000)
-        logger.info(
-            "[Ranker Latency] request_id=%s routes=%d elapsed_ms=%d",
-            req.request_id,
-            len(rep_routes_payload),
-            elapsed_ms,
-        )
-        for item in scores_list:
-            if "route_id" in item and "score" in item:
-                score_map[item["route_id"]] = float(item["score"])
-        scores = [{"route_id": rid, "score": score} for rid, score in score_map.items()]
-        if score_map:
-            tools_used = _ensure_tool_used(tools_used, "ranker")
-            status = "ok"
-        else:
-            status = "empty"
+    with _tracer.start_as_current_span("step.call_ranker") as span:
+        _set_span_route_attrs(span, req, state)
+        try:
+            t0 = time.perf_counter()
+            scores_list, _failed_ids = await ranker_client.rank_routes(req.request_id, rep_routes_payload)
+            elapsed_ms = int((time.perf_counter() - t0) * 1000)
+            logger.info(
+                "[Ranker Latency] request_id=%s routes=%d elapsed_ms=%d",
+                req.request_id,
+                len(rep_routes_payload),
+                elapsed_ms,
+            )
+            for item in scores_list:
+                if "route_id" in item and "score" in item:
+                    score_map[item["route_id"]] = float(item["score"])
+            scores = [{"route_id": rid, "score": score} for rid, score in score_map.items()]
+            if score_map:
+                tools_used = _ensure_tool_used(tools_used, "ranker")
+                status = "ok"
+            else:
+                status = "empty"
+                fallback_reasons.append("ranker_failed")
+                logger.warning("[Ranker Empty] request_id=%s no scores returned", req.request_id)
+        except Exception as e:
+            span.record_exception(e)
+            span.set_status(Status(StatusCode.ERROR))
+            error = repr(e)
             fallback_reasons.append("ranker_failed")
-            logger.warning("[Ranker Empty] request_id=%s no scores returned", req.request_id)
-    except Exception as e:
-        error = repr(e)
-        fallback_reasons.append("ranker_failed")
-        logger.error("[Ranker Error] request_id=%s err=%r", req.request_id, e)
+            logger.error("[Ranker Error] request_id=%s err=%r", req.request_id, e)
+        if span.is_recording():
+            span.set_attribute("fallback.used", status != "ok")
+            if error:
+                span.set_attribute("fallback.reason", error)
 
     elapsed_total_ms = int((time.perf_counter() - t_start) * 1000)
     return {
@@ -1026,54 +1058,62 @@ async def fetch_places(state: AgentState) -> Dict[str, Any]:
     places: List[Dict[str, Any]] = []
     t_start = time.perf_counter()
 
-    try:
-        t0 = time.perf_counter()
-        merged, selected = await _collect_places_two_phase(
-            request_id=req.request_id,
-            theme=req.theme,
-            sample_points=sample_points,
-            max_spots=5,
-            radius_m=settings.PLACES_RADIUS_M,
-            max_results=settings.PLACES_MAX_RESULTS,
-        )
-        places = selected
-        if decoded_points:
-            filtered = _filter_places_by_route_distance(
-                places=places,
-                decoded_points=decoded_points,
-                max_distance_m=float(settings.SPOT_MAX_DISTANCE_M),
+    with _tracer.start_as_current_span("step.call_places") as span:
+        _set_span_route_attrs(span, req, state)
+        try:
+            t0 = time.perf_counter()
+            merged, selected = await _collect_places_two_phase(
+                request_id=req.request_id,
+                theme=req.theme,
+                sample_points=sample_points,
                 max_spots=5,
+                radius_m=settings.PLACES_RADIUS_M,
+                max_results=settings.PLACES_MAX_RESULTS,
             )
-            if len(filtered) < 3:
+            places = selected
+            if decoded_points:
                 filtered = _filter_places_by_route_distance(
-                    places=merged,
+                    places=places,
                     decoded_points=decoded_points,
-                    max_distance_m=float(settings.SPOT_MAX_DISTANCE_M_RELAXED),
+                    max_distance_m=float(settings.SPOT_MAX_DISTANCE_M),
                     max_spots=5,
                 )
-            if len(filtered) < 3:
-                filtered = _filter_places_by_route_distance(
-                    places=merged,
-                    decoded_points=decoded_points,
-                    max_distance_m=float(settings.SPOT_MAX_DISTANCE_M_FALLBACK),
-                    max_spots=5,
-                )
-            places = filtered
-        if places:
-            tools_used = _ensure_tool_used(tools_used, "places")
-            status = "ok"
-        else:
-            status = "empty"
-        elapsed_ms = int((time.perf_counter() - t0) * 1000)
-        logger.info(
-            "[Places Latency] request_id=%s spots=%d elapsed_ms=%d",
-            req.request_id,
-            len(places),
-            elapsed_ms,
-        )
-    except Exception as e:
-        error = repr(e)
-        logger.error("[Places Error] request_id=%s err=%r", req.request_id, e)
+                if len(filtered) < 3:
+                    filtered = _filter_places_by_route_distance(
+                        places=merged,
+                        decoded_points=decoded_points,
+                        max_distance_m=float(settings.SPOT_MAX_DISTANCE_M_RELAXED),
+                        max_spots=5,
+                    )
+                if len(filtered) < 3:
+                    filtered = _filter_places_by_route_distance(
+                        places=merged,
+                        decoded_points=decoded_points,
+                        max_distance_m=float(settings.SPOT_MAX_DISTANCE_M_FALLBACK),
+                        max_spots=5,
+                    )
+                places = filtered
+            if places:
+                tools_used = _ensure_tool_used(tools_used, "places")
+                status = "ok"
+            else:
+                status = "empty"
+            elapsed_ms = int((time.perf_counter() - t0) * 1000)
+            logger.info(
+                "[Places Latency] request_id=%s spots=%d elapsed_ms=%d",
+                req.request_id,
+                len(places),
+                elapsed_ms,
+            )
+        except Exception as e:
+            span.record_exception(e)
+            span.set_status(Status(StatusCode.ERROR))
+            error = repr(e)
+            logger.error("[Places Error] request_id=%s err=%r", req.request_id, e)
+        if span.is_recording():
+            span.set_attribute("fallback.used", status != "ok")
+            if error:
+                span.set_attribute("fallback.reason", error)
 
     elapsed_total_ms = int((time.perf_counter() - t_start) * 1000)
     return {
@@ -1608,93 +1648,100 @@ async def build_response(state: AgentState) -> Dict[str, Any]:
     tools_used = state["tools_used"]
     t_start = time.perf_counter()
 
-    route_quality = RouteQuality(
-        is_fallback=state["is_fallback_route"],
-        distance_match=state["distance_match"],
-        distance_error_km=state["distance_error_km"],
-        quality_score=state["quality_score"],
-    )
+    with _tracer.start_as_current_span("step.compose_response") as span:
+        _set_span_route_attrs(span, req, state)
 
-    spots = _build_spots_from_places(state["places"])
+        route_quality = RouteQuality(
+            is_fallback=state["is_fallback_route"],
+            distance_match=state["distance_match"],
+            distance_error_km=state["distance_error_km"],
+            quality_score=state["quality_score"],
+        )
 
-    meta: Dict[str, Any] = {
-        "fallback_used": state["is_fallback_used"],
-        "tools_used": tools_used,
-        "fallback_reason": state["fallback_reason_str"],
-        "fallback_details": state["fallback_details"],
-        "route_quality": route_quality,
-    }
-    if req.debug:
-        meta["plan"] = state["plan_steps"]
-        meta["debug"] = {
-            "routes": {
-                "candidates_count": len(state["candidates"]),
-                "candidates": [
-                    {
-                        "route_id": c.get("route_id"),
-                        "distance_km": c.get("distance_km"),
-                        "duration_min": c.get("duration_min"),
-                    }
-                    for c in state["candidates"][:5]
-                ],
-                "chosen_route_id": best_route.get("route_id"),
-            },
-            "places": {
-                "spots_count": len(spots),
-                "spots": [{"name": s.name, "type": s.type, "lat": s.lat, "lng": s.lng} for s in spots] if spots else [],
-                "status": state["places_status"],
-            },
-            "ranker": {
-                "scores_count": len(state["score_map"]),
-                "scores": [
-                    {"route_id": route_id, "score": score}
-                    for route_id, score in sorted(state["score_map"].items(), key=lambda x: x[1], reverse=True)
-                ],
-                "status": state["ranker_status"],
-            },
-            "routes_api": {
-                "status": state["routes_api_status"],
-            },
+        spots = _build_spots_from_places(state["places"])
+
+        meta: Dict[str, Any] = {
+            "fallback_used": state["is_fallback_used"],
+            "tools_used": tools_used,
+            "fallback_reason": state["fallback_reason_str"],
+            "fallback_details": state["fallback_details"],
+            "route_quality": route_quality,
         }
+        if req.debug:
+            meta["plan"] = state["plan_steps"]
+            meta["debug"] = {
+                "routes": {
+                    "candidates_count": len(state["candidates"]),
+                    "candidates": [
+                        {
+                            "route_id": c.get("route_id"),
+                            "distance_km": c.get("distance_km"),
+                            "duration_min": c.get("duration_min"),
+                        }
+                        for c in state["candidates"][:5]
+                    ],
+                    "chosen_route_id": best_route.get("route_id"),
+                },
+                "places": {
+                    "spots_count": len(spots),
+                    "spots": [{"name": s.name, "type": s.type, "lat": s.lat, "lng": s.lng} for s in spots] if spots else [],
+                    "status": state["places_status"],
+                },
+                "ranker": {
+                    "scores_count": len(state["score_map"]),
+                    "scores": [
+                        {"route_id": route_id, "score": score}
+                        for route_id, score in sorted(state["score_map"].items(), key=lambda x: x[1], reverse=True)
+                    ],
+                    "status": state["ranker_status"],
+                },
+                "routes_api": {
+                    "status": state["routes_api_status"],
+                },
+            }
 
-    response = GenerateRouteResponse(
-        request_id=req.request_id,
-        route={
-            "route_id": best_route.get("route_id"),
-            "polyline": best_route.get("polyline", "xxxx"),
-            "distance_km": float(best_route.get("distance_km", req.distance_km)),
-            "duration_min": int(best_route.get("duration_min") or 32),
-            "title": state["title"],
-            "summary": state["description"],
-            "nav_waypoints": state["nav_waypoints"],
-            "spots": spots,
-        },
-        meta=meta,
-    )
-    total_latency_ms = int((time.time() - state["start_time"]) * 1000)
-    latency_ms = _merge_latency(state, "build_response", int((time.perf_counter() - t_start) * 1000))
-    logger.info(
-        "[Latency Summary] request_id=%s total_ms=%d steps=%s",
-        req.request_id,
-        total_latency_ms,
-        latency_ms,
-    )
-    summary = {
-        "message": "route_generate_summary",
-        "service": "agent",
-        "request_id": req.request_id,
-        "path": "/route/generate",
-        "fallback": bool(state.get("is_fallback_used")),
-        "fallback_reason": state.get("fallback_reason_str"),
-        "routes_api_status": state.get("routes_api_status"),
-        "places_status": state.get("places_status"),
-        "ranker_status": state.get("ranker_status"),
-        "candidates_count": len(state.get("candidates") or []),
-        "total_latency_ms": total_latency_ms,
-        "debug": bool(getattr(req, "debug", False)),
-    }
-    logger.info(json.dumps(summary, ensure_ascii=False))
-    return {"response": response, "latency_ms": latency_ms}
+        response = GenerateRouteResponse(
+            request_id=req.request_id,
+            route={
+                "route_id": best_route.get("route_id"),
+                "polyline": best_route.get("polyline", "xxxx"),
+                "distance_km": float(best_route.get("distance_km", req.distance_km)),
+                "duration_min": int(best_route.get("duration_min") or 32),
+                "title": state["title"],
+                "summary": state["description"],
+                "nav_waypoints": state["nav_waypoints"],
+                "spots": spots,
+            },
+            meta=meta,
+        )
+        total_latency_ms = int((time.time() - state["start_time"]) * 1000)
+        latency_ms = _merge_latency(state, "build_response", int((time.perf_counter() - t_start) * 1000))
+        logger.info(
+            "[Latency Summary] request_id=%s total_ms=%d steps=%s",
+            req.request_id,
+            total_latency_ms,
+            latency_ms,
+        )
+        summary = {
+            "message": "route_generate_summary",
+            "service": "agent",
+            "request_id": req.request_id,
+            "path": "/route/generate",
+            "fallback": bool(state.get("is_fallback_used")),
+            "fallback_reason": state.get("fallback_reason_str"),
+            "routes_api_status": state.get("routes_api_status"),
+            "places_status": state.get("places_status"),
+            "ranker_status": state.get("ranker_status"),
+            "candidates_count": len(state.get("candidates") or []),
+            "total_latency_ms": total_latency_ms,
+            "debug": bool(getattr(req, "debug", False)),
+        }
+        current_span = trace.get_current_span()
+        ctx = current_span.get_span_context()
+        trace_id_hex = format(ctx.trace_id, "032x") if ctx and ctx.trace_id else None
+        summary["trace_id"] = trace_id_hex
+        logger.info(json.dumps(summary, ensure_ascii=False))
+        return {"response": response, "latency_ms": latency_ms}
 
 
 def _build_graph() -> StateGraph:
