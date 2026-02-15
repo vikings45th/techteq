@@ -48,7 +48,7 @@ jobs:
             --timeout=30 \
             --memory=512Mi \
             --cpu=1 \
-            --set-env-vars "MODEL_VERSION=shadow_xgb_18feat,RANKER_VERSION=rule_v1,MODEL_INFERENCE_MODE=vertex,VERTEX_PROJECT=firstdown-482704,VERTEX_LOCATION=asia-northeast1,VERTEX_ENDPOINT_ID=3135439925533474816,VERTEX_TIMEOUT_S=5.0" \
+            --set-env-vars "MODEL_VERSION=shadow_xgb_18feat,RANKER_VERSION=rule_v1,MODEL_INFERENCE_MODE=vertex,VERTEX_PROJECT=firstdown-482704,VERTEX_LOCATION=asia-northeast1,VERTEX_ENDPOINT_ID=3135439925533474816,VERTEX_TIMEOUT_S=10.0" \
             --concurrency=10
 
       # Ranker の run.invoker を Agent 実行用 SA に付与（OIDC で Agent→Ranker が呼べるようにする）
