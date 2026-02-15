@@ -7,16 +7,6 @@ from contextlib import asynccontextmanager
 import httpx
 
 from fastapi import FastAPI
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
-from opentelemetry.propagate import set_global_textmap
-from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPropagator
-from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatioBased
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from fastapi.responses import PlainTextResponse
 from app.schemas import (
     GenerateRouteRequest,
@@ -46,23 +36,42 @@ def setup_tracing(app: FastAPI) -> None:
         return
     _otel_initialized = True
 
-    service_version = os.environ.get("K_REVISION", "unknown")
-    deployment_env = os.environ.get("ENV", "unknown")
-    resource = Resource.create({
-        "service.name": "agent",
-        "service.version": service_version,
-        "deployment.environment": deployment_env,
-    })
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+        from opentelemetry.propagate import set_global_textmap
+        from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPropagator
+        from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-    ratio = float(os.environ.get("OTEL_TRACES_SAMPLER_ARG", "0.1"))
-    sampler = ParentBasedTraceIdRatioBased(ratio)
-    provider = TracerProvider(resource=resource, sampler=sampler)
-    provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter()))
-    trace.set_tracer_provider(provider)
-    set_global_textmap(CloudTraceFormatPropagator())
+        service_version = os.environ.get("K_REVISION", "unknown")
+        deployment_env = os.environ.get("ENV", "unknown")
+        resource = Resource.create({
+            "service.name": "agent",
+            "service.version": service_version,
+            "deployment.environment": deployment_env,
+        })
 
-    FastAPIInstrumentor.instrument_app(app)
-    HTTPXClientInstrumentor().instrument()
+        ratio = float(os.environ.get("OTEL_TRACES_SAMPLER_ARG", "0.1"))
+        sampler = ParentBasedTraceIdRatio(ratio)
+        provider = TracerProvider(resource=resource, sampler=sampler)
+        provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter()))
+        trace.set_tracer_provider(provider)
+        set_global_textmap(CloudTraceFormatPropagator())
+
+        FastAPIInstrumentor.instrument_app(app)
+        HTTPXClientInstrumentor().instrument()
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        logging.getLogger(__name__).warning(
+            "Tracing initialization failed (app will run without tracing): %s\n%s",
+            e,
+            traceback.format_exc(),
+        )
 
 
 def _configure_logging() -> None:
