@@ -66,31 +66,9 @@ class DescriptionResponse(BaseModel):
 
 
 class TitleDescriptionResponse(BaseModel):
-    """タイトルと紹介文の構造化出力"""
-    title: str = Field(..., min_length=8, max_length=20)
-    description: str = Field(..., min_length=80, max_length=120)
-
-    @field_validator("title")
-    @classmethod
-    def normalize_title(cls, v: str) -> str:
-        t = v.strip()
-        if "\n" in t:
-            t = t.splitlines()[0].strip()
-        for q in ("「", "」", '"', "'"):
-            t = t.strip(q)
-        if t.endswith("。"):
-            raise ValueError("title must not end with a period")
-        return t
-
-    @field_validator("description")
-    @classmethod
-    def normalize_description(cls, v: str) -> str:
-        t = v.strip()
-        if "\n" in t:
-            t = t.replace("\n", " ").strip()
-        if not t.endswith("。"):
-            raise ValueError("description must end with a period")
-        return t
+    """タイトルと紹介文の構造化出力（制約は最小限。ポストプロセスで補正）"""
+    title: str = Field(...)
+    description: str = Field(...)
 
 
 class RouteOut(BaseModel):

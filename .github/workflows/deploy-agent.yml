@@ -58,6 +58,6 @@ jobs:
             --memory=2Gi \
             --cpu=2 \
             --concurrency=10 \
-            --set-env-vars=RANKER_URL=https://ranker-203786374782.asia-northeast1.run.app,RANKER_TIMEOUT_SEC=20,REQUEST_TIMEOUT_SEC=10,BQ_DATASET=firstdown_mvp,FEATURES_VERSION=mvp_v1,MAPS_API_KEY=${{ secrets.MAPS_API_KEY }},VERTEX_PROJECT=firstdown-482704,VERTEX_LOCATION=asia-northeast1,VERTEX_TEXT_MODEL=gemini-2.5-flash \
+            --set-env-vars=RANKER_URL=https://ranker-203786374782.asia-northeast1.run.app,RANKER_TIMEOUT_SEC=20,REQUEST_TIMEOUT_SEC=10,BQ_DATASET=firstdown_mvp,FEATURES_VERSION=mvp_v1,MAPS_API_KEY=${{ secrets.MAPS_API_KEY }},VERTEX_PROJECT=firstdown-482704,VERTEX_LOCATION=us-central1,VERTEX_TEXT_MODEL=gemini-2.5-flash-lite \
             --service-account=agent-runtime-sa@firstdown-482704.iam.gserviceaccount.com
 

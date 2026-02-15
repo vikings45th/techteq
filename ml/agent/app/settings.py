@@ -18,8 +18,8 @@ class Settings(BaseSettings):
 
     # Vertex AI
     VERTEX_PROJECT: str = ""  # GCPプロジェクトID
-    VERTEX_LOCATION: str = "asia-northeast1"  # Vertex AIのリージョン
-    VERTEX_TEXT_MODEL: str = "gemini-2.5-flash"  # 使用するLLMモデル名（短縮名を正とする。google/ プレフィックスは付けない）
+    VERTEX_LOCATION: str = "us-central1"  # Vertex AIのリージョン（gemini-2.5-flash-lite 安定動作のため us-central1 を推奨）
+    VERTEX_TEXT_MODEL: str = "gemini-2.5-flash-lite"  # 使用するLLMモデル名（短縮名を正とする。google/ プレフィックスは付けない）
     VERTEX_TEMPERATURE: float = 0.3  # LLMの温度パラメータ（0.0-1.0、低いほど一貫性が高い）
     VERTEX_MAX_OUTPUT_TOKENS: float = 256  # 最大出力トークン数
     VERTEX_TOP_P: float = 0.95  # Top-pサンプリングパラメータ
