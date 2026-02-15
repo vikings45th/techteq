@@ -1,3 +1,5 @@
+import { getAgentRequestHeaders } from "../utils/agentAuth";
+
 interface LatLng {
   lat: number;
   lng: number;
@@ -55,26 +57,24 @@ function decodePolyline(encoded: string): LatLng[] {
 }
 
 export default defineEventHandler(async (event) => {
-  const requestBody = await readBody(event); //requestBody: ApiRequest,
-  /*
-    interface ApiRequest {
-      request_id: string;
-      theme: string;
-      distance_km: number;
-      start_location: LatLng;
-      end_location: LatLng;
-      round_trip: boolean;
-      debug: boolean;
-    }
-  */
+  const config = useRuntimeConfig();
+  const agentBaseUrl = config.agentBaseUrl as string | undefined;
+  if (!agentBaseUrl) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: "AGENT_BASE_URL is not configured",
+    });
+  }
 
-  const apiUrl =
-    "https://agent-203786374782.asia-northeast1.run.app/route/generate";
+  const requestBody = await readBody(event); //requestBody: ApiRequest,
+
+  const apiUrl = `${agentBaseUrl}/route/generate`;
   try {
-    // POSTリクエスト
+    const idTokenHeaders = await getAgentRequestHeaders(agentBaseUrl);
     const response = await $fetch<AgentResponse>(apiUrl, {
       method: "POST",
       headers: {
+        ...idTokenHeaders,
         "Content-Type": "application/json",
       },
       body: requestBody,
@@ -97,8 +97,16 @@ export default defineEventHandler(async (event) => {
       body: processedResponse,
     };
   } catch (error: any) {
+    const status = error?.statusCode ?? error?.response?.status ?? 500;
+    if (status === 401 || status === 403) {
+      console.error(
+        "Agent IAM auth failed (audience/権限不足の可能性):",
+        agentBaseUrl,
+        status,
+      );
+    }
     throw createError({
-      statusCode: error.statusCode || 500,
+      statusCode: status,
       statusMessage: error.message || "API呼び出しに失敗しました",
     });
   }

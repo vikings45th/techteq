@@ -6,6 +6,7 @@ export default defineNuxtConfig({
   css: ["~/assets/css/main.css"],
   runtimeConfig: {
     geminiApiKey: process.env.NUXT_GEMINI_API_KEY,
+    agentBaseUrl: process.env.NUXT_AGENT_BASE_URL,
     public: {
       googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     },
