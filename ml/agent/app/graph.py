@@ -12,8 +12,52 @@ from typing import Any, Dict, List, Optional, TypedDict
 import polyline as polyline_lib
 from fastapi import HTTPException
 from langgraph.graph import END, StateGraph
-from opentelemetry import trace
-from opentelemetry.trace import Status, StatusCode
+
+try:
+    from opentelemetry import trace
+    from opentelemetry.trace import Status, StatusCode
+    _tracer = trace.get_tracer(__name__, "1.0.0")
+
+    def _get_current_span():
+        return trace.get_current_span()
+except Exception:
+    trace = None
+    Status = lambda _: None  # no-op for set_status(...)
+    StatusCode = type("StatusCode", (), {"ERROR": 1})()
+
+    class _NoOpSpanContext:
+        trace_id = 0
+
+    class _NoOpSpan:
+        def is_recording(self):
+            return False
+
+        def set_attribute(self, *args, **kwargs):
+            pass
+
+        def record_exception(self, exc):
+            pass
+
+        def set_status(self, status):
+            pass
+
+        def get_span_context(self):
+            return _NoOpSpanContext()
+
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _no_op_span_cm():
+        yield _NoOpSpan()
+
+    class _NoOpTracer:
+        def start_as_current_span(self, name):
+            return _no_op_span_cm()
+
+    _tracer = _NoOpTracer()
+
+    def _get_current_span():
+        return _NoOpSpan()
 
 from app.schemas import (
     FallbackDetail,
@@ -38,10 +82,9 @@ from app.settings import settings
 from app.utils import translate_place_type_to_japanese
 
 logger = logging.getLogger(__name__)
-_tracer = trace.get_tracer(__name__, "1.0.0")
 
 
-def _set_span_route_attrs(span: trace.Span, req: GenerateRouteRequest, state: AgentState) -> None:
+def _set_span_route_attrs(span: Any, req: GenerateRouteRequest, state: AgentState) -> None:
     if span.is_recording():
         span.set_attribute("route.request_id", req.request_id)
         span.set_attribute("route.theme", req.theme)
@@ -1736,9 +1779,9 @@ async def build_response(state: AgentState) -> Dict[str, Any]:
             "total_latency_ms": total_latency_ms,
             "debug": bool(getattr(req, "debug", False)),
         }
-        current_span = trace.get_current_span()
+        current_span = _get_current_span()
         ctx = current_span.get_span_context()
-        trace_id_hex = format(ctx.trace_id, "032x") if ctx and ctx.trace_id else None
+        trace_id_hex = format(ctx.trace_id, "032x") if ctx and getattr(ctx, "trace_id", 0) else None
         summary["trace_id"] = trace_id_hex
         logger.info(json.dumps(summary, ensure_ascii=False))
         return {"response": response, "latency_ms": latency_ms}
