@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import time
 import logging
 from typing import Dict
@@ -6,6 +7,16 @@ from contextlib import asynccontextmanager
 import httpx
 
 from fastapi import FastAPI
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+from opentelemetry.propagate import set_global_textmap
+from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPropagator
+from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatioBased
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from fastapi.responses import PlainTextResponse
 from app.schemas import (
     GenerateRouteRequest,
@@ -24,6 +35,34 @@ from app.services.ttl_cache import (
     _get_key_lock,
 )
 from app.graph import get_route_graph_mermaid, run_generate_graph
+
+_otel_initialized = False
+
+
+def setup_tracing(app: FastAPI) -> None:
+    """Initialize OpenTelemetry and instrument FastAPI + httpx. Safe to call once (no double instrumentation on reload)."""
+    global _otel_initialized
+    if _otel_initialized:
+        return
+    _otel_initialized = True
+
+    service_version = os.environ.get("K_REVISION", "unknown")
+    deployment_env = os.environ.get("ENV", "unknown")
+    resource = Resource.create({
+        "service.name": "agent",
+        "service.version": service_version,
+        "deployment.environment": deployment_env,
+    })
+
+    ratio = float(os.environ.get("OTEL_TRACES_SAMPLER_ARG", "0.1"))
+    sampler = ParentBasedTraceIdRatioBased(ratio)
+    provider = TracerProvider(resource=resource, sampler=sampler)
+    provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter()))
+    trace.set_tracer_provider(provider)
+    set_global_textmap(CloudTraceFormatPropagator())
+
+    FastAPIInstrumentor.instrument_app(app)
+    HTTPXClientInstrumentor().instrument()
 
 
 def _configure_logging() -> None:
@@ -48,6 +87,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="firstdown Agent API", version="1.0.0", lifespan=lifespan)
+setup_tracing(app)
 
 logger = logging.getLogger(__name__)
 
