@@ -167,7 +167,7 @@ watch(isModalOpen, (newValue) => {
     description="あなたの気分に寄り添った散歩コースを提案します。"
     orientation="horizontal"
   >
-    <template #title> 歩けた<br />それだけで今日は十分 </template>
+    <template #title> 歩けた、それだけで今日は十分 </template>
     <img
       src="/img/heroimg.jpg"
       alt="App screenshot"
