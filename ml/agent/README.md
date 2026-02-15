@@ -435,6 +435,12 @@ resource.type="cloud_run_revision"
 jsonPayload.request_id="your-request-id"
 ```
 
+### OpenTelemetry（分散トレーシング）とログ連携
+
+- Agent は OpenTelemetry で計装され、トレースを **Google Cloud Trace** にエクスポートします（FastAPI / httpx の自動計装に加え、graph 内の主要ステップで手動スパンを付与）。詳細は [プロジェクト全体のREADME 観測可能性](../../README.md#観測可能性observability) を参照してください。
+- ルート生成完了時には `message: "route_generate_summary"` の JSON ログに **trace_id**（32桁 hex）を含めています。ログで `jsonPayload.trace_id="..."` を検索し、Trace Explorer で同じ `trace_id` を指定すると、該当リクエストのトレースを確認できます。
+- 起動時にはトレーシング有効時に `message: "otel_enabled"`、失敗時に `message: "otel_init_failed"` を出力します。オプションの環境変数: `OTEL_TRACES_SAMPLER_ARG`（サンプリング率、デフォルト 0.1）、`K_REVISION` / `ENV`（Resource 用）。Cloud Trace へのエクスポートには、実行用サービスアカウントに `roles/cloudtrace.agent` が必要です。
+
 ### BigQuery テーブル定義と用途
 
 **データセット:** `firstdown_mvp`（`BQ_DATASET` で変更可能）
