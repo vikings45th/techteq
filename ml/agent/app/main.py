@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 import os
 import time
 import logging
@@ -35,18 +36,26 @@ def setup_tracing(app: FastAPI) -> None:
     if _otel_initialized:
         return
     _otel_initialized = True
+    log = logging.getLogger(__name__)
 
     try:
         from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+        from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
         from opentelemetry.propagate import set_global_textmap
-        from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPropagator
-        from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+        try:
+            from opentelemetry.exporter.cloud_trace import GoogleCloudSpanExporter
+        except ImportError:
+            from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter as GoogleCloudSpanExporter
+        try:
+            from opentelemetry.propagators.cloud_trace_propagator import GoogleCloudPropagator
+        except ImportError:
+            from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPropagator as GoogleCloudPropagator
 
         service_version = os.environ.get("K_REVISION", "unknown")
         deployment_env = os.environ.get("ENV", "unknown")
@@ -57,20 +66,23 @@ def setup_tracing(app: FastAPI) -> None:
         })
 
         ratio = float(os.environ.get("OTEL_TRACES_SAMPLER_ARG", "0.1"))
-        sampler = ParentBasedTraceIdRatio(ratio)
+        sampler = ParentBased(root=TraceIdRatioBased(ratio))
         provider = TracerProvider(resource=resource, sampler=sampler)
-        provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter()))
+        provider.add_span_processor(BatchSpanProcessor(GoogleCloudSpanExporter()))
         trace.set_tracer_provider(provider)
-        set_global_textmap(CloudTraceFormatPropagator())
+        set_global_textmap(GoogleCloudPropagator())
 
         FastAPIInstrumentor.instrument_app(app)
         HTTPXClientInstrumentor().instrument()
+
+        log.info(json.dumps({"message": "otel_enabled", "service": "agent", "ratio": ratio}))
     except Exception as e:  # noqa: BLE001
-        import traceback
-        logging.getLogger(__name__).warning(
-            "Tracing initialization failed (app will run without tracing): %s\n%s",
-            e,
-            traceback.format_exc(),
+        log.warning(
+            json.dumps({
+                "message": "otel_init_failed",
+                "service": "agent",
+                "error": str(e),
+            }, ensure_ascii=False)
         )
 
 
