@@ -62,11 +62,12 @@ jobs:
             --service-account=agent-runtime-sa@firstdown-482704.iam.gserviceaccount.com
 
       # ⑧ Agent の run.invoker を Web の Cloud Run 用 SA に付与（OIDC で Web→Agent が呼べるようにする）
+      # ※ if 条件では secrets が使えないため vars を使用。Settings > Secrets and variables > Actions で AGENT_INVOKER_SA を Variables に追加
       - name: Grant Agent invoker to Web service account
-        if: ${{ secrets.AGENT_INVOKER_SA != '' }}
+        if: ${{ vars.AGENT_INVOKER_SA != '' }}
         run: |
           gcloud run services add-iam-policy-binding agent \
             --region=asia-northeast1 \
-            --member="serviceAccount:${{ secrets.AGENT_INVOKER_SA }}" \
+            --member="serviceAccount:${{ vars.AGENT_INVOKER_SA }}" \
             --role="roles/run.invoker"
 
