@@ -21,7 +21,11 @@ from google.api_core.exceptions import (
 )
 from vertexai.generative_models import GenerationConfig, GenerativeModel
 
-from app.schemas import DescriptionResponse, TitleResponse, TitleDescriptionResponse
+from app.schemas import DescriptionResponse, TitleResponse
+from app.services.microcopy_postprocess import (
+    normalize_description as _normalize_description,
+    normalize_title as _normalize_title,
+)
 from app.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -428,6 +432,34 @@ async def generate_title(
     return _fallback_title(theme, distance_km, duration_min, spots)
 
 
+def _parse_title_description_json(text: str) -> Optional[tuple[str, str]]:
+    """
+    JSON文字列から title/description を抽出する。
+    バリデーションは行わず、JSONが壊れていなければ採用。
+    戻り値: (title, description) または None（パース不可・空の場合）
+    """
+    if not text or not text.strip():
+        return None
+    try:
+        raw = json.loads(text.strip())
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            try:
+                raw = json.loads(match.group(0))
+            except json.JSONDecodeError:
+                return None
+        else:
+            return None
+    if not isinstance(raw, dict):
+        return None
+    title = (raw.get("title") or "").strip() if isinstance(raw.get("title"), str) else ""
+    desc = (raw.get("description") or "").strip() if isinstance(raw.get("description"), str) else ""
+    if not title and not desc:
+        return None
+    return (title or "静かな道", desc)
+
+
 async def generate_title_and_description(
     *,
     theme: str,
@@ -435,77 +467,64 @@ async def generate_title_and_description(
     duration_min: float,
     spots: Optional[list] = None,
 ) -> dict[str, str]:
+    """
+    タイトルと説明文を生成。validation失敗はエラーにせず、JSONが壊れた時のみフォールバック。
+    短文はアプリ側で補完。再試行はAPI側で1回まで。
+    """
     temperature = float(getattr(settings, "VERTEX_TEMPERATURE", 0.3))
     max_out = int(float(getattr(settings, "VERTEX_MAX_OUTPUT_TOKENS", 256)))
-    forbidden_words = _forbidden_words()
 
     theme_desc = _theme_to_natural(theme)
     names = _spot_names(spots)
-    spots_text = "、".join(names[:4]) if names else ""
+    spots_text = "、".join(names[:4]) if names else "なし"
 
-    attempts = [
-        {
-            "strict": False,
-            "title_min": 8,
-            "title_max": 20,
-            "desc_min": 80,
-            "desc_max": 120,
-            "temperature": temperature,
-            "max_out": max(max_out, 640),
-        },
-        {
-            "strict": True,
-            "title_min": 8,
-            "title_max": 18,
-            "desc_min": 90,
-            "desc_max": 120,
-            "temperature": min(temperature, 0.2),
-            "max_out": max(max_out, 640),
-        },
-    ]
+    prompt = _render_prompt(
+        "title_description.jinja",
+        theme_desc=theme_desc,
+        distance_km_str=f"{distance_km:.1f}km",
+        duration_min_str=f"{duration_min:.0f}分",
+        spots_text=spots_text,
+    )
+    if not prompt:
+        return {
+            "title": _fallback_title(theme, distance_km, duration_min, spots),
+            "description": _fallback_summary(theme, distance_km, duration_min, spots),
+        }
 
-    for attempt in attempts:
-        prompt = _render_prompt(
-            "title_description.jinja",
-            strict=attempt["strict"],
-            title_min_chars=attempt["title_min"],
-            title_max_chars=attempt["title_max"],
-            desc_min_chars=attempt["desc_min"],
-            desc_max_chars=attempt["desc_max"],
-            theme_desc=theme_desc,
-            distance_km_str=f"{distance_km:.1f}km",
-            duration_min_str=f"{duration_min:.0f}分",
-            spots_text=spots_text,
-            forbidden_words=forbidden_words,
+    fallback_title = _fallback_title(theme, distance_km, duration_min, spots)
+    fallback_desc = _fallback_summary(theme, distance_km, duration_min, spots)
+
+    try:
+        logger.info(
+            "[Vertex LLM Title+Summary] invoke max_output_tokens=%s temperature=%s",
+            max_out,
+            temperature,
         )
-        try:
-            max_tokens = attempt["max_out"]
-            logger.info(
-                "[Vertex LLM Title+Summary] invoke max_output_tokens=%s temperature=%s",
-                max_tokens,
-                attempt["temperature"],
-            )
-            text = await _invoke_vertex_text(
-                prompt,
-                temperature=attempt["temperature"],
-                max_output_tokens=max_tokens,
-            )
-            if not text:
-                logger.warning("[Vertex LLM Title+Summary] empty response")
-                continue
-            parsed = _coerce_structured(text, TitleDescriptionResponse)
-            title = parsed.title
-            description = parsed.description
-            banned = _contains_forbidden(title, forbidden_words) or _contains_forbidden(description, forbidden_words)
-            if banned:
-                raise ValueError(f"forbidden word found: {banned}")
-            return {"title": title, "description": description}
-        except (ValidationError, ValueError) as e:
-            logger.warning("[Vertex LLM Title+Summary Invalid] err=%r", e)
-        except Exception as e:
-            logger.exception("[Vertex LLM Title+Summary Error] err=%r", e)
+        text = await _invoke_vertex_text(
+            prompt,
+            temperature=temperature,
+            max_output_tokens=max_out,
+        )
+        if not text:
+            logger.warning("[Vertex LLM Title+Summary] empty response")
+            return {"title": fallback_title, "description": fallback_desc}
 
-    return {
-        "title": _fallback_title(theme, distance_km, duration_min, spots),
-        "description": _fallback_summary(theme, distance_km, duration_min, spots),
-    }
+        parsed = _parse_title_description_json(text)
+        if parsed is None:
+            logger.warning("[Vertex LLM Title+Summary] JSON parse failed")
+            return {"title": fallback_title, "description": fallback_desc}
+
+        raw_title, raw_desc = parsed
+        title = _normalize_title(raw_title)
+        description = _normalize_description(raw_desc, theme, distance_km, duration_min)
+
+        logger.info(
+            "[LLM_RESULT] raw_length=%d normalized_length=%d fallback=false",
+            len(raw_title) + len(raw_desc),
+            len(title) + len(description),
+        )
+        return {"title": title, "description": description}
+
+    except Exception as e:
+        logger.exception("[Vertex LLM Title+Summary Error] err=%r", e)
+        return {"title": fallback_title, "description": fallback_desc}

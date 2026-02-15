@@ -59,7 +59,7 @@ resource "google_cloud_run_v2_service" "agent" {
       }
       env {
         name  = "VERTEX_LOCATION"
-        value = var.region
+        value = var.agent_env_vertex_location
       }
       env {
         name  = "VERTEX_TEXT_MODEL"

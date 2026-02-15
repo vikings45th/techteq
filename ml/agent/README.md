@@ -66,7 +66,7 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 |--------|------|-----|
 | `MAPS_API_KEY` | Google Maps Platform API Key（Routes API / Places API共通） | `AIza...` |
 | `VERTEX_PROJECT` | Google Cloud Project ID（Vertex AI使用時） | `firstdown-482704` |
-| `VERTEX_LOCATION` | Vertex AI リージョン | `asia-northeast1` |
+| `VERTEX_LOCATION` | Vertex AI リージョン（gemini-2.5-flash-lite 安定動作のため us-central1 推奨） | `us-central1` |
 
 ### オプション環境変数
 
@@ -75,7 +75,7 @@ Agent APIは、ユーザーのリクエストに基づいて最適な散歩ル�
 | `RANKER_URL` | `http://ranker:8080` | Ranker APIの内部URL |
 | `REQUEST_TIMEOUT_SEC` | `10.0` | 外部API呼び出しのタイムアウト（秒） |
 | `RANKER_TIMEOUT_SEC` | `10.0` | Ranker API呼び出しのタイムアウト（秒） |
-| `VERTEX_TEXT_MODEL` | `gemini-2.5-flash` | Vertex AIで使用するモデル名 |
+| `VERTEX_TEXT_MODEL` | `gemini-2.5-flash-lite` | Vertex AIで使用するモデル名 |
 | `VERTEX_TEMPERATURE` | `0.3` | Vertex AIの温度パラメータ |
 | `VERTEX_MAX_OUTPUT_TOKENS` | `256` | Vertex AIの最大出力トークン数 |
 | `VERTEX_TOP_P` | `0.95` | Vertex AIのtop_pパラメータ |
@@ -163,7 +163,7 @@ FROM top_scores;
 - `aiplatform.models.predict`
 
 **使用モデル:**
-- デフォルト: `gemini-2.5-flash`
+- デフォルト: `gemini-2.5-flash-lite`
 - 温度パラメータ: `0.3`
 - 最大出力トークン: `256`
 
@@ -402,7 +402,7 @@ pip install -r requirements.txt
 # 環境変数の設定
 export MAPS_API_KEY="your-api-key"
 export VERTEX_PROJECT="your-project-id"
-export VERTEX_LOCATION="asia-northeast1"
+export VERTEX_LOCATION="us-central1"
 export RANKER_URL="http://localhost:8080"
 
 # サーバー起動

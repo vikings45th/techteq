@@ -92,9 +92,15 @@ variable "agent_env_features_version" {
   description = "Agent の FEATURES_VERSION"
 }
 
+variable "agent_env_vertex_location" {
+  type        = string
+  default     = "us-central1"
+  description = "Agent の VERTEX_LOCATION（gemini-2.5-flash-lite 安定動作のため us-central1 推奨）"
+}
+
 variable "agent_env_vertex_text_model" {
   type        = string
-  default     = "gemini-1.5-flash-002"
+  default     = "gemini-2.5-flash-lite"
   description = "Agent の VERTEX_TEXT_MODEL"
 }
 

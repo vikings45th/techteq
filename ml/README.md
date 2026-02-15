@@ -67,7 +67,7 @@
        │                        - タイムアウト: 10秒
        │
        ├──► Vertex AI ───────► 紹介文・タイトル生成
-       │                        - モデル: gemini-2.5-flash
+       │                        - モデル: gemini-2.5-flash-lite
        │                        - 構造化出力（JSON）
        │                        - 禁止語フィルタ対応
        │                        - フォールバック機能あり
@@ -161,7 +161,7 @@
 - `aiplatform.models.predict`
 
 **使用モデル:**
-- デフォルト: `gemini-2.5-flash`
+- デフォルト: `gemini-2.5-flash-lite`
 - 温度パラメータ: `0.3`
 - 最大出力トークン: `256`
 - 禁止ワード: `VERTEX_FORBIDDEN_WORDS` を使用（カンマ区切り）
